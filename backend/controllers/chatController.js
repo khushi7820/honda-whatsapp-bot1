@@ -88,6 +88,7 @@ export const handleWebhook = async (req, res) => {
     }
 };
 
+
 export const verifyWebhook = (req, res) => {
     res.status(200).send("Webhook active");
 };
