@@ -68,6 +68,7 @@ export const handleWebhook = async (req, res) => {
         const historyContext = history.map(chat => `${chat.role}: ${chat.content}`).join("\n");
 
         const aiResponse = await getAIResponse(message, historyContext);
+        console.log(`[AI Response]: ${aiResponse}`);
 
         // Detect if AI suggested booking and user seems interested
         if (aiResponse.toLowerCase().includes("book test drive") || aiResponse.toLowerCase().includes("hands-on drive")) {
