@@ -12,25 +12,39 @@ export const getBookButton = () => ({
     }
 });
 
-export const getDateList = () => ({
-    type: "list",
-    header: { type: "text", text: "Test Drive Booking" },
-    body: { text: "What day should I block for your test drive?" },
-    footer: { text: "Mahindra Automobile" },
-    action: {
-        button: "Options",
-        sections: [
-            {
-                title: "Availability",
-                rows: [
-                    { id: "date_today", title: "Today", description: "Quick response" },
-                    { id: "date_tomorrow", title: "Tomorrow", description: "Most popular" },
-                    { id: "date_weekend", title: "Weekend Drive", description: "Relaxed tour" }
-                ]
-            }
-        ]
+export const getDateList = () => {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        const label = new Intl.DateTimeFormat('en-GB', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short' 
+        }).format(d);
+        dates.push({
+            id: `date_${i}`,
+            title: label,
+            description: i === 0 ? "Today" : (i === 1 ? "Tomorrow" : "Upcoming slot")
+        });
     }
-});
+
+    return {
+        type: "list",
+        header: { type: "text", text: "Test Drive Calendar" },
+        body: { text: "What day should I block for your test drive? 🗓️" },
+        footer: { text: "Mahindra Automobile" },
+        action: {
+            button: "Calendar",
+            sections: [
+                {
+                    title: "Next 7 Days",
+                    rows: dates
+                }
+            ]
+        }
+    };
+};
 
 export const getSlotList = (date) => ({
     type: "list",
