@@ -8,46 +8,37 @@ import { connectDB } from "../config/db.js";
 export const handleWebhook = async (req, res) => {
     try {
         console.log("--- New Webhook Request ---");
-        console.log("Headers:", JSON.stringify(req.headers, null, 2));
-        console.log("Body:", JSON.stringify(req.body, null, 2));
+        const rawBody = JSON.stringify(req.body, null, 2);
+        console.log("Body:", rawBody);
 
-        // IMPORTANT: Await DB connection before ANY mongo operation in Serverless
+        // --- Multi-format Sender Extraction ---
+        const entry = req.body?.entry?.[0];
+        const val = entry?.changes?.[0]?.value || req.body;
+        const msg = val?.messages?.[0] || req.body;
+        
+        let sender = msg.from || req.body.sender || req.body.from || val.contacts?.[0]?.wa_id;
+        
+        // --- EMERGENCY DEBUG REPLY ---
+        // If we found a sender, let's tell them we got the webhook
+        if (sender) {
+            try {
+                // await sendMessage(sender, `[Bot Debug] Received webhook! Payload starts with: ${rawBody.slice(0, 100)}...`);
+            } catch (e) { console.error("Debug reply failed", e.message); }
+        }
+
+        // IMPORTANT: Await DB connection
         try {
             await connectDB();
         } catch (dbErr) {
             console.error("❌ Database connection failed:", dbErr.message);
-            // Still acknowledge the webhook to prevent 11za retries
+            if (sender) await sendMessage(sender, `❌ Database Connection Error: ${dbErr.message}`);
             return res.status(200).send("DB connection error");
         }
 
-        // --- Parse 11za / Meta-style webhook body ---
-        let sender, message, type, interactive;
-
-        // Format 1: 11za/Meta Cloud API format (entry > changes > value > messages)
-        const entry = req.body?.entry?.[0];
-        const change = entry?.changes?.[0];
-        const value = change?.value;
-        const msgObj = value?.messages?.[0];
-
-        if (msgObj) {
-            sender = msgObj.from;
-            type = msgObj.type;
-            if (type === "text") {
-                message = msgObj.text?.body;
-            } else if (type === "interactive") {
-                interactive = msgObj.interactive;
-            } else if (type === "audio") {
-                message = null; // Will be handled below with a friendly response
-            } else {
-                message = msgObj.text?.body || null;
-            }
-        } else {
-            // Format 2: Flat format (our test format / older 11za format)
-            sender = req.body.sender || req.body.from;
-            message = req.body.message;
-            type = req.body.type;
-            interactive = req.body.interactive;
-        }
+        // --- Parse Message Content ---
+        let type = msg.type || req.body.type || "text";
+        let message = msg.text?.body || req.body.message || req.body.text || (type === "text" ? req.body.body : null);
+        let interactive = msg.interactive || req.body.interactive;
 
         console.log(`[Parsed] sender=${sender}, type=${type}, message=${message}`);
 
@@ -57,12 +48,12 @@ export const handleWebhook = async (req, res) => {
         }
 
         if (!message && !interactive) {
-            // Handle audio / unsupported types with a friendly message instead of ignoring
             if (type === "audio") {
-                await sendMessage(sender, "I can't process audio messages yet. Could you type your question instead? 😊");
+                await sendMessage(sender, "I can't process audio messages yet. 😊");
                 return res.status(200).send("Audio handled");
             }
-            console.log("⚠️ No message or interactive content found.");
+            // For other types, tell the user what we got
+            await sendMessage(sender, `[Bot Debug] Webhook hit but couldn't find text/interactive. Type: ${type}`);
             return res.status(200).send("No message data");
         }
 
