@@ -4,7 +4,7 @@
 
 export const getBookButton = (text) => ({
     type: "button",
-    body: { text: text },
+    body: { text: text.length > 500 ? "Ready to feel the power of Mahindra? Book your slot now!" : text },
     action: {
         buttons: [
             { type: "reply", reply: { id: "action_book_test_drive", title: "Book Test Drive" } }
@@ -12,22 +12,15 @@ export const getBookButton = (text) => ({
     }
 });
 
-export const getDateList = () => ({
-    type: "list",
-    header: { type: "text", text: "Select a Date" },
-    body: { text: "What day should I block for your test drive? 🗓️" },
-    footer: { text: "Mahindra Automobile" },
+export const getDateButtons = () => ({
+    type: "button",
+    header: { type: "text", text: "Test Drive Booking" },
+    body: { text: "When would you like to take the wheel? 🗓️" },
     action: {
-        button: "Options",
-        sections: [
-            {
-                title: "Availability",
-                rows: [
-                    { id: "date_today", title: "Today", description: "Quick response" },
-                    { id: "date_tomorrow", title: "Tomorrow", description: "Most popular" },
-                    { id: "date_weekend", title: "Weekend Drive", description: "Relaxed tour" }
-                ]
-            }
+        buttons: [
+            { type: "reply", reply: { id: "date_today", title: "Today" } },
+            { type: "reply", reply: { id: "date_tomorrow", title: "Tomorrow" } },
+            { type: "reply", reply: { id: "date_weekend", title: "Weekend" } }
         ]
     }
 });

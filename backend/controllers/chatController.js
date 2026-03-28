@@ -65,6 +65,7 @@ export const handleWebhook = async (req, res) => {
         // 2. Handle Interactive Replies (Button/List clicks)
         if (interactive) {
             const replyId = interactive?.button_reply?.id || interactive?.list_reply?.id;
+            const replyTitle = interactive?.button_reply?.title || interactive?.list_reply?.title;
             
             if (replyId === "action_book_test_drive") {
                 session.state = "COLLECTING_PINCODE";
@@ -74,7 +75,7 @@ export const handleWebhook = async (req, res) => {
             }
 
             if (replyId?.startsWith("date_")) {
-                const date = interactive.list_reply.title;
+                const date = replyTitle;
                 session.state = "IDLE";
                 await session.save();
                 await sendMessage(sender, `Perfect! Your slot for *${date}* is being processed. \n\nA Mahindra representative will call you for final confirmation. 🏁`);
@@ -88,7 +89,7 @@ export const handleWebhook = async (req, res) => {
             if (pincode?.length === 6) {
                 session.state = "COLLECTING_DATE";
                 await session.save();
-                await sendInteractiveMessage(sender, templates.getDateList());
+                await sendInteractiveMessage(sender, templates.getDateButtons());
                 return res.status(200).send("OK");
             } else {
                 await sendMessage(sender, "Please enter a valid *6-digit* pincode to find nearest showroom. 📍");
@@ -105,7 +106,10 @@ export const handleWebhook = async (req, res) => {
         // Check for AI intent triggers
         const lowerRes = aiResponse.toLowerCase();
         if (lowerRes.includes("book test drive") || lowerRes.includes("hands-on drive")) {
-            await sendInteractiveMessage(sender, templates.getBookButton(aiResponse));
+            // First send the AI's descriptive text
+            await sendMessage(sender, aiResponse);
+            // Then send the nice, clean button UI
+            await sendInteractiveMessage(sender, templates.getBookButton("Ready to feel the power of Mahindra? Book your test drive now!"));
         } else {
             await sendMessage(sender, aiResponse);
         }
