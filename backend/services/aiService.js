@@ -46,6 +46,6 @@ export const getAIResponse = async (userMessage, historyContext = "") => {
     return completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that. Can you try again?";
   } catch (error) {
     console.error("AI Service Error:", error);
-    return "I'm having a bit of trouble thinking right now. Please try again in a moment.";
+    return `DEBUG ERROR: ${error.message || error.toString()}`;
   }
 };
