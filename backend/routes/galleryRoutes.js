@@ -1,12 +1,21 @@
 import express from "express";
 import Car from "../models/Car.js";
+import { connectDB } from "../config/db.js";
 
 const router = express.Router();
 
 router.get("/:carName", async (req, res) => {
     try {
-        const car = await Car.findOne({ name: new RegExp(req.params.carName, "i") });
-        if (!car) return res.status(404).send("Car not found");
+        await connectDB();
+        // Convert 'mahindra-thar' -> 'mahindra thar' for better matching
+        const searchName = req.params.carName.replace(/-/g, " ");
+        console.log(`[Gallery] Searching for: "${searchName}" (from: ${req.params.carName})`);
+        
+        const car = await Car.findOne({ name: new RegExp(searchName, "i") });
+        if (!car) {
+            console.error(`[Gallery] Car Not Found: ${searchName}`);
+            return res.status(404).send(`Car "${searchName}" not found in our showroom.`);
+        }
 
         const imagesHtml = car.images.map(img => `
             <div class="card">
