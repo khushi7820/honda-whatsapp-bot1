@@ -39,21 +39,23 @@ export const handleWebhook = async (req, res) => {
         let type = msg.type || val.type || req.body.type || "text";
         
         let message = 
+            req.body.content || 
+            req.body.UserResponse || 
             msg.text?.body || 
             msg.text || 
             msg.body || 
             val.text?.body || 
             val.text || 
             val.body || 
-            req.body.message || 
-            req.body.text || 
-            req.body.body || 
             null;
+
+        // If content was passed, let's use it
+        if (req.body.content) message = req.body.content;
 
         // Strip object objects if they're not strings
         if (typeof message === "object") message = message?.body || message?.text || null;
 
-        let interactive = msg.interactive || val.interactive || req.body.interactive;
+        let interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
 
         console.log(`[Parsed] sender=${sender}, type=${type}, message=${message}`);
 
@@ -67,9 +69,7 @@ export const handleWebhook = async (req, res) => {
                 await sendMessage(sender, "I can't process audio messages yet. 😊");
                 return res.status(200).send("Audio handled");
             }
-            // For other types, tell the user what we got for debugging
-            const debugKeys = Object.keys(msg).join(", ");
-            await sendMessage(sender, `[Bot Debug] Webhook hit but found no content. \nKeys in msg: ${debugKeys}\nType identified: ${type}`);
+            // Silent return for system events or empty pings
             return res.status(200).send("No message data");
         }
 
