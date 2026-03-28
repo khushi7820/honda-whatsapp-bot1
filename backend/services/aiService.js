@@ -16,6 +16,10 @@ export const getAIResponse = async (userMessage, historyContext = "") => {
       return "I didn't catch that. Could you please type your question?";
     }
 
+    // Force string type to prevent 'content' property from being stripped
+    const safeUserMessage = String(userMessage).trim();
+    console.log(`[AI] Calling Groq with message: "${safeUserMessage}"`);
+
     // Fetch car data from DB for context
     const cars = await Car.find({});
     const carContext = cars.map(car => (
@@ -41,11 +45,16 @@ export const getAIResponse = async (userMessage, historyContext = "") => {
         - If you don't know something about a car not in the inventory, politely say you specialize in Mahindra's current lineup.
         `;
 
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: safeUserMessage }
+    ];
+
+    // Debug: Verify content fields exist before sending
+    console.log("[AI] Messages payload check:", messages.map(m => ({ role: m.role, hasContent: !!m.content, contentLength: m.content?.length })));
+
     const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage }
-      ],
+      messages,
       model: "llama-3.3-70b-versatile",
     });
 
