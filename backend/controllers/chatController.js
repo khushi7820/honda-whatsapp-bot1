@@ -99,8 +99,12 @@ export const handleWebhook = async (req, res) => {
             stack: error.stack,
             response: error.response?.data
         });
-        // Still return 200 to acknowledge the webhook and prevent retries from 11za
-        res.status(200).send("Processed with errors");
+        // Return error details for debugging
+        res.status(200).json({
+            status: "error",
+            error: error.message,
+            apiError: error.response?.data || null
+        });
     }
 };
 
