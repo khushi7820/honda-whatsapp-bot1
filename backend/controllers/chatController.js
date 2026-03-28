@@ -89,7 +89,7 @@ export const handleWebhook = async (req, res) => {
             if (pincode?.length === 6) {
                 session.state = "COLLECTING_DATE";
                 await session.save();
-                await sendInteractiveMessage(sender, templates.getDateButtons());
+                await sendInteractiveMessage(sender, templates.getDateList());
                 return res.status(200).send("OK");
             } else {
                 await sendMessage(sender, "Please enter a valid *6-digit* pincode to find nearest showroom. 📍");
