@@ -100,6 +100,8 @@ export const handleWebhook = async (req, res) => {
             if (pincode?.length === 6) {
                 session.state = "COLLECTING_DATE";
                 await session.save();
+                // Send Both: The List UI (Options) and the Web Calendar Link
+                await sendMessage(sender, `What day should I block for your test drive?\n\n📅 *Open Calendar*: ${baseUrl}/booking/calendar`);
                 await sendInteractiveMessage(sender, templates.getDateList());
                 return res.status(200).send("OK");
             } else {
