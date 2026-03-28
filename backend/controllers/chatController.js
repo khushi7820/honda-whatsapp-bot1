@@ -62,6 +62,17 @@ export const handleWebhook = async (req, res) => {
 
         console.log(`Msg from ${sender} [State: ${session.state}]: ${message || "Interactive"}`);
 
+        const lowerMsg = message?.toLowerCase() || "";
+
+        // 1. Intercept Direct Booking Intent (Before AI)
+        const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment for test drive", "test drive request"];
+        if (bookingKeywords.some(k => lowerMsg.includes(k))) {
+            session.state = "COLLECTING_PINCODE";
+            await session.save();
+            await sendMessage(sender, "Mind sharing your pincode? For example, 400069 😊");
+            return res.status(200).send("OK");
+        }
+
         // 2. Handle Interactive Replies (Button/List clicks)
         if (interactive) {
             const replyId = interactive?.button_reply?.id || interactive?.list_reply?.id;
@@ -70,7 +81,7 @@ export const handleWebhook = async (req, res) => {
             if (replyId === "action_book_test_drive") {
                 session.state = "COLLECTING_PINCODE";
                 await session.save();
-                await sendMessage(sender, "Absolutely! Mind sharing your pincode? For example, 400069 😊");
+                await sendMessage(sender, "Mind sharing your pincode? For example, 400069 😊");
                 return res.status(200).send("OK");
             }
 
