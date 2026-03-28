@@ -108,6 +108,14 @@ export const handleWebhook = async (req, res) => {
             }
         }
 
+        if (session.state === "COLLECTING_DATE") {
+            const chosenDate = message || "your selected date";
+            session.state = "IDLE";
+            await session.save();
+            await sendMessage(sender, `Perfect! Your slot for *${chosenDate}* is being processed. \n\nA Mahindra representative will call you for final confirmation. 🏁`);
+            return res.status(200).send("OK");
+        }
+
         // 4. Default: Get AI Response
         const history = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContext = history.reverse().map(c => `${c.role}: ${c.content}`).join("\n");

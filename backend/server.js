@@ -29,9 +29,11 @@ app.use("/gallery", galleryRoutes);
 // Server start
 const PORT = process.env.PORT || 5000;
 
-if (!process.env.VERCEL) {
+const isVercel = process.env.VERCEL || process.env.NOW_REGION;
+if (!isVercel) {
     app.listen(PORT, () => {
-        console.log(`Server running local on port ${PORT} 🚀`);
+        console.log(`🚀 Server locally active on port ${PORT}`);
+        console.log(`🔗 Webhook URL: http://localhost:${PORT}/api/chat/webhook`);
     });
 }
 
