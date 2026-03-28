@@ -49,7 +49,7 @@ router.get("/:carName", async (req, res) => {
         ${imagesHtml}
     </div>
     <p style="font-size: 0.8rem; color: #555; margin-top: 20px;">*Note: Prices are ex-showroom and subject to change.*</p>
-    <a href="https://wa.me/${process.env.ZA_WA_NUMBER || '917820870519'}" class="btn">Back to Chat</a>
+    <a href="https://wa.me/15558689519" class="btn">Back to Chat</a>
 </body>
 </html>
         `;
