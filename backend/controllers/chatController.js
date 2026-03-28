@@ -7,37 +7,16 @@ import { connectDB } from "../config/db.js";
 
 export const handleWebhook = async (req, res) => {
     try {
-        console.log("--- New Webhook Request ---");
-        const rawBody = JSON.stringify(req.body, null, 2);
-        console.log("Body:", rawBody);
-
-        // --- Multi-format Sender Extraction ---
+        // --- Multi-format Extraction (Flat and Nested Support) ---
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
+        // Sender: can be in 'from', 'sender', or 'wa_id'
         let sender = msg.from || req.body.sender || req.body.from || val.contacts?.[0]?.wa_id;
-        
-        // --- EMERGENCY DEBUG REPLY ---
-        // If we found a sender, let's tell them we got the webhook
-        if (sender) {
-            try {
-                // await sendMessage(sender, `[Bot Debug] Received webhook! Payload starts with: ${rawBody.slice(0, 100)}...`);
-            } catch (e) { console.error("Debug reply failed", e.message); }
-        }
 
-        // IMPORTANT: Await DB connection
-        try {
-            await connectDB();
-        } catch (dbErr) {
-            console.error("❌ Database connection failed:", dbErr.message);
-            if (sender) await sendMessage(sender, `❌ Database Connection Error: ${dbErr.message}`);
-            return res.status(200).send("DB connection error");
-        }
-
-        // --- Parse Message Content ---
+        // Message content: support flat 11za/Waba format and nested Meta format
         let type = msg.type || val.type || req.body.type || "text";
-        
         let message = 
             req.body.content || 
             req.body.UserResponse || 
@@ -45,23 +24,24 @@ export const handleWebhook = async (req, res) => {
             msg.text || 
             msg.body || 
             val.text?.body || 
-            val.text || 
-            val.body || 
             null;
 
-        // If content was passed, let's use it
-        if (req.body.content) message = req.body.content;
+        // Clean up: if content is an object (common in some 11za versions), grab the body
+        if (typeof message === "object") message = message?.body || message?.text || message?.content || null;
 
-        // Strip object objects if they're not strings
-        if (typeof message === "object") message = message?.body || message?.text || null;
-
+        // Interactive support (Buttons/Lists)
         let interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
 
-        console.log(`[Parsed] sender=${sender}, type=${type}, message=${message}`);
-
         if (!sender) {
-            console.log("⚠️ No sender found in request body.");
             return res.status(200).send("No sender data");
+        }
+
+        // IMPORTANT: Await DB connection (Serverless Cold Start Ready)
+        try {
+            await connectDB();
+        } catch (dbErr) {
+            console.error("❌ Database connection failed:", dbErr.message);
+            return res.status(200).send("DB connection error");
         }
 
         if (!message && !interactive) {
@@ -69,8 +49,7 @@ export const handleWebhook = async (req, res) => {
                 await sendMessage(sender, "I can't process audio messages yet. 😊");
                 return res.status(200).send("Audio handled");
             }
-            // Silent return for system events or empty pings
-            return res.status(200).send("No message data");
+            return res.status(200).send("No message mapping found");
         }
 
         // 1. Get/Create Session
