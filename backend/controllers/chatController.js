@@ -12,7 +12,13 @@ export const handleWebhook = async (req, res) => {
         console.log("Body:", JSON.stringify(req.body, null, 2));
 
         // IMPORTANT: Await DB connection before ANY mongo operation in Serverless
-        await connectDB();
+        try {
+            await connectDB();
+        } catch (dbErr) {
+            console.error("❌ Database connection failed:", dbErr.message);
+            // Still acknowledge the webhook to prevent 11za retries
+            return res.status(200).send("DB connection error");
+        }
 
         // --- Parse 11za / Meta-style webhook body ---
         let sender, message, type, interactive;
@@ -31,9 +37,9 @@ export const handleWebhook = async (req, res) => {
             } else if (type === "interactive") {
                 interactive = msgObj.interactive;
             } else if (type === "audio") {
-                message = "[audio message]";
+                message = null; // Will be handled below with a friendly response
             } else {
-                message = msgObj.text?.body || "[unsupported message type]";
+                message = msgObj.text?.body || null;
             }
         } else {
             // Format 2: Flat format (our test format / older 11za format)
@@ -51,6 +57,11 @@ export const handleWebhook = async (req, res) => {
         }
 
         if (!message && !interactive) {
+            // Handle audio / unsupported types with a friendly message instead of ignoring
+            if (type === "audio") {
+                await sendMessage(sender, "I can't process audio messages yet. Could you type your question instead? 😊");
+                return res.status(200).send("Audio handled");
+            }
             console.log("⚠️ No message or interactive content found.");
             return res.status(200).send("No message data");
         }

@@ -10,6 +10,12 @@ const groq = new Groq({
 
 export const getAIResponse = async (userMessage, historyContext = "") => {
   try {
+    // Guard: Prevent sending null/empty messages to Groq
+    if (!userMessage || typeof userMessage !== "string" || userMessage.trim().length === 0) {
+      console.warn("[AI] Skipping Groq call — userMessage is empty/null:", userMessage);
+      return "I didn't catch that. Could you please type your question?";
+    }
+
     // Fetch car data from DB for context
     const cars = await Car.find({});
     const carContext = cars.map(car => (
@@ -45,7 +51,8 @@ export const getAIResponse = async (userMessage, historyContext = "") => {
 
     return completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that. Can you try again?";
   } catch (error) {
-    console.error("AI Service Error:", error);
+    console.error("AI Service Error:", error?.message || error);
+    console.error("AI Full Error:", JSON.stringify(error?.response?.data || error?.error || {}, null, 2));
     return "I'm having a bit of trouble thinking right now. Please try again in a moment.";
   }
 };
