@@ -14,12 +14,45 @@ export const handleWebhook = async (req, res) => {
         // IMPORTANT: Await DB connection before ANY mongo operation in Serverless
         await connectDB();
 
-        const sender = req.body.sender || req.body.from;
-        const { message, type, interactive } = req.body;
+        // --- Parse 11za / Meta-style webhook body ---
+        let sender, message, type, interactive;
+
+        // Format 1: 11za/Meta Cloud API format (entry > changes > value > messages)
+        const entry = req.body?.entry?.[0];
+        const change = entry?.changes?.[0];
+        const value = change?.value;
+        const msgObj = value?.messages?.[0];
+
+        if (msgObj) {
+            sender = msgObj.from;
+            type = msgObj.type;
+            if (type === "text") {
+                message = msgObj.text?.body;
+            } else if (type === "interactive") {
+                interactive = msgObj.interactive;
+            } else if (type === "audio") {
+                message = "[audio message]";
+            } else {
+                message = msgObj.text?.body || "[unsupported message type]";
+            }
+        } else {
+            // Format 2: Flat format (our test format / older 11za format)
+            sender = req.body.sender || req.body.from;
+            message = req.body.message;
+            type = req.body.type;
+            interactive = req.body.interactive;
+        }
+
+        console.log(`[Parsed] sender=${sender}, type=${type}, message=${message}`);
 
         if (!sender) {
-            console.log("⚠️ No sender or from field found in request body.");
+            console.log("⚠️ No sender found in request body.");
             return res.status(200).send("No sender data");
+        }
+
+        if (!message && !interactive) {
+            console.log("⚠️ No message or interactive content found.");
+            return res.status(200).send("No message data");
         }
 
         // 1. Get/Create Session
