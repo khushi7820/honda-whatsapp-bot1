@@ -8,7 +8,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-export const getAIResponse = async (userMessage, phoneNumber) => {
+export const getAIResponse = async (userMessage, historyContext = "") => {
   try {
     // Fetch car data from DB for context
     const cars = await Car.find({});
@@ -23,6 +23,9 @@ export const getAIResponse = async (userMessage, phoneNumber) => {
         Car Inventory:
         ${carContext}
         
+        Conversation History:
+        ${historyContext}
+
         Guidelines:
         - Be polite, helpful, and natural (don't sound like a bot).
         - Respond in the language the user uses (English, Hindi, or Hinglish).

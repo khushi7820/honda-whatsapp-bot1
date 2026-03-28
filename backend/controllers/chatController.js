@@ -3,13 +3,24 @@ import { getAIResponse } from "../services/aiService.js";
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
 import * as templates from "../utils/bookingTemplates.js";
+import { connectDB } from "../config/db.js";
 
 export const handleWebhook = async (req, res) => {
     try {
-        // 11za Webhook Format: { sender: "91...", message: "...", type: "text", interactive: { ... } }
-        const { sender, message, type, interactive } = req.body;
+        console.log("--- New Webhook Request ---");
+        console.log("Headers:", JSON.stringify(req.headers, null, 2));
+        console.log("Body:", JSON.stringify(req.body, null, 2));
 
-        if (!sender) return res.status(200).send("No sender");
+        // IMPORTANT: Await DB connection before ANY mongo operation in Serverless
+        await connectDB();
+
+        const sender = req.body.sender || req.body.from;
+        const { message, type, interactive } = req.body;
+
+        if (!sender) {
+            console.log("⚠️ No sender or from field found in request body.");
+            return res.status(200).send("No sender data");
+        }
 
         // 1. Get/Create Session
         let session = await Session.findOne({ sender });
@@ -78,17 +89,36 @@ export const handleWebhook = async (req, res) => {
         }
 
         // 5. Save history
-        await new Chat({ sender, content: message, role: "user" }).save();
-        await new Chat({ sender, content: aiResponse, role: "assistant" }).save();
+        await new Chat({ sender, role: "user", content: message }).save();
+        await new Chat({ sender, role: "assistant", content: aiResponse }).save();
 
         res.status(200).send("Message processed");
     } catch (error) {
-        console.error("Webhook Error:", error);
-        res.status(500).send("Internal Server Error");
+        console.error("Webhook Error Details:", {
+            message: error.message,
+            stack: error.stack,
+            response: error.response?.data
+        });
+        // Still return 200 to acknowledge the webhook and prevent retries from 11za
+        res.status(200).send("Processed with errors");
     }
 };
 
 
 export const verifyWebhook = (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+
+    if (mode && token) {
+        if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) {
+            console.log("WEBHOOK_VERIFIED");
+            return res.status(200).send(challenge);
+        } else {
+            return res.sendStatus(403);
+        }
+    }
+    
+    // Default 11za check
     res.status(200).send("Webhook active");
 };

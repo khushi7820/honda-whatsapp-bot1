@@ -13,16 +13,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Debug Logger: Logs every request to Vercel
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] Incoming Request: ${req.method} ${req.url}`);
-    if (req.method === "POST") {
-        console.log("Request Body:", JSON.stringify(req.body, null, 2));
-    }
-    next();
-});
-
-// Connect Database
+// Connect Database once
 connectDB();
 
 // Test route

@@ -1,15 +1,16 @@
 import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema({
-    phoneNumber: {
+    sender: {
         type: String,
         required: true
     },
-    userMessage: {
+    role: {
         type: String,
+        enum: ["user", "assistant"],
         required: true
     },
-    aiResponse: {
+    content: {
         type: String,
         required: true
     },
