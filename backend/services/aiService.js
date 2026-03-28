@@ -8,7 +8,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-export const getAIResponse = async (userMessage, historyContext = "") => {
+export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://autocal-xi.vercel.app") => {
   try {
     // Guard: Prevent sending null/empty messages to Groq
     if (!userMessage || typeof userMessage !== "string" || userMessage.trim().length === 0) {
@@ -32,11 +32,11 @@ export const getAIResponse = async (userMessage, historyContext = "") => {
         Guidelines:
         - **CONCISE GREETING**: If the user just says "hi", "hello", "hey", or starts the conversation, DO NOT show the car list. Just give a warm welcome and ask what they are looking for (e.g. "Welcome to Mahindra! Are you looking for a new SUV today?").
         - **ONLY SHOW LIST ON REQUEST**: Only show car recommendations if they ask for "cars", "models", "budget", or specific needs.
-        - **PREMIUM Gallery Links**: For each car, use this URL: https://autocal-xi.vercel.app/gallery/[car-id] (replace [car-id] with the ID from context like 'thar' or 'xuv700').
+        - **PREMIUM Gallery Links**: For each car, use this URL: ${baseUrl}/gallery/[car-id] (replace [car-id] with the ID from context like 'thar' or 'xuv700').
         - **FORMAT**:
           - *Car Name*: Short description.
           - 💰 *Price*: ₹ [price].
-          - 📸 *View Photos*: https://autocal-xi.vercel.app/gallery/[car-id]
+          - 📸 *View Photos*: ${baseUrl}/gallery/[car-id]
           - [Line break].
         - Use only *single asterisks* for bold.
         - End with: "Would you like to *book a test drive*? 🚗"

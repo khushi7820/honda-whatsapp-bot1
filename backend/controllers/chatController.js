@@ -71,54 +71,32 @@ export const handleWebhook = async (req, res) => {
 
             if (replyId?.startsWith("slot_")) {
                 const slot = interactive.list_reply.title;
-                session.data.slot = slot;
+                await sendMessage(sender, "Great choice! 🚗 Please provide your *6-digit Pincode* to find the nearest showroom.");
+                return res.status(200).send("Collecting pincode");
+            }
+        }
+
+        // 4. Handle Conversation Flow
+        if (session.state === "COLLECTING_PINCODE") {
+            const pincode = message.replace(/\D/g, "");
+            if (pincode.length === 6) {
                 session.state = "IDLE";
                 await session.save();
-                
-                const bookingId = `TDBK${Math.floor(100000 + Math.random() * 900000)}`;
-                await sendMessage(sender, `Your test drive has been successfully booked for ${session.data.date || "tomorrow"} at ${slot}! \n\nBooking Id: ${bookingId} \n\nMahindra Representative will call you shortly to confirm. 🎉`);
-                return res.status(200).send("OK");
-            }
-        }
-
-        // 3. Handle Flow States
-        if (session.state === "COLLECTING_PINCODE") {
-            const pincode = message?.trim();
-            if (/^\d{6}$/.test(pincode)) {
-                session.data.pincode = pincode;
-                session.state = "COLLECTING_DATE";
-                await session.save();
-                await sendMessage(sender, "Got it! What day should I block for your test drive? (e.g., Tomorrow, 12th March)");
-                return res.status(200).send("OK");
+                await sendMessage(sender, "Thanks! Our representative will call you shortly to confirm your slot. 🏁");
+                return res.status(200).send("Booking confirmed");
             } else {
-                await sendMessage(sender, "Please enter a valid 6-digit pincode.");
-                return res.status(200).send("OK");
+                await sendMessage(sender, "Please enter a valid *6-digit* pincode. 📍");
+                return res.status(200).send("Invalid pincode");
             }
         }
 
-        if (session.state === "COLLECTING_DATE") {
-            session.data.date = message;
-            session.state = "COLLECTING_SLOT";
-            await session.save();
-            await sendInteractiveMessage(sender, templates.getSlotList(message));
-            return res.status(200).send("OK");
-        }
+        // 5. Default: Get and Send AI Response
+        // Pass context to AI to help it maintain state
+        const history = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
+        const historyContext = history.reverse().map(c => `${c.role}: ${c.content}`).join("\n");
 
-        // 4. Default AI Response (Persona handling)
-        const history = await Chat.find({ sender }).sort({ timestamp: 1 }).limit(10);
-        const historyContext = history.map(chat => `${chat.role}: ${chat.content}`).join("\n");
+        const aiResponse = await getAIResponse(message, historyContext, baseUrl);
 
-        const aiResponse = await getAIResponse(message, historyContext);
-        console.log(`[AI Response]: ${aiResponse}`);
-
-        // Detect if AI suggested booking and user seems interested
-        if (aiResponse.toLowerCase().includes("book test drive") || aiResponse.toLowerCase().includes("hands-on drive")) {
-            await sendInteractiveMessage(sender, templates.getBookButton(aiResponse));
-        } else {
-            await sendMessage(sender, aiResponse);
-        }
-
-        // 5. Save history (only if we have valid content)
         if (message && aiResponse) {
             await new Chat({ sender, role: "user", content: message }).save();
             await new Chat({ sender, role: "assistant", content: aiResponse }).save();
