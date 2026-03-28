@@ -88,9 +88,11 @@ export const handleWebhook = async (req, res) => {
             await sendMessage(sender, aiResponse);
         }
 
-        // 5. Save history
-        await new Chat({ sender, role: "user", content: message }).save();
-        await new Chat({ sender, role: "assistant", content: aiResponse }).save();
+        // 5. Save history (only if we have valid content)
+        if (message && aiResponse) {
+            await new Chat({ sender, role: "user", content: message }).save();
+            await new Chat({ sender, role: "assistant", content: aiResponse }).save();
+        }
 
         res.status(200).send("Message processed");
     } catch (error) {
