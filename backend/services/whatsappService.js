@@ -10,16 +10,19 @@ const API_URL = "https://api.11za.in/apis/sendMessage/sendMessages";
  */
 export const sendMessage = async (to, text) => {
     try {
-        console.log(`[11za] Sending Text to ${to}: "${text.slice(0, 50)}..."`);
+        // Clear non-numeric chars from destination (e.g. "@s.whatsapp.net")
+        const cleanTo = to.split("@")[0].replace(/\D/g, "");
+        
+        console.log(`[11za] Sending Text to ${cleanTo}: "${text.slice(0, 50)}..."`);
         console.log(`[11za] Debug Info - Origin: ${process.env.ZA_ORIGIN}, Token Length: ${process.env.ZA_TOKEN?.length || 0}`);
         
         const response = await axios.post(API_URL, {
             authToken: process.env.ZA_TOKEN,
-            sendto: to,
-            text: text, // Correct field name is 'text'
-            originWebsite: process.env.ZA_ORIGIN, // Correct field name is 'originWebsite'
-            contentType: "text" // New required field
-        });
+            sendto: cleanTo,
+            text: text,
+            originWebsite: process.env.ZA_ORIGIN,
+            contentType: "text"
+        }, { timeout: 10000 }); // 10s timeout
         
         console.log("✅ 11za Success:", response.status, JSON.stringify(response.data));
         return response.data;
@@ -27,8 +30,7 @@ export const sendMessage = async (to, text) => {
         console.error("❌ 11za Error Details:", {
             status: error.response?.status,
             data: error.response?.data,
-            url: API_URL,
-            origin: process.env.ZA_ORIGIN
+            message: error.message
         });
         throw error;
     }
@@ -39,21 +41,23 @@ export const sendMessage = async (to, text) => {
  */
 export const sendInteractiveMessage = async (to, interactive) => {
     try {
-        console.log(`[11za] Sending Interactive to ${to}...`);
+        const cleanTo = to.split("@")[0].replace(/\D/g, "");
+        console.log(`[11za] Sending Interactive to ${cleanTo}...`);
+        
         const response = await axios.post(API_URL, {
             authToken: process.env.ZA_TOKEN,
-            sendto: to,
+            sendto: cleanTo,
             type: "interactive",
             interactive: interactive,
-            originWebsite: process.env.ZA_ORIGIN, // Updated to match
-            contentType: "interactive" // Specific for interactive if needed
-        });
+            originWebsite: process.env.ZA_ORIGIN,
+            contentType: "interactive"
+        }, { timeout: 10000 });
 
         console.log("✅ 11za Interactive Success:", response.status, JSON.stringify(response.data));
         return response.data;
     } catch (error) {
         console.error("❌ 11za Interactive Error:", error.response?.status, JSON.stringify(error.response?.data) || error.message);
-        // Fallback to text if interactive fails
+        // Fallback to text if interactive fails (already uses cleanTo inside sendMessage)
         const fallbackText = interactive.body?.text || "Please choose an option from the menu.";
         return sendMessage(to, fallbackText);
     }
