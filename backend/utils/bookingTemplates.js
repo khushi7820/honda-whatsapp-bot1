@@ -12,6 +12,26 @@ export const getBookButton = (text) => ({
     }
 });
 
+export const getDateList = () => ({
+    type: "list",
+    header: { type: "text", text: "Select a Date" },
+    body: { text: "What day should I block for your test drive? 🗓️" },
+    footer: { text: "Mahindra Automobile" },
+    action: {
+        button: "Options",
+        sections: [
+            {
+                title: "Availability",
+                rows: [
+                    { id: "date_today", title: "Today", description: "Quick response" },
+                    { id: "date_tomorrow", title: "Tomorrow", description: "Most popular" },
+                    { id: "date_weekend", title: "Weekend Drive", description: "Relaxed tour" }
+                ]
+            }
+        ]
+    }
+});
+
 export const getSlotList = (date) => ({
     type: "list",
     header: { type: "text", text: "Select a Time Slot" },

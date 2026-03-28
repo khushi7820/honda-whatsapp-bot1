@@ -53,13 +53,17 @@ export const handleWebhook = async (req, res) => {
         }
 
         // 1. Get/Create Session
-        let session = await Session.findOne({ sender });
-        if (!session) session = await new Session({ sender }).save();
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers.host;
+        const baseUrl = `${protocol}://${host}`;
 
-        console.log(`Msg from ${sender} [State: ${session.state}]: ${message || "Interactive Reply"}`);
+        let session = await Session.findOne({ sender });
+        if (!session) session = await new Session({ sender, state: "IDLE" }).save();
+
+        console.log(`Msg from ${sender} [State: ${session.state}]: ${message || "Interactive"}`);
 
         // 2. Handle Interactive Replies (Button/List clicks)
-        if (type === "interactive" || interactive) {
+        if (interactive) {
             const replyId = interactive?.button_reply?.id || interactive?.list_reply?.id;
             
             if (replyId === "action_book_test_drive") {
@@ -69,40 +73,50 @@ export const handleWebhook = async (req, res) => {
                 return res.status(200).send("OK");
             }
 
-            if (replyId?.startsWith("slot_")) {
-                const slot = interactive.list_reply.title;
-                await sendMessage(sender, "Great choice! 🚗 Please provide your *6-digit Pincode* to find the nearest showroom.");
-                return res.status(200).send("Collecting pincode");
-            }
-        }
-
-        // 4. Handle Conversation Flow
-        if (session.state === "COLLECTING_PINCODE") {
-            const pincode = message.replace(/\D/g, "");
-            if (pincode.length === 6) {
+            if (replyId?.startsWith("date_")) {
+                const date = interactive.list_reply.title;
                 session.state = "IDLE";
                 await session.save();
-                await sendMessage(sender, "Thanks! Our representative will call you shortly to confirm your slot. 🏁");
-                return res.status(200).send("Booking confirmed");
-            } else {
-                await sendMessage(sender, "Please enter a valid *6-digit* pincode. 📍");
-                return res.status(200).send("Invalid pincode");
+                await sendMessage(sender, `Perfect! Your slot for *${date}* is being processed. \n\nA Mahindra representative will call you for final confirmation. 🏁`);
+                return res.status(200).send("OK");
             }
         }
 
-        // 5. Default: Get and Send AI Response
-        // Pass context to AI to help it maintain state
+        // 3. Handle Flow States (Pincode -> Date)
+        if (session.state === "COLLECTING_PINCODE") {
+            const pincode = message?.replace(/\D/g, "");
+            if (pincode?.length === 6) {
+                session.state = "COLLECTING_DATE";
+                await session.save();
+                await sendInteractiveMessage(sender, templates.getDateList());
+                return res.status(200).send("OK");
+            } else {
+                await sendMessage(sender, "Please enter a valid *6-digit* pincode to find nearest showroom. 📍");
+                return res.status(200).send("OK");
+            }
+        }
+
+        // 4. Default: Get AI Response
         const history = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContext = history.reverse().map(c => `${c.role}: ${c.content}`).join("\n");
 
         const aiResponse = await getAIResponse(message, historyContext, baseUrl);
 
+        // Check for AI intent triggers
+        const lowerRes = aiResponse.toLowerCase();
+        if (lowerRes.includes("book test drive") || lowerRes.includes("hands-on drive")) {
+            await sendInteractiveMessage(sender, templates.getBookButton(aiResponse));
+        } else {
+            await sendMessage(sender, aiResponse);
+        }
+
+        // 5. Save history
         if (message && aiResponse) {
             await new Chat({ sender, role: "user", content: message }).save();
             await new Chat({ sender, role: "assistant", content: aiResponse }).save();
         }
 
-        res.status(200).send("Message processed");
+        res.status(200).send("Processed");
     } catch (error) {
         console.error("Webhook Error Details:", {
             message: error.message,
