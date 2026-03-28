@@ -7,14 +7,16 @@ const router = express.Router();
 router.get("/:carName", async (req, res) => {
     try {
         await connectDB();
-        // Convert 'mahindra-thar' -> 'mahindra thar' for better matching
-        const searchName = req.params.carName.replace(/-/g, " ");
-        console.log(`[Gallery] Searching for: "${searchName}" (from: ${req.params.carName})`);
+        if (!req.params.carName) return res.redirect("/");
+
+        // Replace hyphens with dots to match spaces or hyphens in DB
+        const searchRegex = req.params.carName.replace(/-/g, ".");
+        console.log(`[Gallery] Searching with regex: "${searchRegex}"`);
         
-        const car = await Car.findOne({ name: new RegExp(searchName, "i") });
+        const car = await Car.findOne({ name: { $regex: new RegExp(searchRegex, "i") } });
         if (!car) {
-            console.error(`[Gallery] Car Not Found: ${searchName}`);
-            return res.status(404).send(`Car "${searchName}" not found in our showroom.`);
+            console.error(`[Gallery] Car Not Found: ${req.params.carName}`);
+            return res.status(404).send(`Car details for "${req.params.carName}" are currently being updated. Please check back soon!`);
         }
 
         const imagesHtml = car.images.map(img => `

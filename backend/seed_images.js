@@ -6,28 +6,28 @@ dotenv.config();
 
 const updates = {
     'Mahindra Thar': [
-        'https://park-public.s3.ap-south-1.amazonaws.com/offering/offering_images/411/original/Mahindra_Thar.jpg'
+        'https://upload.wikimedia.org/wikipedia/commons/9/91/Mahindra_Thar_SUV_in_%22Red_Rage%22_color_at_Ashiana_Brahmanda%2C_East_Singbhum_India_%28Ank_Kumar%2C_Infosys_limited%29_01.jpg'
     ],
     'Mahindra XUV700': [
-        'https://park-public.s3.ap-south-1.amazonaws.com/offering/offering_images/413/original/Mahindra_XUV700.jpg'
+        'https://upload.wikimedia.org/wikipedia/commons/b/ba/2021_Mahindra_XUV700_2.2_AX7_%28India%29_front_view.png'
     ],
     'Mahindra Scorpio-N': [
-        'https://park-public.s3.ap-south-1.amazonaws.com/offering/offering_images/409/original/Mahindra_Scorpio-N.jpg'
+        'https://upload.wikimedia.org/wikipedia/commons/b/b4/2024_Mahindra_Scorpio_Z8L_front.jpg'
     ],
     'Mahindra XUV 3XO': [
-        'https://imgd.aeplcdn.com/664x374/n/cw/ec/151747/xuv-3xo-exterior-front-view.jpeg'
+        'https://mahindra.co.za/wp-content/uploads/2024/09/CLIENT_XUV-3XO-149444_R3-Light@2x.png'
     ],
     'Mahindra Bolero Neo': [
-        'https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Bolero-Neo/8499/1626154620027/front-left-side-47.jpg'
+        'https://static.toiimg.com/thumb/124519681.jpg?photoid=124519681&imgsize=23456&width=600&resizemode=4'
     ],
     'Mahindra Bolero': [
-        'https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Bolero/10769/1693895318182/front-left-side-47.jpg'
+        'https://upload.wikimedia.org/wikipedia/commons/d/d7/Mahindra_Bolero_ZLX.jpg'
     ],
     'Mahindra XUV400 EV': [
-        'https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/XUV400-EV/9253/1662635467664/front-left-side-47.jpg'
+        'https://img.etimg.com/thumb/width-420,height-315,imgsize-21980,resizemode-75,msid-106726760/industry/renewables/mahindra-xuv-400-pro-launched-here-are-price-details-all-the-added-features/mahindra-xuv400.jpg'
     ],
     'Mahindra Marazzo': [
-        'https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Marazzo/6475/1572322524451/front-left-side-47.jpg'
+        'https://upload.wikimedia.org/wikipedia/commons/5/50/Mahindra_Marazzo_MPV_SEP_18_%283%29.jpg'
     ]
 };
 
