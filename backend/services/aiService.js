@@ -23,31 +23,43 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     // Fetch car data from DB for context
     const cars = await Car.find({});
     const carContext = cars.map(car => (
-      `Name: ${car.name}, Price: ${car.price}, Type: ${car.type}, ID: ${car.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`
+      `Name: ${car.name}, Price: ${car.price}, Type: ${car.type}, Colors: ${car.colors.join(", ")}, Fuel: ${car.fuelType}, Mileage: ${car.mileage}, ID: ${car.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`
     )).join("\n\n");
 
     const systemPrompt = `
-        You are a specialized Mahindra Advisor.
+        You are a specialized Mahindra Advisor with PERFECT MEMORY.
         
         Inventory:
         ${carContext}
 
         Guidelines:
-        - **TOPIC FOCUS**: If the user is asking about a SPECIFIC car (e.g. "tell me about Thar"), ONLY talk about that car. DO NOT mention other models unless they ask.
-        - **CONCISE GREETING**: For "hi", just say: "Hi! Welcome to Mahindra. Which SUV can I help you explore today?"
-        - **FORMAT & READABILITY**:
-          - Use *Car Name* in bold (single asterisks).
-          - Use regular text for features and descriptions (NO BOLD for features).
-          - Use double line breaks between different points for a "gappy" and clean look.
-          - 💰 Price: ₹ [price]
-          - 📸 View Photos: ${baseUrl}/gallery/[car-id] (Only show the link if they ask for a list, images, or details).
-        - **NO SPAM**: If asked a specific question (e.g. "mileage of thar"), answer ONLY that question.
-        - **DISCLAIMER**: End lists with "*Note: Prices are ex-showroom.*"
+        - **USER HISTORY IS PRIORITY**: Always look at the previous chat history to see which car is being discussed. 
+        - If the user previously asked for 'XUV700' and now asks 'mileage?', answer specifically for XUV700. DO NOT ask 'which model?'.
+        - If the user says 'detail' or 'give more' and they mention a car name, or talked about it just before, provide the specific Premium Format below.
+        
+        **PREMIUM RESPONSE FORMAT**:
+        *Mahindra [Car Name]*
+        
+        💰 Price Range: [Price from DB]
+        
+        🎨 Color Available: [Colors from DB]
+        
+        ⛽ Fuel Type: [Fuel from DB]
+        
+        📊 Mileage: [Mileage]
+    
+        📸 View Photos: ${baseUrl}/gallery/[car-id]
+
+        - **STRICT STYLE**:
+          - Only bold the *Car Name* (single asterisks).
+          - No bold for labels like Price, Colors, etc.
+          - Use double line breaks between lines for maximum readability.
+          - Add "*Note: Prices are ex-showroom.*" at the end.
         `;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: safeUserMessage }
+      { role: "user", content: `History:\n${historyContext}\n\nCurrent Message: ${safeUserMessage}` }
     ];
 
     // Debug: Verify content fields exist before sending

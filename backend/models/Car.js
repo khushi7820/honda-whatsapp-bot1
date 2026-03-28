@@ -13,20 +13,32 @@ const carSchema = new mongoose.Schema({
         type: String, // SUV, Sedan, Hatchback, etc.
         required: true
     },
+
     mileage: {
         type: String,
         required: true
     },
+
     features: [String],
+
     description: {
         type: String,
         required: true
     },
+
     imageUrl: {
         type: String,
         required: false
     },
-    images: [String] // Array for multiple car images
+
+    images: [String], // Array for multiple car images
+
+    colors: [String],
+
+    fuelType: {
+        type: String,
+        required: true
+    }
 });
 
 const Car = mongoose.model("Car", carSchema);
