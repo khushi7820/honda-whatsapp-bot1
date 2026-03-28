@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { connectDB } from "./config/db.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import galleryRoutes from "./routes/galleryRoutes.js";
 
 // Load env variables
 dotenv.config();
@@ -23,6 +24,7 @@ app.get("/", (req, res) => {
 
 // API Routes
 app.use("/api", chatRoutes);
+app.use("/gallery", galleryRoutes);
 
 // Server start
 const PORT = process.env.PORT || 5000;

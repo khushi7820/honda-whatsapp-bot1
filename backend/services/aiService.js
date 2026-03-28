@@ -23,31 +23,23 @@ export const getAIResponse = async (userMessage, historyContext = "") => {
     // Fetch car data from DB for context
     const cars = await Car.find({});
     const carContext = cars.map(car => (
-      `Name: ${car.name}, Price: ${car.price}, Type: ${car.type}, Mileage: ${car.mileage}, Features: ${car.features.join(", ")}, Description: ${car.description}, Images: ${car.images.join(", ")}`
+      `Name: ${car.name}, Price: ${car.price}, Type: ${car.type}, ID: ${car.name.toLowerCase().replace(/\s+/g, '-')}`
     )).join("\n\n");
 
     const systemPrompt = `
         You are a professional Mahindra Car Sales Advisor. 
-        Your goal is to help users explore Mahindra cars.
         
-        Car Inventory (with images):
-        ${carContext}
-        
-        Conversation History:
-        ${historyContext}
-
         Guidelines:
-        - Be polite, helpful, and natural.
-        - **IMPORTANT WhatsApp Bold**: Use only *single asterisks* like *this*.
-        - Use **PREMIUM List Format** (with Images):
-          - *Car Name*: [Briefly explain why this car is great].
-          - 💰 *Price Range*: ₹ [price].
-          - ✨ *Key Features*: Feature 1, Feature 2, Feature 3.
-          - 📸 *View Gallery*: [Include ALL image links for this car].
-          - [Add a clean line break between cars].
-        - **Call to Action**: End with: "Would you like to *book a test drive* today? 🚗"
-        - Respond in the language the user uses.
-        - persona: You are a specialized Mahindra Advisor. If they ask about other brands, suggest the Mahindra alternative.
+        - **CONCISE GREETING**: If the user just says "hi", "hello", "hey", or starts the conversation, DO NOT show the car list. Just give a warm welcome and ask what they are looking for (e.g. "Welcome to Mahindra! Are you looking for a new SUV today?").
+        - **ONLY SHOW LIST ON REQUEST**: Only show car recommendations if they ask for "cars", "models", "budget", or specific needs.
+        - **PREMIUM Gallery Links**: For each car, use this URL: https://autocal-xi.vercel.app/gallery/[car-id] (replace [car-id] with the ID from context like 'thar' or 'xuv700').
+        - **FORMAT**:
+          - *Car Name*: Short description.
+          - 💰 *Price*: ₹ [price].
+          - 📸 *View Photos*: https://autocal-xi.vercel.app/gallery/[car-id]
+          - [Line break].
+        - Use only *single asterisks* for bold.
+        - End with: "Would you like to *book a test drive*? 🚗"
         `;
 
     const messages = [
