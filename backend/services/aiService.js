@@ -50,6 +50,8 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     
         📸 View Photos: ${baseUrl}/gallery/[car-id]
 
+        **IMPORTANT**: At the end of every car recommendation or detail, ALWAYS end by asking: "Would you like a *hands-on drive* with the [Car Name]? 🚗"
+
         - **STRICT STYLE**:
           - Only bold the *Car Name* (single asterisks).
           - No bold for labels like Price, Colors, etc.
