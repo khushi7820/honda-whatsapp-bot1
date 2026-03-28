@@ -40,7 +40,7 @@ export const getAIResponse = async (userMessage, historyContext = "") => {
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage }
       ],
-      model: "llama3-8b-8192",
+      model: "llama-3.3-70b-versatile",
     });
 
     return completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that. Can you try again?";
