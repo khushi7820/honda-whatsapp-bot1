@@ -6,21 +6,19 @@ dotenv.config();
 
 const updates = {
     'Mahindra Thar': [
-        'https://stimg.cardekho.com/images/carexteriorimages/930x620/Mahindra/Thar/8068/1601633534963/front-left-side-47.jpg',
-        'https://images.livemint.com/img/2021/08/15/600x338/Mahindra_Thar_1629007328906_1629007335198.jpg'
+        'https://park-public.s3.ap-south-1.amazonaws.com/offering/offering_images/411/original/Mahindra_Thar.jpg'
     ],
     'Mahindra XUV700': [
-        'https://stimg.cardekho.com/images/carexteriorimages/930x620/Mahindra/XUV700/8604/1630043640201/front-left-side-47.jpg',
-        'https://images.livemint.com/img/2021/08/15/600x338/Mahindra_XUV700_1629007328906_1629007335198.jpg'
+        'https://park-public.s3.ap-south-1.amazonaws.com/offering/offering_images/413/original/Mahindra_XUV700.jpg'
     ],
     'Mahindra Scorpio-N': [
-        'https://stimg.cardekho.com/images/carexteriorimages/930x620/Mahindra/Scorpio-N/9060/1656330663445/front-left-side-47.jpg'
+        'https://park-public.s3.ap-south-1.amazonaws.com/offering/offering_images/409/original/Mahindra_Scorpio-N.jpg'
     ],
     'Mahindra XUV 3XO': [
-        'https://stimg.cardekho.com/images/carexteriorimages/930x620/Mahindra/XUV-3XO/11558/1714378121287/front-left-side-47.jpg'
+        'https://imgd.aeplcdn.com/664x374/n/cw/ec/151747/xuv-3xo-exterior-front-view.jpeg'
     ],
     'Mahindra Bolero Neo': [
-        'https://stimg.cardekho.com/images/carexteriorimages/930x620/Mahindra/Bolero-Neo/8499/1626154620027/front-left-side-47.jpg'
+        'https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Bolero-Neo/8499/1626154620027/front-left-side-47.jpg'
     ]
 };
 

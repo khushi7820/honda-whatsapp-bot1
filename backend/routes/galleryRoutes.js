@@ -37,7 +37,8 @@ router.get("/:carName", async (req, res) => {
     <div class="gallery">
         ${imagesHtml}
     </div>
-    <a href="https://wa.me/${process.env.ZA_WA_NUMBER || '911234567890'}" class="btn">Back to Chat</a>
+    <p style="font-size: 0.8rem; color: #555; margin-top: 20px;">*Note: Prices are ex-showroom and subject to change.*</p>
+    <a href="https://wa.me/${process.env.ZA_WA_NUMBER || '917820870519'}" class="btn">Back to Chat</a>
 </body>
 </html>
         `;
