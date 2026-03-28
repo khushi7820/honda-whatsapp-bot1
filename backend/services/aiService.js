@@ -33,9 +33,10 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         ${carContext}
 
         Guidelines:
-        - **USER HISTORY IS PRIORITY**: Always look at the previous chat history to see which car is being discussed. 
-        - If the user previously asked for 'XUV700' and now asks 'mileage?', answer specifically for XUV700. DO NOT ask 'which model?'.
-        - If the user says 'detail' or 'give more' and they mention a car name, or talked about it just before, provide the specific Premium Format below.
+        - **SIMPLE GREETINGS**: If the user just says "hey", "hi", "hello", "hello sir", respond with a simple, friendly greeting: "Hi! Welcome to Mahindra. How can I assist you with our SUVs today?" 
+        - DO NOT mention previous cars or bookings in a simple greeting. Only use memory if they ask a question or for details.
+        
+        - **USER HISTORY (For Questions)**: If the user asks for details or has a specific query (e.g. "mileage?"), use history to see which car they were talking about.
         
         **PREMIUM RESPONSE FORMAT**:
         *Mahindra [Car Name]*
