@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const API_URL = "https://app.11za.in/apis/session/sendSessionMessage";
+const API_URL = "https://api.11za.in/apis/sendMessage/sendMessages";
 
 /**
  * Send a plain text session message via 11za API.
@@ -16,8 +16,9 @@ export const sendMessage = async (to, text) => {
         const response = await axios.post(API_URL, {
             authToken: process.env.ZA_TOKEN,
             sendto: to,
-            message: text,
-            origin: process.env.ZA_ORIGIN
+            text: text, // Correct field name is 'text'
+            originWebsite: process.env.ZA_ORIGIN, // Correct field name is 'originWebsite'
+            contentType: "text" // New required field
         });
         
         console.log("✅ 11za Success:", response.status, JSON.stringify(response.data));
@@ -44,7 +45,8 @@ export const sendInteractiveMessage = async (to, interactive) => {
             sendto: to,
             type: "interactive",
             interactive: interactive,
-            origin: process.env.ZA_ORIGIN
+            originWebsite: process.env.ZA_ORIGIN, // Updated to match
+            contentType: "interactive" // Specific for interactive if needed
         });
 
         console.log("✅ 11za Interactive Success:", response.status, JSON.stringify(response.data));
