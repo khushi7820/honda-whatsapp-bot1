@@ -38,6 +38,8 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         
         - **USER HISTORY (For Questions)**: If the user asks for details or has a specific query (e.g. "mileage?"), use history to see which car they were talking about.
         
+        - **GENERAL LIST**: If the user asks for a list of available cars or "which cars do you have", DO NOT provide detailed features. Simply reply with a clean bulleted list of car names, and ask which one they want to explore.
+        
         **PREMIUM RESPONSE FORMAT**:
         *Mahindra [Car Name]*
         

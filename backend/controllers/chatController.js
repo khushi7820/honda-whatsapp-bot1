@@ -147,15 +147,28 @@ export const handleWebhook = async (req, res) => {
 
         const aiResponse = await getAIResponse(message, historyContext, baseUrl);
 
-        // Check for AI intent triggers
-        const lowerRes = aiResponse.toLowerCase();
+        let finalMessage = aiResponse;
+        let photoUrl = null;
+        
+        // Strip the long Photo URL and replace with a sleek button
+        const photoMatch = finalMessage.match(/📸 View Photos:\s*(https?:\/\/[^\s]+)/i);
+        if (photoMatch) {
+            photoUrl = photoMatch[1];
+            finalMessage = finalMessage.replace(photoMatch[0], "").trim();
+        }
+
+        // First send the AI's descriptive text
+        await sendMessage(sender, finalMessage);
+
+        // Then send Photo Button if valid URL was found
+        if (photoUrl) {
+            await sendInteractiveMessage(sender, templates.getGalleryCTA(photoUrl));
+        }
+
+        // Check for AI intent triggers for Test Drive
+        const lowerRes = finalMessage.toLowerCase();
         if (lowerRes.includes("book test drive") || lowerRes.includes("hands-on drive")) {
-            // First send the AI's descriptive text
-            await sendMessage(sender, aiResponse);
-            // Then send the nice, clean button UI
             await sendInteractiveMessage(sender, templates.getBookButton("Ready to feel the power of Mahindra? Book your test drive now!"));
-        } else {
-            await sendMessage(sender, aiResponse);
         }
 
         // 5. Save history

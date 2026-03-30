@@ -24,6 +24,18 @@ export const getCalendarCTA = (baseUrl) => ({
     }
 });
 
+export const getGalleryCTA = (url) => ({
+    type: "cta_url",
+    body: { text: "Tap here to explore high-quality 360° photos and models! 📸" },
+    action: {
+        name: "cta_url",
+        parameters: {
+            display_text: "View Gallery",
+            url: url
+        }
+    }
+});
+
 export const getDateList = () => {
     const dates = [];
     for (let i = 0; i < 7; i++) {
