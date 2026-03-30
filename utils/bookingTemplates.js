@@ -1,0 +1,129 @@
+/**
+ * Interactive Message Templates for Mahindra Booking
+ */
+
+export const getBookButton = () => ({
+    type: "button",
+    body: { text: "Test Drive: It's a quick 2-step, 1-minute process." },
+    action: {
+        buttons: [
+            { type: "reply", reply: { id: "action_book_test_drive", title: "Book Test Drive" } }
+        ]
+    }
+});
+
+export const getCalendarCTA = (baseUrl) => ({
+    type: "cta_url",
+    body: { text: "For an exact time and date, please open our visual booking calendar 📅" },
+    action: {
+        name: "cta_url",
+        parameters: {
+            display_text: "Open Calendar",
+            url: `${baseUrl}/booking/calendar`
+        }
+    }
+});
+
+export const getGalleryCTA = (url) => ({
+    type: "cta_url",
+    body: { text: "Tap here to explore high-quality 360° photos and models! 📸" },
+    action: {
+        name: "cta_url",
+        parameters: {
+            display_text: "View Gallery",
+            url: url
+        }
+    }
+});
+
+export const getDateList = () => {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        const label = new Intl.DateTimeFormat('en-GB', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short' 
+        }).format(d);
+        dates.push({
+            id: `date_${i}`,
+            title: label,
+            description: i === 0 ? "Today" : (i === 1 ? "Tomorrow" : "Upcoming slot")
+        });
+    }
+
+    return {
+        type: "list",
+        header: { type: "text", text: "Test Drive Calendar" },
+        body: { text: "What day should I block for your test drive? 🗓️" },
+        footer: { text: "Mahindra Automobile" },
+        action: {
+            button: "Calendar",
+            sections: [
+                {
+                    title: "Next 7 Days",
+                    rows: dates
+                }
+            ]
+        }
+    };
+};
+
+export const getSlotList = (date) => ({
+    type: "list",
+    header: { type: "text", text: "Select a Time Slot" },
+    body: { text: `We have several slots available for ${date}. Which one works best for you?` },
+    footer: { text: "Mahindra Automobile" },
+    action: {
+        button: "Choose Slot",
+        sections: [
+            {
+                title: "Morning",
+                rows: [
+                    { id: "slot_10am", title: "10:00 AM", description: "Fresh Start" },
+                    { id: "slot_11am", title: "11:00 AM", description: "Mid Morning" }
+                ]
+            },
+            {
+                title: "Afternoon",
+                rows: [
+                    { id: "slot_02pm", title: "02:00 PM", description: "Lunch Break" },
+                    { id: "slot_04pm", title: "04:00 PM", description: "Evening Drive" }
+                ]
+            }
+        ]
+    }
+});
+
+export const getColorList = (carName, colors) => {
+    const rows = colors.slice(0, 10).map((c, i) => ({ id: `color_${i}`, title: c }));
+    return {
+        type: "list",
+        header: { type: "text", text: "Select Color" },
+        body: { text: `Please choose a color for your ${carName}:` },
+        footer: { text: "Mahindra Automobile" },
+        action: {
+            button: "View Colors",
+            sections: [{ title: "Available Colors", rows }]
+        }
+    };
+};
+
+export const getFuelList = (carName, fuelTypeStr) => {
+    const isBoth = fuelTypeStr.toLowerCase().includes("petrol") && fuelTypeStr.toLowerCase().includes("diesel");
+    const rows = isBoth 
+        ? [{ id: "fuel_petrol", title: "Petrol" }, { id: "fuel_diesel", title: "Diesel" }]
+        : [{ id: "fuel_diesel", title: "Diesel ONLY" }];
+
+    return {
+        type: "list",
+        header: { type: "text", text: "Select Fuel Type" },
+        body: { text: `Please choose the fuel type for your ${carName}:` },
+        footer: { text: "Mahindra Automobile" },
+        action: {
+            button: "View Fuel Types",
+            sections: [{ title: "Available Fuel Types", rows }]
+        }
+    };
+};
