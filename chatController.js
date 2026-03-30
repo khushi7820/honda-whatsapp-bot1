@@ -1,0 +1,196 @@
+import { sendMessage, sendInteractiveMessage } from "../services/whatsappService.js";
+import { getAIResponse } from "../services/aiService.js";
+import Chat from "../models/Chat.js";
+import Session from "../models/Session.js";
+import * as templates from "../utils/bookingTemplates.js";
+import { connectDB } from "../config/db.js";
+
+export const handleWebhook = async (req, res) => {
+    try {
+        // --- Multi-format Extraction (Flat and Nested Support) ---
+        const entry = req.body?.entry?.[0];
+        const val = entry?.changes?.[0]?.value || req.body;
+        const msg = val?.messages?.[0] || req.body;
+        
+        // Sender: can be in 'from', 'sender', or 'wa_id'
+        let sender = msg.from || req.body.sender || req.body.from || val.contacts?.[0]?.wa_id;
+
+        // Message content: support flat 11za/Waba format and nested Meta format
+        let type = msg.type || val.type || req.body.type || "text";
+        let message = 
+            req.body.content || 
+            req.body.UserResponse || 
+            msg.text?.body || 
+            msg.text || 
+            msg.body || 
+            val.text?.body || 
+            null;
+
+        // Clean up: if content is an object (common in some 11za versions), grab the body
+        if (typeof message === "object") message = message?.body || message?.text || message?.content || null;
+
+        // Interactive support (Buttons/Lists)
+        let interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
+
+        if (!sender) {
+            return res.status(200).send("No sender data");
+        }
+
+        // IMPORTANT: Await DB connection (Serverless Cold Start Ready)
+        try {
+            await connectDB();
+        } catch (dbErr) {
+            console.error("❌ Database connection failed:", dbErr.message);
+            return res.status(200).send("DB connection error");
+        }
+
+        if (!message && !interactive) {
+            if (type === "audio") {
+                await sendMessage(sender, "I can't process audio messages yet. 😊");
+                return res.status(200).send("Audio handled");
+            }
+            return res.status(200).send("No message mapping found");
+        }
+
+        // 1. Get/Create Session
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers.host;
+        const baseUrl = `${protocol}://${host}`;
+
+        let session = await Session.findOne({ sender });
+        if (!session) session = await new Session({ sender, state: "IDLE" }).save();
+
+        console.log(`Msg from ${sender} [State: ${session.state}]: ${message || "Interactive"}`);
+
+        const lowerMsg = message?.toLowerCase() || "";
+
+        // 1. Intercept Direct Booking Intent (Before AI)
+        const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment for test drive", "test drive request"];
+        if (bookingKeywords.some(k => lowerMsg.includes(k))) {
+            session.state = "COLLECTING_PINCODE";
+            await session.save();
+            await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
+            return res.status(200).send("OK");
+        }
+
+        // 2. Handle Interactive Replies (Button/List clicks)
+        if (interactive) {
+            const replyId = interactive?.button_reply?.id || interactive?.list_reply?.id;
+            const replyTitle = interactive?.button_reply?.title || interactive?.list_reply?.title;
+            
+            if (replyId === "action_book_test_drive") {
+                session.state = "COLLECTING_PINCODE";
+                await session.save();
+                await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
+                return res.status(200).send("OK");
+            }
+
+            if (replyId?.startsWith("date_")) {
+                const date = replyTitle;
+                session.state = "IDLE";
+                if (!session.data) session.data = {};
+                session.data.date = date;
+                await session.save();
+                
+                const carMsg = session.data.carModel ? `\n🚗 *Selected Car*: ${session.data.carModel}` : "";
+                const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
+                
+                await sendMessage(sender, `Perfect! 🎉 Here is your Test Drive Summary:\n${carMsg}${pinMsg}\n📅 *Date*: ${date}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
+                return res.status(200).send("OK");
+            }
+        }
+
+        // 3. Handle Flow States (Pincode -> Date)
+        if (session.state === "COLLECTING_PINCODE") {
+            const pincode = message?.replace(/\D/g, "");
+            // Valid Indian Pincode: 6 digits, doesn't start with 0
+            if (pincode && /^[1-9][0-9]{5}$/.test(pincode)) {
+                session.state = "COLLECTING_DATE";
+                if (!session.data) session.data = {};
+                session.data.pincode = pincode;
+                
+                // Try to find if user talked about a specific car recently
+                const historyForCar = await Chat.findOne({ sender, role: "assistant", content: /Mahindra/i }).sort({ timestamp: -1 });
+                if (historyForCar) {
+                    const match = historyForCar.content.match(/\*Mahindra\s([^*]+)\*/);
+                    if (match) session.data.carModel = match[1].trim();
+                }
+                
+                await session.save();
+                // Send Both: The List UI (Options) and the Web Calendar Link
+                await sendInteractiveMessage(sender, templates.getCalendarCTA(baseUrl));
+                await sendInteractiveMessage(sender, templates.getDateList());
+                return res.status(200).send("OK");
+            } else {
+                await sendMessage(sender, "Oops! That doesn't look like a valid Indian pin code. Please enter a valid *6-digit* pincode (e.g., 400069). 📍");
+                return res.status(200).send("OK");
+            }
+        }
+
+        if (session.state === "COLLECTING_DATE") {
+            const chosenDate = message || "your selected date";
+            session.state = "IDLE";
+            if (!session.data) session.data = {};
+            session.data.date = chosenDate;
+            await session.save();
+            
+            const carMsg = session.data.carModel ? `\n🚗 *Selected Car*: ${session.data.carModel}` : "";
+            const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
+            
+            await sendMessage(sender, `Perfect! 🎉 Here is your Test Drive Summary:\n${carMsg}${pinMsg}\n📅 *Date*: ${chosenDate}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
+            return res.status(200).send("OK");
+        }
+
+        // 4. Default: Get AI Response
+        const history = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
+        const historyContext = history.reverse().map(c => `${c.role}: ${c.content}`).join("\n");
+
+        const aiResponse = await getAIResponse(message, historyContext, baseUrl);
+
+        // Check for AI intent triggers
+        const lowerRes = aiResponse.toLowerCase();
+        if (lowerRes.includes("book test drive") || lowerRes.includes("hands-on drive")) {
+            // First send the AI's descriptive text
+            await sendMessage(sender, aiResponse);
+            // Then send the nice, clean button UI
+            await sendInteractiveMessage(sender, templates.getBookButton("Ready to feel the power of Mahindra? Book your test drive now!"));
+        } else {
+            await sendMessage(sender, aiResponse);
+        }
+
+        // 5. Save history
+        if (message && aiResponse) {
+            await new Chat({ sender, role: "user", content: message }).save();
+            await new Chat({ sender, role: "assistant", content: aiResponse }).save();
+        }
+
+        res.status(200).send("Processed");
+    } catch (error) {
+        console.error("Webhook Error Details:", {
+            message: error.message,
+            stack: error.stack,
+            response: error.response?.data
+        });
+        // Still return 200 to acknowledge the webhook and prevent retries from 11za
+        res.status(200).send("Processed with errors");
+    }
+};
+
+
+export const verifyWebhook = (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+
+    if (mode && token) {
+        if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) {
+            console.log("WEBHOOK_VERIFIED");
+            return res.status(200).send(challenge);
+        } else {
+            return res.sendStatus(403);
+        }
+    }
+    
+    // Default 11za check
+    res.status(200).send("Webhook active");
+};
