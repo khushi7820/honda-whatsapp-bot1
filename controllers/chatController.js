@@ -1,7 +1,8 @@
-import { sendMessage, sendInteractiveMessage } from "../services/whatsappService.js";
+import { sendMessage, sendInteractiveMessage, sendImage } from "../services/whatsappService.js";
 import { getAIResponse } from "../services/aiService.js";
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
+import Car from "../models/Car.js";
 import * as templates from "../utils/bookingTemplates.js";
 import { connectDB } from "../config/db.js";
 
@@ -65,9 +66,31 @@ export const handleWebhook = async (req, res) => {
         const lowerMsg = message?.toLowerCase() || "";
 
         // 1. Intercept Direct Booking Intent (Before AI)
-        const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment for test drive", "test drive request"];
+        const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment for test drive", "test drive request", "book", "book please", "booking"];
+        
+        const carsList = [
+            { keyword: "thar", name: "Thar" },
+            { keyword: "xuv700", name: "XUV700" },
+            { keyword: "xuv 700", name: "XUV700" },
+            { keyword: "scorpio-n", name: "Scorpio-N" },
+            { keyword: "scorpio n", name: "Scorpio-N" },
+            { keyword: "scorpio", name: "Scorpio-N" },
+            { keyword: "bolero neo", name: "Bolero Neo" },
+            { keyword: "bolero neo", name: "Bolero Neo" },
+            { keyword: "bolero classic", name: "Bolero" },
+            { keyword: "bolero", name: "Bolero" },
+            { keyword: "marazzo", name: "Marazzo" }
+        ];
+
         if (bookingKeywords.some(k => lowerMsg.includes(k))) {
             session.state = "COLLECTING_PINCODE";
+            
+            const foundCar = carsList.find(c => lowerMsg.includes(c.keyword));
+            if (foundCar) {
+                if (!session.data) session.data = {};
+                session.data.carModel = foundCar.name;
+            }
+
             await session.save();
             await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
             return res.status(200).send("OK");
@@ -85,17 +108,61 @@ export const handleWebhook = async (req, res) => {
                 return res.status(200).send("OK");
             }
 
+            if (replyId?.startsWith("color_")) {
+                session.state = "COLLECTING_FUEL";
+                if (!session.data) session.data = {};
+                session.data.color = replyTitle;
+                
+                const car = await Car.findOne({ name: { $regex: new RegExp(session.data.carModel || "", "i") } });
+                if (car && car.fuelType) {
+                    await session.save();
+                    await sendInteractiveMessage(sender, templates.getFuelList(car.name, car.fuelType));
+                    return res.status(200).send("OK");
+                }
+                
+                session.state = "COLLECTING_DATE";
+                await session.save();
+                await sendInteractiveMessage(sender, templates.getDateList());
+                return res.status(200).send("OK");
+            }
+
+            if (replyId?.startsWith("fuel_")) {
+                session.state = "COLLECTING_DATE";
+                if (!session.data) session.data = {};
+                session.data.fuel = replyTitle;
+                await session.save();
+                
+                const shortBaseUrl = baseUrl.replace(/^https?:\/\//, "");
+                await sendMessage(sender, `Great choice! What day should I block for your test drive?\n\n📅 *Open Calendar*: ${shortBaseUrl}/booking/calendar`);
+                await sendInteractiveMessage(sender, templates.getDateList());
+                return res.status(200).send("OK");
+            }
+
             if (replyId?.startsWith("date_")) {
                 const date = replyTitle;
-                session.state = "IDLE";
+                session.state = "COLLECTING_TIME";
                 if (!session.data) session.data = {};
                 session.data.date = date;
                 await session.save();
                 
+                await sendInteractiveMessage(sender, templates.getSlotList(date));
+                return res.status(200).send("OK");
+            }
+
+            if (replyId?.startsWith("slot_")) {
+                const time = replyTitle;
+                session.state = "IDLE";
+                if (!session.data) session.data = {};
+                session.data.time = time;
+                await session.save();
+
                 const carMsg = session.data.carModel ? `\n🚗 *Selected Car*: ${session.data.carModel}` : "";
+                const colorMsg = session.data.color ? `\n🎨 *Color*: ${session.data.color}` : "";
+                const fuelMsg = session.data.fuel ? `\n⛽ *Fuel*: ${session.data.fuel}` : "";
                 const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
+                const dateMsg = session.data.date ? `\n📅 *Date*: ${session.data.date}` : "";
                 
-                await sendMessage(sender, `Perfect! 🎉 Here is your Test Drive Summary:\n${carMsg}${pinMsg}\n📅 *Date*: ${date}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
+                await sendMessage(sender, `Perfect! 🎉 Here is your Summary:\n${carMsg}${colorMsg}${fuelMsg}${pinMsg}${dateMsg}\n⏰ *Time*: ${time}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nThank you for booking with us! 🙌 Is there anything else you'd like to know or check out? I'm here to help!\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
                 return res.status(200).send("OK");
             }
         }
@@ -110,12 +177,27 @@ export const handleWebhook = async (req, res) => {
                 session.data.pincode = pincode;
                 
                 // Try to find if user talked about a specific car recently
-                const historyForCar = await Chat.findOne({ sender, role: "assistant", content: /Mahindra/i }).sort({ timestamp: -1 });
-                if (historyForCar) {
-                    const match = historyForCar.content.match(/\*Mahindra\s([^*]+)\*/);
-                    if (match) session.data.carModel = match[1].trim();
+                if (!session.data.carModel) {
+                    const historyForCar = await Chat.findOne({ sender, content: /thar|xuv|scorpio|bolero|marazzo/i }).sort({ timestamp: -1 });
+                    if (historyForCar) {
+                        const historyLower = historyForCar.content.toLowerCase();
+                        const foundInHistory = carsList.find(c => historyLower.includes(c.keyword));
+                        if(foundInHistory) session.data.carModel = foundInHistory.name;
+                    }
                 }
                 
+                // Intercept and ask color if CarModel is known
+                if (session.data.carModel) {
+                    const car = await Car.findOne({ name: { $regex: new RegExp(session.data.carModel, "i") } });
+                    if (car && car.colors && car.colors.length > 0) {
+                        session.state = "COLLECTING_COLOR";
+                        await session.save();
+                        await sendInteractiveMessage(sender, templates.getColorList(car.name, car.colors));
+                        return res.status(200).send("OK");
+                    }
+                }
+
+                session.state = "COLLECTING_DATE";
                 await session.save();
                 
                 // Keep Calendar as clean short text since 11za rejects cta_url
@@ -131,15 +213,30 @@ export const handleWebhook = async (req, res) => {
 
         if (session.state === "COLLECTING_DATE") {
             const chosenDate = message || "your selected date";
-            session.state = "IDLE";
+            session.state = "COLLECTING_TIME";
             if (!session.data) session.data = {};
             session.data.date = chosenDate;
             await session.save();
             
-            const carMsg = session.data.carModel ? `\n🚗 *Selected Car*: ${session.data.carModel}` : "";
-            const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
+            await sendMessage(sender, `Great! You've selected ${chosenDate}.`);
+            await sendInteractiveMessage(sender, templates.getSlotList(chosenDate));
+            return res.status(200).send("OK");
+        }
+
+        if (session.state === "COLLECTING_TIME") {
+            const chosenTime = message || "your selected time";
+            session.state = "IDLE";
+            if (!session.data) session.data = {};
+            session.data.time = chosenTime;
+            await session.save();
             
-            await sendMessage(sender, `Perfect! 🎉 Here is your Test Drive Summary:\n${carMsg}${pinMsg}\n📅 *Date*: ${chosenDate}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
+            const carMsg = session.data.carModel ? `\n🚗 *Selected Car*: ${session.data.carModel}` : "";
+            const colorMsg = session.data.color ? `\n🎨 *Color*: ${session.data.color}` : "";
+            const fuelMsg = session.data.fuel ? `\n⛽ *Fuel*: ${session.data.fuel}` : "";
+            const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
+            const dateMsg = session.data.date ? `\n📅 *Date*: ${session.data.date}` : "";
+            
+            await sendMessage(sender, `Perfect! 🎉 Here is your Summary:\n${carMsg}${colorMsg}${fuelMsg}${pinMsg}${dateMsg}\n⏰ *Time*: ${chosenTime}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nThank you for booking with us! 🙌 Is there anything else you'd like to know or check out? I'm here to help!\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
             return res.status(200).send("OK");
         }
 
@@ -149,7 +246,7 @@ export const handleWebhook = async (req, res) => {
 
         const aiResponse = await getAIResponse(message, historyContext, baseUrl);
 
-        // First send the AI's response (which now includes the short link natively)
+        // Send the AI's response (now includes https:// for rich link previews)
         await sendMessage(sender, aiResponse);
 
         // Check for AI intent triggers for Test Drive
@@ -175,7 +272,6 @@ export const handleWebhook = async (req, res) => {
         res.status(200).send("Processed with errors");
     }
 };
-
 
 export const verifyWebhook = (req, res) => {
     const mode = req.query["hub.mode"];

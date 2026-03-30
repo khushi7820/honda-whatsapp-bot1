@@ -95,3 +95,35 @@ export const getSlotList = (date) => ({
         ]
     }
 });
+
+export const getColorList = (carName, colors) => {
+    const rows = colors.slice(0, 10).map((c, i) => ({ id: `color_${i}`, title: c }));
+    return {
+        type: "list",
+        header: { type: "text", text: "Select Color" },
+        body: { text: `Please choose a color for your ${carName}:` },
+        footer: { text: "Mahindra Automobile" },
+        action: {
+            button: "View Colors",
+            sections: [{ title: "Available Colors", rows }]
+        }
+    };
+};
+
+export const getFuelList = (carName, fuelTypeStr) => {
+    const isBoth = fuelTypeStr.toLowerCase().includes("petrol") && fuelTypeStr.toLowerCase().includes("diesel");
+    const rows = isBoth 
+        ? [{ id: "fuel_petrol", title: "Petrol" }, { id: "fuel_diesel", title: "Diesel" }]
+        : [{ id: "fuel_diesel", title: "Diesel ONLY" }];
+
+    return {
+        type: "list",
+        header: { type: "text", text: "Select Fuel Type" },
+        body: { text: `Please choose the fuel type for your ${carName}:` },
+        footer: { text: "Mahindra Automobile" },
+        action: {
+            button: "View Fuel Types",
+            sections: [{ title: "Available Fuel Types", rows }]
+        }
+    };
+};
