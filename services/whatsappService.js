@@ -49,8 +49,7 @@ export const sendInteractiveMessage = async (to, interactive) => {
             sendto: cleanTo,
             type: "interactive",
             interactive: interactive,
-            originWebsite: process.env.ZA_ORIGIN,
-            contentType: "interactive"
+            originWebsite: process.env.ZA_ORIGIN
         }, { timeout: 10000 });
 
         console.log("✅ 11za Interactive Success:", response.status, JSON.stringify(response.data));
