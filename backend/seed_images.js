@@ -4,30 +4,31 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Updated with accurate colors based on user's selected photos (Black Thar, Green Scorpio-N, Red XUV300, etc.)
 const updates = {
     'Mahindra Thar': [
-        'https://upload.wikimedia.org/wikipedia/commons/9/91/Mahindra_Thar_SUV_in_%22Red_Rage%22_color_at_Ashiana_Brahmanda%2C_East_Singbhum_India_%28Ank_Kumar%2C_Infosys_limited%29_01.jpg'
+        'https://imgd.aeplcdn.com/664x374/n/cw/ec/40087/thar-exterior-right-front-three-quarter-35.jpeg' // Black
     ],
     'Mahindra XUV700': [
-        'https://upload.wikimedia.org/wikipedia/commons/b/ba/2021_Mahindra_XUV700_2.2_AX7_%28India%29_front_view.png'
+        'https://imgd.aeplcdn.com/664x374/n/cw/ec/42355/xuv700-exterior-right-front-three-quarter-3.jpeg' // Midnight Black
     ],
     'Mahindra Scorpio-N': [
-        'https://upload.wikimedia.org/wikipedia/commons/b/b4/2024_Mahindra_Scorpio_Z8L_front.jpg'
+        'https://imgd.aeplcdn.com/664x374/n/cw/ec/40432/scorpio-n-exterior-right-front-three-quarter-75.jpeg' // Deep Forest / Green
     ],
     'Mahindra XUV 3XO': [
-        'https://mahindra.co.za/wp-content/uploads/2024/09/CLIENT_XUV-3XO-149444_R3-Light@2x.png'
+        'https://upload.wikimedia.org/wikipedia/commons/c/c2/2019_Mahindra_XUV300_W8.jpg' // Red XUV300
     ],
     'Mahindra Bolero Neo': [
-        'https://static.toiimg.com/thumb/124519681.jpg?photoid=124519681&imgsize=23456&width=600&resizemode=4'
+        'https://imgd.aeplcdn.com/664x374/n/cw/ec/131151/bolero-neo-exterior-right-front-three-quarter.jpeg' // Silver
     ],
     'Mahindra Bolero': [
-        'https://upload.wikimedia.org/wikipedia/commons/d/d7/Mahindra_Bolero_ZLX.jpg'
+        'https://imgd.aeplcdn.com/664x374/n/cw/ec/131179/bolero-exterior-right-front-three-quarter.jpeg' // Dsat Silver / Grey
     ],
     'Mahindra XUV400 EV': [
-        'https://img.etimg.com/thumb/width-420,height-315,imgsize-21980,resizemode-75,msid-106726760/industry/renewables/mahindra-xuv-400-pro-launched-here-are-price-details-all-the-added-features/mahindra-xuv400.jpg'
+        'https://img.etimg.com/thumb/width-420,height-315,imgsize-21980,resizemode-75,msid-106726760/industry/renewables/mahindra-xuv-400-pro-launched-here-are-price-details-all-the-added-features/mahindra-xuv400.jpg' // Electric Blue & Copper
     ],
     'Mahindra Marazzo': [
-        'https://upload.wikimedia.org/wikipedia/commons/5/50/Mahindra_Marazzo_MPV_SEP_18_%283%29.jpg'
+        'https://upload.wikimedia.org/wikipedia/commons/5/50/Mahindra_Marazzo_MPV_SEP_18_%283%29.jpg' // Marazzo White
     ]
 };
 

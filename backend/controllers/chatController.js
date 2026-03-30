@@ -69,7 +69,7 @@ export const handleWebhook = async (req, res) => {
         if (bookingKeywords.some(k => lowerMsg.includes(k))) {
             session.state = "COLLECTING_PINCODE";
             await session.save();
-            await sendMessage(sender, "Mind sharing your pincode? For example, 400069 😊");
+            await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
             return res.status(200).send("OK");
         }
 
@@ -81,15 +81,21 @@ export const handleWebhook = async (req, res) => {
             if (replyId === "action_book_test_drive") {
                 session.state = "COLLECTING_PINCODE";
                 await session.save();
-                await sendMessage(sender, "Mind sharing your pincode? For example, 400069 😊");
+                await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
                 return res.status(200).send("OK");
             }
 
             if (replyId?.startsWith("date_")) {
                 const date = replyTitle;
                 session.state = "IDLE";
+                if (!session.data) session.data = {};
+                session.data.date = date;
                 await session.save();
-                await sendMessage(sender, `Perfect! Your slot for *${date}* is being processed. \n\nA Mahindra representative will call you for final confirmation. 🏁`);
+                
+                const carMsg = session.data.carModel ? `\n🚗 *Selected Car*: ${session.data.carModel}` : "";
+                const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
+                
+                await sendMessage(sender, `Perfect! 🎉 Here is your Test Drive Summary:\n${carMsg}${pinMsg}\n📅 *Date*: ${date}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
                 return res.status(200).send("OK");
             }
         }
@@ -97,15 +103,26 @@ export const handleWebhook = async (req, res) => {
         // 3. Handle Flow States (Pincode -> Date)
         if (session.state === "COLLECTING_PINCODE") {
             const pincode = message?.replace(/\D/g, "");
-            if (pincode?.length === 6) {
+            // Valid Indian Pincode: 6 digits, doesn't start with 0
+            if (pincode && /^[1-9][0-9]{5}$/.test(pincode)) {
                 session.state = "COLLECTING_DATE";
+                if (!session.data) session.data = {};
+                session.data.pincode = pincode;
+                
+                // Try to find if user talked about a specific car recently
+                const historyForCar = await Chat.findOne({ sender, role: "assistant", content: /Mahindra/i }).sort({ timestamp: -1 });
+                if (historyForCar) {
+                    const match = historyForCar.content.match(/\*Mahindra\s([^*]+)\*/);
+                    if (match) session.data.carModel = match[1].trim();
+                }
+                
                 await session.save();
                 // Send Both: The List UI (Options) and the Web Calendar Link
-                await sendMessage(sender, `What day should I block for your test drive?\n\n📅 *Open Calendar*: ${baseUrl}/booking/calendar`);
+                await sendInteractiveMessage(sender, templates.getCalendarCTA(baseUrl));
                 await sendInteractiveMessage(sender, templates.getDateList());
                 return res.status(200).send("OK");
             } else {
-                await sendMessage(sender, "Please enter a valid *6-digit* pincode to find nearest showroom. 📍");
+                await sendMessage(sender, "Oops! That doesn't look like a valid Indian pin code. Please enter a valid *6-digit* pincode (e.g., 400069). 📍");
                 return res.status(200).send("OK");
             }
         }
@@ -113,8 +130,14 @@ export const handleWebhook = async (req, res) => {
         if (session.state === "COLLECTING_DATE") {
             const chosenDate = message || "your selected date";
             session.state = "IDLE";
+            if (!session.data) session.data = {};
+            session.data.date = chosenDate;
             await session.save();
-            await sendMessage(sender, `Perfect! Your slot for *${chosenDate}* is being processed. \n\nA Mahindra representative will call you for final confirmation. 🏁`);
+            
+            const carMsg = session.data.carModel ? `\n🚗 *Selected Car*: ${session.data.carModel}` : "";
+            const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
+            
+            await sendMessage(sender, `Perfect! 🎉 Here is your Test Drive Summary:\n${carMsg}${pinMsg}\n📅 *Date*: ${chosenDate}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
             return res.status(200).send("OK");
         }
 

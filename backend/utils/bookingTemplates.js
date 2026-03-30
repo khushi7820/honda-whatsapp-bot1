@@ -12,6 +12,18 @@ export const getBookButton = () => ({
     }
 });
 
+export const getCalendarCTA = (baseUrl) => ({
+    type: "cta_url",
+    body: { text: "For an exact time and date, please open our visual booking calendar 📅" },
+    action: {
+        name: "cta_url",
+        parameters: {
+            display_text: "Open Calendar",
+            url: `${baseUrl}/booking/calendar`
+        }
+    }
+});
+
 export const getDateList = () => {
     const dates = [];
     for (let i = 0; i < 7; i++) {

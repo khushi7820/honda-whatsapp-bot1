@@ -57,7 +57,6 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
           - Only bold the *Car Name* (single asterisks).
           - No bold for labels like Price, Colors, etc.
           - Use double line breaks between lines for maximum readability.
-          - Add "*Note: Prices are ex-showroom.*" at the end.
         `;
 
     const messages = [
