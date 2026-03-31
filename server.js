@@ -14,13 +14,12 @@ app.use(express.json());
 
 connectDB();
 
-// Test route
 app.get("/", (req, res) => {
     res.send("Mahindra Bot is Live! 🚀");
 });
 
-// IMPORTANT: Routing sync for 11za dashboard: /api/webhook/whatsapp
-app.use("/api", chatRoutes); // This mounts chatRoutes at /api
+// Syncing with Dashboard URL: /api/chat/webhook
+app.use("/api/chat", chatRoutes);
 app.use("/gallery", galleryRoutes);
 app.use("/booking", calendarRoutes);
 
