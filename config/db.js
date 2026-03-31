@@ -1,8 +1,4 @@
 import mongoose from "mongoose";
-import dns from "dns";
-
-// Fix for Atlas SRV DNS resolution issues in some local environments
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 let cached = global.mongoose;
 
@@ -16,22 +12,26 @@ export const connectDB = async () => {
         if (mongoose.connection.readyState === 1) {
             return cached.conn;
         }
-        // Connection went stale — reset cache
-        console.warn("⚠️ MongoDB connection stale (readyState:", mongoose.connection.readyState, "). Reconnecting...");
+        console.warn("⚠️ MongoDB connection stale. Reconnecting...");
         cached.conn = null;
         cached.promise = null;
     }
 
     if (!cached.promise) {
-        cached.promise = mongoose.connect(process.env.MONGO_URI, {
-            serverSelectionTimeoutMS: 10000, // 10s for cold-start DNS in serverless
+        const uri = process.env.MONGO_URI;
+        if (!uri) {
+            console.error("❌ CRITICAL: MONGO_URI is not defined in environment variables!");
+            return null;
+        }
+
+        cached.promise = mongoose.connect(uri, {
+            serverSelectionTimeoutMS: 20000, // Increased for serverless cold-starts
             socketTimeoutMS: 45000,
-            bufferCommands: false, // Fail fast instead of buffering when disconnected
+            bufferCommands: false,
         }).then((m) => {
-            console.log("✅ MongoDB Connected (Serverless Ready)");
+            console.log("✅ MongoDB Connected (Vercel Ready)");
             return m;
         }).catch((err) => {
-            // Reset the cached promise so next invocation retries
             console.error("❌ MongoDB connection failed:", err.message);
             cached.promise = null;
             cached.conn = null;

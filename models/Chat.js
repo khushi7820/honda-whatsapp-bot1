@@ -14,6 +14,10 @@ const chatSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    reply: { // Adding reply field for history tracking
+        type: String,
+        required: false
+    },
     timestamp: {
         type: Date,
         default: Date.now
