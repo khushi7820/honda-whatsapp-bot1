@@ -21,7 +21,7 @@ router.get("/:carName", async (req, res) => {
 
         const imagesHtml = car.images.map(img => `
             <div class="card">
-                <img src="${img}" alt="${car.name}">
+                <img src="${img}" alt="${car.name}" referrerpolicy="no-referrer">
             </div>
         `).join("");
 
