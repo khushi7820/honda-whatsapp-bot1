@@ -8,84 +8,60 @@ import { connectDB } from "../config/db.js";
 import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
+    // 1. CRITICAL: Acknowledge 11za immediately to prevent timeout!
+    res.status(200).send("OK");
+
     try {
         console.log("📩 Webhook Received Payload:", JSON.stringify(req.body, null, 2));
-        // --- Multi-format Extraction (Flat and Nested Support) ---
+
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
-        // Sender: can be in 'from', 'sender', or 'wa_id'
-        let sender = msg.from || req.body.sender || req.body.from || val.contacts?.[0]?.wa_id;
+        // Dynamic Sender Extraction
+        const sender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id;
+        if (!sender) return;
 
-        // Message content: support flat 11za/Waba format and nested Meta format
         let type = msg.type || val.type || req.body.type || "text";
         let message = 
+            req.body.content?.text || 
+            req.body.content?.body ||
             req.body.content || 
-            req.body.UserResponse || 
-            msg.text?.body || 
-            msg.text || 
-            msg.body || 
-            val.text?.body || 
             null;
 
-        // Clean up: if content is an object (common in some 11za versions), grab the body
         if (typeof message === "object") message = message?.body || message?.text || message?.content || null;
 
-        // Interactive support (Buttons/Lists)
-        let interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
+        const interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
 
-        if (!sender) {
-            return res.status(200).send("No sender data");
-        }
-
-        // IMPORTANT: Await DB connection (Serverless Cold Start Ready)
-        try {
-            await connectDB();
-        } catch (dbErr) {
-            console.error("❌ Database connection failed:", dbErr.message);
-            return res.status(200).send("DB connection error");
-        }
-
+        // 2. Audio/Media Tracking
         if (!message && !interactive) {
-            // "11ZA Media Detection" (Deep Inspection for 11za formats)
             const isMedia = req.body.content?.contentType === "media";
-            const mediaObj = req.body.content?.media || val.media || {};
-            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url || val.media?.url;
-
-            console.log(`[DEBUG] Media Detection: isMedia=${isMedia}, type=${type}, potentialUrl=${potentialUrl ? "EXISTS" : "MISSING"}`);
+            const mediaObj = req.body.content?.media || {};
+            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url;
 
             if (isMedia || type === "audio" || type === "voice" || potentialUrl) {
-                console.log(`[11ZA MEDIA DETECTION] Triggered! URL: ${potentialUrl}`);
+                console.log(`[11ZA] Processing Audio from ${sender}...`);
                 
-                // Send 200 OK immediately for 11za timeout window
-                if (!res.headersSent) res.status(200).send("OK");
-
                 if (potentialUrl && potentialUrl.startsWith("http")) {
                     await sendMessage(sender, "Listening to your voice note... 🎧");
                     
                     const audioBuffer = await downloadMedia(potentialUrl);
                     if (audioBuffer) {
                         message = await transcribeAudio(audioBuffer);
-                        console.log(`[11ZA Transcribed Success]: ${message}`);
+                        console.log(`[11ZA] Transcribed: "${message}"`);
                         
                         if (!message) {
-                            return await sendMessage(sender, "I heard you, but couldn't understand the words. Can you try again or type? 😊");
+                            return await sendMessage(sender, "I couldn't hear that clearly. Can you try typing? 😊");
                         }
                     } else {
-                         console.error("[DEBUG] Audio download failed!");
-                         return await sendMessage(sender, "I couldn't download the audio. Please try again or type! 😊");
+                        return await sendMessage(sender, "Failed to download audio. Please try again! 😊");
                     }
                 } else {
-                    console.error("[DEBUG] No valid audio URL found in payload");
-                    return; // Fail silently if no URL
+                    return;
                 }
             } else {
-                if (!res.headersSent) res.status(200).send("No message mapping found");
                 return;
             }
-        } else {
-             if (!res.headersSent) res.status(200).send("OK");
         }
 
         // 1. Get/Create Session
