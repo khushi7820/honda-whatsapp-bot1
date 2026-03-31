@@ -1,4 +1,4 @@
-import { sendMessage, sendInteractiveMessage, sendImage } from "../services/whatsappService.js";
+import { sendMessage, sendInteractiveMessage } from "../services/whatsappService.js";
 import { getAIResponse } from "../services/aiService.js";
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
