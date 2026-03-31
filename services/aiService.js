@@ -63,8 +63,9 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         Guidelines:
         - **MEMORY**: If the "User Profile Context" shows a Car and Date already selected, DON'T ask for them again. Congratulate them on their choice or help with further questions.
         
-        - **LOCALIZED SERVICE**: If "LOCAL CONTEXT" is provided in the message history:
-          - Greet the user by their neighborhood (e.g. "I see you're in Vesu! 📍").
+        - **LOCALIZED SERVICE**: If "LOCAL CONTEXT" or "USER CONTEXT" is provided in the message history:
+          - Greet the user by their neighborhood if AREA is available (e.g. "I see you're in Vesu! 📍").
+          - If a PINCODE is provided but no exact branch is found in my list, say: "I've noted your pincode [Pincode]. While we don't have a direct branch listed in my quick-lookup for this exact spot, I'll have our nearest executive reach out to you with the location!"
           - Explicitly mention the **Dealer Name** and **Address** when discussing bookings or visits.
           - Make the user feel like you are a local expert.
 

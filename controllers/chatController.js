@@ -61,14 +61,17 @@ export const handleWebhook = async (req, res) => {
         // --- PINCODE EXTRACTION & SMART LOCALIZATION ---
         const pinMatch = String(message).match(/\b\d{6}\b/);
         let dealerInfo = null;
+        let pincode = null;
         if (pinMatch) {
-            const pincode = pinMatch[0];
+            pincode = pinMatch[0];
             session.data.pincode = pincode;
             dealerInfo = getDealerByPincode(pincode);
             if (dealerInfo) {
                 session.data.selectedDealer = dealerInfo.name;
                 session.data.area = dealerInfo.area;
                 console.log(`📍 Found Local Dealer: ${dealerInfo.name} in ${dealerInfo.area}`);
+            } else {
+                console.log(`📍 Registered Pincode: ${pincode} (No specific local mapping found)`);
             }
         }
         await session.save();
@@ -77,8 +80,15 @@ export const handleWebhook = async (req, res) => {
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
-        // Pass localized context to AI
-        const contextString = dealerInfo ? `\n--- LOCAL CONTEXT ---\nUSER PINCODE: ${pinMatch[0]}\nAREA: ${dealerInfo.area}\nDEALER: ${dealerInfo.name}\nADDRESS: ${dealerInfo.address}\n---` : "";
+        // Pass specialized context to AI
+        let contextString = `\n--- USER CONTEXT ---\n`;
+        if (pincode) contextString += `PINCODE PROVIDED: ${pincode}\n`;
+        if (dealerInfo) {
+            contextString += `AREA: ${dealerInfo.area}\nDEALER: ${dealerInfo.name}\nADDRESS: ${dealerInfo.address}\n`;
+        } else if (pincode) {
+            contextString += `NOTE: This pincode is valid, but we don't have a specific branch in our quick-lookup for this area yet.\n`;
+        }
+        contextString += `---\n`;
         
         const aiResponse = await getAIResponse(message, historyContextForAi + contextString, baseUrl, session);
         
