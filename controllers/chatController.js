@@ -40,7 +40,6 @@ export const handleWebhook = async (req, res) => {
         // --- Audio Processing ---
         if (isMedia || potentialUrl) {
             if (potentialUrl && potentialUrl.startsWith("http")) {
-                await sendMessage(sender, "Listening to your voice note... 🎧");
                 const audioBuffer = await downloadMedia(potentialUrl);
                 if (audioBuffer) {
                     message = await transcribeAudio(audioBuffer);
@@ -90,7 +89,10 @@ export const handleWebhook = async (req, res) => {
         const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
         if (carMatch) {
             const carId = carMatch[1];
-            const carDoc = await Car.findOne({ name: { $regex: new RegExp(carId.replace(/-/g, ' '), 'i') } });
+            // Better regex: match 'Scorpio-N' correctly even if URL is 'scorpio-n'
+            const flexibleSearch = carId.replace(/-/g, '[\\s-]'); 
+            const carDoc = await Car.findOne({ name: { $regex: new RegExp(flexibleSearch, 'i') } });
+            
             if (carDoc && (carDoc.images?.length > 0 || carDoc.imageUrl)) {
                 const img = carDoc.images?.[0] || carDoc.imageUrl;
                 await sendImage(sender, img, `✨ The Stunning ${carDoc.name}`);
