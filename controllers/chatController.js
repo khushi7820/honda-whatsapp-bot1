@@ -3,7 +3,7 @@ import { getAIResponse, transcribeAudio } from "../services/aiService.js";
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
 import Car from "../models/Car.js";
-import * as templates from "../utils/bookingTemplates.js";
+import Lead from "../models/Lead.js";
 import { connectDB } from "../config/db.js";
 import { getDealerByPincode } from "../utils/dealerData.js";
 
@@ -15,18 +15,17 @@ export const handleWebhook = async (req, res) => {
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
-        // 1. EXTRACT SENDER & SANITIZE (Remove '+' if present)
+        // 1. EXTRACT SENDER & NAME
         let rawSender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id || req.body.UserResponse?.from;
         if (!rawSender) return res.status(200).send("OK");
         
         const sender = String(rawSender).replace(/^\+/, '');
-        console.log(`[11ZA] Processing message from: ${sender}`);
+        const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "Unknown User";
+        console.log(`[11ZA] Processing message from: ${sender} (${senderName})`);
         
         // 2. EXTRACT TEXT
         const textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || (typeof req.body.content === 'string' ? req.body.content : "");
         const lowerMsg = String(textRaw).toLowerCase().trim();
-
-        console.log(`[11ZA] Msg Body: "${lowerMsg}"`);
 
         // 3. CONNECT DB
         await connectDB();
@@ -43,7 +42,6 @@ export const handleWebhook = async (req, res) => {
         // --- Audio Processing ---
         if (isMedia || potentialUrl) {
             if (potentialUrl && potentialUrl.startsWith("http")) {
-                console.log(`[Audio] Downloading from: ${potentialUrl}`);
                 const audioBuffer = await downloadMedia(potentialUrl);
                 if (audioBuffer) {
                     message = await transcribeAudio(audioBuffer);
@@ -55,7 +53,6 @@ export const handleWebhook = async (req, res) => {
         }
 
         if (!message && !interactive && !isMedia) {
-            console.warn("[Webhook] No valid content in payload.");
             return res.status(200).send("OK");
         }
 
@@ -65,24 +62,36 @@ export const handleWebhook = async (req, res) => {
 
         let session = await Session.findOne({ sender });
         if (!session) {
-            console.log(`[Session] Creating new session for ${sender}`);
             session = await new Session({ sender, state: "IDLE", data: {} }).save();
         }
 
-        // --- PINCODE EXTRACTION & SMART LOCALIZATION ---
+        // --- PINCODE EXTRACTION & LEAD CREATION ---
         const pinMatch = String(message).match(/\b\d{6}\b/);
-        let dealerInfo = null;
-        let pincode = null;
         if (pinMatch) {
-            pincode = pinMatch[0];
+            const pincode = pinMatch[0];
             session.data.pincode = pincode;
-            dealerInfo = getDealerByPincode(pincode);
+            const dealerInfo = getDealerByPincode(pincode);
+            
             if (dealerInfo) {
                 session.data.selectedDealer = dealerInfo.name;
                 session.data.area = dealerInfo.area;
-                console.log(`📍 Found Local Dealer: ${dealerInfo.name}`);
-            } else {
-                console.log(`📍 Registered Pincode: ${pincode}`);
+            }
+
+            // Create Lead!
+            try {
+                await new Lead({
+                    sender,
+                    name: senderName,
+                    carModel: session.data.carModel || "Unspecified",
+                    pincode: pincode,
+                    area: session.data.area || "Unknown",
+                    selectedDealer: session.data.selectedDealer || "Pending",
+                    color: session.data.color,
+                    fuel: session.data.fuel
+                }).save();
+                console.log(`🚀 LEAD CREATED for ${senderName} (${sender})`);
+            } catch (leadErr) {
+                console.error("❌ Failed to create Lead:", leadErr.message);
             }
         }
         await session.save();
@@ -91,24 +100,18 @@ export const handleWebhook = async (req, res) => {
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
-        // Pass specialized context to AI
         let contextString = `\n--- USER CONTEXT ---\n`;
-        if (pincode) contextString += `PINCODE PROVIDED: ${pincode}\n`;
-        if (dealerInfo) {
-            contextString += `AREA: ${dealerInfo.area}\nDEALER: ${dealerInfo.name}\nADDRESS: ${dealerInfo.address}\n`;
-        } else if (pincode) {
-            contextString += `NOTE: This pincode is valid, but no specific local branch mapping for now.\n`;
+        if (session.data.pincode) contextString += `PINCODE PROVIDED: ${session.data.pincode}\n`;
+        if (session.data.selectedDealer) {
+            contextString += `AREA: ${session.data.area}\nDEALER: ${session.data.selectedDealer}\n`;
         }
         contextString += `---\n`;
         
-        console.log(`[AI] Dispatching for ${sender}...`);
         const aiResponse = await getAIResponse(message, historyContextForAi + contextString, baseUrl, session);
-        
         await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
         
-        console.log(`[11za] Sending TEXT to ${sender}...`);
-        const sendRes = await sendMessage(sender, aiResponse);
-        console.log(`[11za] Send result:`, sendRes);
+        console.log(`[11za] Sending reply to ${sender}...`);
+        await sendMessage(sender, aiResponse);
 
         // 🎯 SMART IMAGE CAROUSEL/PREVIEW
         const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
@@ -119,7 +122,6 @@ export const handleWebhook = async (req, res) => {
             
             if (carDoc && (carDoc.images?.length > 0 || carDoc.imageUrl)) {
                 const img = carDoc.images?.[0] || carDoc.imageUrl;
-                console.log(`[11za] Sending IMAGE to ${sender}: ${img}`);
                 await sendImage(sender, img, `✨ The Stunning ${carDoc.name}`);
             }
         }
@@ -128,7 +130,6 @@ export const handleWebhook = async (req, res) => {
 
     } catch (err) {
         console.error("❌ WEBHOOK CRASH:", err.message);
-        console.error(err.stack);
         if (!res.headersSent) res.status(500).json({ status: "error", error: err.message });
     }
 };
