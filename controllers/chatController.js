@@ -8,7 +8,7 @@ import { connectDB } from "../config/db.js";
 import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
-    // 1. CRITICAL: Acknowledge 11za immediately to prevent timeout/crashes!
+    // 1. CRITICAL: Acknowledge 11za immediately to prevent timeout!
     if (!res.headersSent) res.status(200).send("OK");
 
     try {
@@ -220,7 +220,6 @@ export const verifyWebhook = (req, res) => {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
     if (mode && token === process.env.VERIFY_TOKEN) {
-        console.log("WEBHOOK_VERIFIED");
         return res.status(200).send(challenge);
     }
     res.status(200).send("Webhook active");
