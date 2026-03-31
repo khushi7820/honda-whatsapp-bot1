@@ -1,4 +1,4 @@
-import { sendMessage, sendInteractiveMessage, downloadMedia } from "../services/whatsappService.js";
+import { sendMessage, sendInteractiveMessage, sendImage, downloadMedia } from "../services/whatsappService.js";
 import { getAIResponse, transcribeAudio } from "../services/aiService.js";
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
@@ -67,6 +67,17 @@ export const handleWebhook = async (req, res) => {
         
         await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
         await sendMessage(sender, aiResponse);
+
+        // 🎯 SMART IMAGE CAROUSEL/PREVIEW
+        const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
+        if (carMatch) {
+            const carId = carMatch[1];
+            const carDoc = await Car.findOne({ name: { $regex: new RegExp(carId.replace(/-/g, ' '), 'i') } });
+            if (carDoc && carDoc.images && carDoc.images.length > 0) {
+                console.log(`[BOT] Sending image for ${carDoc.name}...`);
+                await sendImage(sender, carDoc.images[0], `✨ The Stunning ${carDoc.name}`);
+            }
+        }
 
         res.status(200).send("OK");
 

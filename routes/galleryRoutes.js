@@ -19,11 +19,15 @@ router.get("/:carName", async (req, res) => {
             return res.status(404).send(`Car details for "${req.params.carName}" are currently being updated. Please check back soon!`);
         }
 
-        const imagesHtml = car.images.map(img => `
+        const imagesHtml = car.images.map(img => {
+            // Use Google's Image Proxy to bypass CORS/Referrer issues
+            const proxiedUrl = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(img)}`;
+            return `
             <div class="card">
-                <img src="${img}" alt="${car.name}" referrerpolicy="no-referrer">
+                <img src="${proxiedUrl}" alt="${car.name}" referrerpolicy="no-referrer">
             </div>
-        `).join("");
+            `;
+        }).join("");
 
         const html = `
 <!DOCTYPE html>

@@ -32,6 +32,31 @@ export const sendMessage = async (to, text) => {
 };
 
 /**
+ * Send an image via 11za API.
+ */
+export const sendImage = async (to, imageUrl, caption = "") => {
+    try {
+        const cleanTo = to.split("@")[0].replace(/\D/g, "");
+        console.log(`[11za] Sending Image to ${cleanTo}: ${imageUrl}`);
+        
+        const response = await axios.post(API_URL, {
+            authToken: process.env.ZA_TOKEN,
+            sendto: cleanTo,
+            type: "image",
+            media: { url: imageUrl, caption: caption },
+            originWebsite: process.env.ZA_ORIGIN
+        }, { timeout: 10000 });
+
+        console.log("✅ 11za Image Success:", response.status, JSON.stringify(response.data));
+        return response.data;
+    } catch (error) {
+        console.error("❌ 11za Image Error:", error.response?.status, JSON.stringify(error.response?.data) || error.message);
+        // Fallback to text link if image fails
+        return sendMessage(to, `${caption}\nView Image: ${imageUrl}`);
+    }
+};
+
+/**
  * Send an interactive message (Buttons or Lists) via 11za API.
  */
 export const sendInteractiveMessage = async (to, interactive) => {
@@ -58,20 +83,24 @@ export const sendInteractiveMessage = async (to, interactive) => {
 };
 
 /**
- * Download media from 11za URL with proper headers (based on working supportbot pattern).
+ * Download media from 11za URL with proper headers.
  */
 export const downloadMedia = async (url) => {
     try {
-        const response = await axios.get(url, { 
+        const fullUrl = url.startsWith("http") ? url : `${process.env.ZA_ORIGIN}${url}`;
+        console.log(`[11za] Downloading media from: ${fullUrl}`);
+
+        const response = await axios.get(fullUrl, { 
             responseType: "arraybuffer",
             headers: {
                 "authToken": process.env.ZA_TOKEN,
-                "origin": process.env.ZA_ORIGIN || "https://autoai-xi.vercel.app"
+                "Accept": "*/*"
             }
         });
+        
         return Buffer.from(response.data);
     } catch (error) {
-        console.error("❌ 11za Media Download Error:", error.message);
+        console.error("❌ 11za Media Download Error:", error.response?.status, error.message);
         return null;
     }
 };
