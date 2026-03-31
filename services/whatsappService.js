@@ -62,7 +62,7 @@ export const sendInteractiveMessage = async (to, templateData) => {
             authToken: process.env.ZA_TOKEN,
             sendto: to,
             originWebsite: process.env.ZA_ORIGIN,
-            contentType: "template",
+            contentType: templateData.type || "template",
             ...templateData
         };
 

@@ -3,7 +3,8 @@ export const dealers = [
         city: "Mumbai", 
         locations: [
             { pincode: "400018", area: "Worli", name: "NBS International", address: "Dr. Annie Besant Road, Worli", phone: "022-24901111" },
-            { pincode: "400001", area: "Fort/Colaba", name: "NBS International", address: "Nariman Point, Mumbai", phone: "022-24901111" }
+            { pincode: "400001", area: "Fort/Colaba", name: "NBS International", address: "Nariman Point, Mumbai", phone: "022-24901111" },
+            { pincode: "400071", area: "Chembur", name: "Salasar Mahindra", address: "Chembur Naka, Mumbai", phone: "022-25221111" }
         ]
     },
     { 
@@ -11,6 +12,12 @@ export const dealers = [
         locations: [
             { pincode: "110001", area: "Connaught Place", name: "Koncept Mahindra", address: "Plot No. 1, Okhla PH-3", phone: "011-41612222" },
             { pincode: "110020", area: "Okhla", name: "Koncept Mahindra", address: "Okhla Industrial Estate, Phase III", phone: "011-41612222" }
+        ]
+    },
+    { 
+        city: "Jalgaon", 
+        locations: [
+            { pincode: "425001", area: "Jalgaon City", name: "Ganesh Mahindra", address: "Nasirabad Highway, Jalgaon", phone: "0257-2211111" }
         ]
     },
     { 
