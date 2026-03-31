@@ -101,12 +101,11 @@ export const handleWebhook = async (req, res) => {
                 locMsg = `📍 This pincode is for *${dealerInfo.area}*! We have a showroom there: *${dealerInfo.name}*.`;
             }
             
+            console.log(`[Flow] Pincode detected. Sending location and calendar. Stopping execution here.`);
             await sendMessage(sender, locMsg);
             await session.save();
-            
-            // Trigger Date Selection
             await sendInteractiveMessage(sender, templates.getDateList());
-            return res.status(200).send("OK");
+            return res.status(200).send("OK_STOPPED_AT_PINCODE");
         }
 
         // --- AI Response ---
