@@ -10,84 +10,44 @@ dotenv.config({ path: "./.env" });
 
 const cars = [
     {
-        name: "Mahindra Thar",
-        price: "11.35 - 17.60 Lakh",
+        name: "Honda City",
+        price: "11.82 - 16.35 Lakh",
+        type: "Sedan",
+        mileage: "17.8 - 27.1 kmpl",
+        fuelType: "Petrol & Hybrid",
+        colors: ["Obsidian Blue", "Radiant Red", "Platinum White", "Golden Brown"],
+        features: ["ADAS Level 2", "Sunroof", "Touchscreen"],
+        description: "The benchmark of sedans."
+    },
+    {
+        name: "Honda Elevate",
+        price: "11.69 - 16.51 Lakh",
         type: "SUV",
-        mileage: "15.2 kmpl",
-        fuelType: "Diesel & Petrol",
-        colors: ["Red Rage", "Galaxy Grey", "Napoli Black", "Everest White"],
-        features: ["4x4 Capability", "Touchscreen", "Soft/Hard Top"],
-        description: "The ultimate off-road icon."
+        mileage: "15.3 - 16.9 kmpl",
+        fuelType: "Petrol",
+        colors: ["Phoenix Orange", "Obsidian Blue", "Radiant Red", "Platinum White"],
+        features: ["High Ground Clearance", "ADAS", "Spacious Interior"],
+        description: "The bold new SUV."
     },
     {
-        name: "Mahindra XUV700",
-        price: "13.99 - 26.99 Lakh",
-        type: "SUV",
-        mileage: "16.5 kmpl",
-        fuelType: "Diesel & Petrol",
-        colors: ["Midnight Black", "Everest White", "Dazzling Silver", "Red Rage"],
-        features: ["ADAS Level 2", "Panoramic Sunroof", "360 Camera"],
-        description: "Sophistication meets performance."
+        name: "Honda Amaze",
+        price: "7.20 - 9.95 Lakh",
+        type: "Sedan",
+        mileage: "18.3 - 18.6 kmpl",
+        fuelType: "Petrol",
+        colors: ["Meteoroid Grey", "Radiant Red", "Platinum White", "Lunar Silver"],
+        features: ["CVT Option", "Spacious Trunk", "Modern Design"],
+        description: "The perfect family sedan."
     },
     {
-        name: "Mahindra Scorpio-N",
-        price: "13.85 - 24.54 Lakh",
-        type: "SUV",
-        mileage: "14.4 kmpl",
-        fuelType: "Diesel & Petrol",
-        colors: ["Deep Forest", "Napoli Black", "Grand Canyon", "Royal Gold"],
-        features: ["Rugged Design", "Sony 3D Sound", "Sunroof"],
-        description: "The Big Daddy of SUVs."
-    },
-    {
-        name: "Mahindra XUV 3XO",
-        price: "7.49 - 15.49 Lakh",
-        type: "SUV",
-        mileage: "18.89 - 21.2 kmpl",
-        fuelType: "Diesel & Petrol",
-        colors: ["Citrine Yellow", "Dune Beige", "Nebula Blue", "Stealth Black"],
-        features: ["Skyroof", "Level 2 ADAS", "Dual-zone Climate"],
-        description: "Everything you want and more."
-    },
-    {
-        name: "Mahindra Bolero Neo",
-        price: "9.90 - 12.15 Lakh",
-        type: "SUV",
-        mileage: "17.2 kmpl",
-        fuelType: "Diesel ONLY",
-        colors: ["Rocky Beige", "Highway Red", "Pearl White", "Diamond White"],
-        features: ["7-seater", "Touchscreen", "Micro Hybrid Tech"],
-        description: "Modern avatar of the legend."
-    },
-    {
-        name: "Mahindra Bolero",
-        price: "9.90 - 10.91 Lakh",
-        type: "SUV",
-        mileage: "16.0 kmpl",
-        fuelType: "Diesel ONLY",
-        colors: ["Lakeside Brown", "Mist Silver", "Diamond White"],
-        features: ["Rugged Build", "Spacious 7-seater", "Reliable Tech"],
-        description: "The legendary workhorse."
-    },
-    {
-        name: "Mahindra XUV400 EV",
-        price: "15.49 - 19.39 Lakh",
-        type: "Electric SUV",
-        mileage: "375-456 km range",
-        fuelType: "Electric (0 Emission)",
-        colors: ["Arctic Blue", "Infinity Blue", "Napoli Black", "Galaxy Grey"],
-        features: ["Fast Charging", "High Performance", "Eco Friendly"],
-        description: "The first all-electric Mahindra SUV."
-    },
-    {
-        name: "Mahindra Marazzo",
-        price: "14.39 - 16.80 Lakh",
-        type: "MPV",
-        mileage: "17.3 kmpl",
-        fuelType: "Diesel ONLY",
-        colors: ["Iceberg White", "Oceanic Silver", "Maroon", "Aqua Marine"],
-        features: ["Shark Design", "Spacious Cabin", "Rear AC Vents"],
-        description: "Comfortable family MPV."
+        name: "Honda Civic",
+        price: "17.94 - 22.35 Lakh",
+        type: "Sedan",
+        mileage: "16.5 - 26.8 kmpl",
+        fuelType: "Petrol & Diesel",
+        colors: ["Modern Steel", "Lunar Silver", "Radiant Red", "Platinum White"],
+        features: ["Sporty Design", "Premium Interior", "Dynamic Performance"],
+        description: "The iconic sporty sedan."
     }
 ];
 
@@ -96,7 +56,7 @@ const seedDB = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         await Car.deleteMany({});
         await Car.insertMany(cars);
-        console.log("Database seeded successfully with Mahindra cars! 🚗");
+        console.log("Database seeded successfully with Honda cars! 🚗");
         process.exit();
     } catch (error) {
         console.error("Error seeding database:", error);

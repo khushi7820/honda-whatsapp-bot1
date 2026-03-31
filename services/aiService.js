@@ -8,7 +8,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://autocal-xi.vercel.app") => {
+export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://honda-whatsapp-bot1.vercel.app") => {
   try {
     // Guard: Prevent sending null/empty messages to Groq
     if (!userMessage || typeof userMessage !== "string" || userMessage.trim().length === 0) {
@@ -27,13 +27,13 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     )).join("\n\n");
 
     const systemPrompt = `
-        You are a specialized Mahindra Advisor with PERFECT MEMORY.
+        You are a specialized Honda Advisor with PERFECT MEMORY.
         
         Inventory:
         ${carContext}
 
         Guidelines:
-        - **SIMPLE GREETINGS**: If the user just says "hey", "hi", "hello", "hello sir", respond with a simple, friendly greeting: "Hi! Welcome to Mahindra. How can I assist you with our SUVs today?" 
+        - **SIMPLE GREETINGS**: If the user just says "hey", "hi", "hello", "hello sir", respond with a simple, friendly greeting: "Hi! Welcome to Honda. How can I assist you with our cars today?" 
         - DO NOT mention previous cars or bookings in a simple greeting. Only use memory if they ask a question or for details.
         
         - **USER HISTORY (For Questions)**: If the user asks for details or has a specific query (e.g. "mileage?"), use history to see which car they were talking about.
@@ -41,7 +41,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         - **GENERAL LIST**: If the user asks for a list of available cars or "which cars do you have", DO NOT provide detailed features. Simply reply with a clean bulleted list of car names, and ask which one they want to explore.
         
         **PREMIUM RESPONSE FORMAT**:
-        *Mahindra [Car Name]*
+        *Honda [Car Name]*
         
         💰 Price Range: [Price from DB]
         

@@ -69,17 +69,14 @@ export const handleWebhook = async (req, res) => {
         const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment for test drive", "test drive request", "book", "book please", "booking"];
         
         const carsList = [
-            { keyword: "thar", name: "Thar" },
-            { keyword: "xuv700", name: "XUV700" },
-            { keyword: "xuv 700", name: "XUV700" },
-            { keyword: "scorpio-n", name: "Scorpio-N" },
-            { keyword: "scorpio n", name: "Scorpio-N" },
-            { keyword: "scorpio", name: "Scorpio-N" },
-            { keyword: "bolero neo", name: "Bolero Neo" },
-            { keyword: "bolero neo", name: "Bolero Neo" },
-            { keyword: "bolero classic", name: "Bolero" },
-            { keyword: "bolero", name: "Bolero" },
-            { keyword: "marazzo", name: "Marazzo" }
+            { keyword: "honda city", name: "Honda City" },
+            { keyword: "city", name: "Honda City" },
+            { keyword: "honda elevate", name: "Honda Elevate" },
+            { keyword: "elevate", name: "Honda Elevate" },
+            { keyword: "honda amaze", name: "Honda Amaze" },
+            { keyword: "amaze", name: "Honda Amaze" },
+            { keyword: "honda civic", name: "Honda Civic" },
+            { keyword: "civic", name: "Honda Civic" }
         ];
 
         if (bookingKeywords.some(k => lowerMsg.includes(k))) {
@@ -92,7 +89,7 @@ export const handleWebhook = async (req, res) => {
             }
 
             await session.save();
-            await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
+            await sendMessage(sender, "Great! To find the nearest Honda showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
             return res.status(200).send("OK");
         }
 
@@ -104,7 +101,7 @@ export const handleWebhook = async (req, res) => {
             if (replyId === "action_book_test_drive") {
                 session.state = "COLLECTING_PINCODE";
                 await session.save();
-                await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
+                await sendMessage(sender, "Great! To find the nearest Honda showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
                 return res.status(200).send("OK");
             }
 
@@ -162,7 +159,7 @@ export const handleWebhook = async (req, res) => {
                 const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
                 const dateMsg = session.data.date ? `\n📅 *Date*: ${session.data.date}` : "";
                 
-                await sendMessage(sender, `Perfect! 🎉 Here is your Summary:\n${carMsg}${colorMsg}${fuelMsg}${pinMsg}${dateMsg}\n⏰ *Time*: ${time}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nThank you for booking with us! 🙌 Is there anything else you'd like to know or check out? I'm here to help!\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
+                await sendMessage(sender, `Perfect! 🎉 Here is your Summary:\n${carMsg}${colorMsg}${fuelMsg}${pinMsg}${dateMsg}\n⏰ *Time*: ${time}\n\nA Honda representative from your nearest dealership will call you for final confirmation. 🏁\n\nThank you for booking with us! 🙌 Is there anything else you'd like to know? I'm here to help!\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
                 return res.status(200).send("OK");
             }
         }
