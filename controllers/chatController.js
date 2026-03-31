@@ -1,13 +1,15 @@
-import { sendMessage, sendInteractiveMessage } from "../services/whatsappService.js";
-import { getAIResponse } from "../services/aiService.js";
+import { sendMessage, sendInteractiveMessage, downloadMedia } from "../services/whatsappService.js";
+import { getAIResponse, transcribeAudio } from "../services/aiService.js";
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
 import Car from "../models/Car.js";
 import * as templates from "../utils/bookingTemplates.js";
 import { connectDB } from "../config/db.js";
+import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
     try {
+        console.log("📩 Webhook Received Payload:", JSON.stringify(req.body, null, 2));
         // --- Multi-format Extraction (Flat and Nested Support) ---
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
@@ -46,11 +48,31 @@ export const handleWebhook = async (req, res) => {
         }
 
         if (!message && !interactive) {
-            if (type === "audio") {
-                await sendMessage(sender, "I can't process audio messages yet. 😊");
-                return res.status(200).send("Audio handled");
+            // "11ZA Media Detection" (Based on successful pattern from support_bot)
+            const isMedia = req.body.content?.contentType === "media";
+            const mediaObj = req.body.content?.media || {};
+            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url;
+
+            if (isMedia || type === "audio" || type === "voice" || potentialUrl) {
+                console.log(`[11ZA MEDIA DETECTION] Triggered! URL: ${potentialUrl}`);
+                
+                if (potentialUrl && potentialUrl.startsWith("http")) {
+                    await sendMessage(sender, "Listening to your voice note... 🎧");
+                    
+                    const audioBuffer = await downloadMedia(potentialUrl);
+                    if (audioBuffer) {
+                        message = await transcribeAudio(audioBuffer);
+                        console.log(`[11ZA Transcribed]: ${message}`);
+                    }
+                }
+                
+                if (!message) {
+                    await sendMessage(sender, "I couldn't hear that clearly. Kripya dubaara voice note bhein! 😊");
+                    return res.status(200).send("Audio failed");
+                }
+            } else {
+                return res.status(200).send("No message mapping found");
             }
-            return res.status(200).send("No message mapping found");
         }
 
         // 1. Get/Create Session
@@ -69,14 +91,17 @@ export const handleWebhook = async (req, res) => {
         const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment for test drive", "test drive request", "book", "book please", "booking"];
         
         const carsList = [
-            { keyword: "honda city", name: "Honda City" },
-            { keyword: "city", name: "Honda City" },
-            { keyword: "honda elevate", name: "Honda Elevate" },
-            { keyword: "elevate", name: "Honda Elevate" },
-            { keyword: "honda amaze", name: "Honda Amaze" },
-            { keyword: "amaze", name: "Honda Amaze" },
-            { keyword: "honda civic", name: "Honda Civic" },
-            { keyword: "civic", name: "Honda Civic" }
+            { keyword: "thar", name: "Thar" },
+            { keyword: "xuv700", name: "XUV700" },
+            { keyword: "xuv 700", name: "XUV700" },
+            { keyword: "scorpio-n", name: "Scorpio-N" },
+            { keyword: "scorpio n", name: "Scorpio-N" },
+            { keyword: "scorpio", name: "Scorpio-N" },
+            { keyword: "bolero neo", name: "Bolero Neo" },
+            { keyword: "bolero neo", name: "Bolero Neo" },
+            { keyword: "bolero classic", name: "Bolero" },
+            { keyword: "bolero", name: "Bolero" },
+            { keyword: "marazzo", name: "Marazzo" }
         ];
 
         if (bookingKeywords.some(k => lowerMsg.includes(k))) {
@@ -89,7 +114,7 @@ export const handleWebhook = async (req, res) => {
             }
 
             await session.save();
-            await sendMessage(sender, "Great! To find the nearest Honda showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
+                await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
             return res.status(200).send("OK");
         }
 
@@ -101,7 +126,7 @@ export const handleWebhook = async (req, res) => {
             if (replyId === "action_book_test_drive") {
                 session.state = "COLLECTING_PINCODE";
                 await session.save();
-                await sendMessage(sender, "Great! To find the nearest Honda showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
+                    await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
                 return res.status(200).send("OK");
             }
 
@@ -159,7 +184,7 @@ export const handleWebhook = async (req, res) => {
                 const pinMsg = session.data.pincode ? `\n📍 *Pincode*: ${session.data.pincode}` : "";
                 const dateMsg = session.data.date ? `\n📅 *Date*: ${session.data.date}` : "";
                 
-                await sendMessage(sender, `Perfect! 🎉 Here is your Summary:\n${carMsg}${colorMsg}${fuelMsg}${pinMsg}${dateMsg}\n⏰ *Time*: ${time}\n\nA Honda representative from your nearest dealership will call you for final confirmation. 🏁\n\nThank you for booking with us! 🙌 Is there anything else you'd like to know? I'm here to help!\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
+                await sendMessage(sender, `Perfect! 🎉 Here is your Summary:\n${carMsg}${colorMsg}${fuelMsg}${pinMsg}${dateMsg}\n⏰ *Time*: ${time}\n\nA Mahindra representative from your nearest dealership will call you for final confirmation. 🏁\n\nThank you for booking with us! 🙌 Is there anything else you'd like to know or check out? I'm here to help!\n\nView our catalog anytime: ${baseUrl}/gallery/general`);
                 return res.status(200).send("OK");
             }
         }
@@ -197,9 +222,13 @@ export const handleWebhook = async (req, res) => {
                 session.state = "COLLECTING_DATE";
                 await session.save();
                 
+                // Dealer Search Logic inside Pincode Flow
+                const dealer = getDealerByPincode(pincode);
+                const dealerMsg = dealer ? `\n\n📌 *Nearest Showroom Found!*: \n🏠 *${dealer.name}* \n📍 ${dealer.address} \n📞 Call: ${dealer.phone}` : "";
+                
                 // Keep Calendar as clean short text since 11za rejects cta_url
                 const shortBaseUrl = baseUrl.replace(/^https?:\/\//, "");
-                await sendMessage(sender, `What day should I block for your test drive?\n\n📅 *Open Calendar*: ${shortBaseUrl}/booking/calendar`);
+                await sendMessage(sender, `What day should I block for your test drive?${dealerMsg}\n\n📅 *Open Calendar*: ${shortBaseUrl}/booking/calendar`);
                 await sendInteractiveMessage(sender, templates.getDateList());
                 return res.status(200).send("OK");
             } else {

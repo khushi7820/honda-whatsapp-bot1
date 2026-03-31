@@ -61,3 +61,23 @@ export const sendInteractiveMessage = async (to, interactive) => {
         return sendMessage(to, fallbackText);
     }
 };
+
+/**
+ * Download media from 11za URL with proper headers (based on working supportbot pattern).
+ */
+export const downloadMedia = async (url) => {
+    try {
+        const response = await axios.get(url, { 
+            responseType: "arraybuffer",
+            headers: {
+                "authToken": process.env.ZA_TOKEN,
+                "origin": process.env.ZA_ORIGIN || "https://autoai-xi.vercel.app"
+            }
+        });
+        return Buffer.from(response.data);
+    } catch (error) {
+        console.error("❌ 11za Media Download Error:", error.message);
+        return null;
+    }
+};
+
