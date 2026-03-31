@@ -12,13 +12,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-connectDB();
-
-app.get("/", (req, res) => {
-    res.send("Mahindra Bot is Live! 🚀");
+// Safer connection call
+connectDB().catch(err => {
+    console.error("❌ Immediate DB Connection Failed:", err.message);
 });
 
-// Syncing with Dashboard URL: /api/chat/webhook
+// Test route
+app.get("/", (req, res) => {
+    res.send("Mahindra Bot is Live! 🚀 (Status: Online)");
+});
+
 app.use("/api/chat", chatRoutes);
 app.use("/gallery", galleryRoutes);
 app.use("/booking", calendarRoutes);
