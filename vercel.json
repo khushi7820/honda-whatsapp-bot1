@@ -8,7 +8,19 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/api/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/gallery/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/booking/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/",
       "dest": "server.js"
     }
   ]
