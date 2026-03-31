@@ -9,26 +9,31 @@ import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
     try {
+        console.log("📩 RAW PAYLOAD:", JSON.stringify(req.body, null, 2));
+
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
-        const sender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id;
-
+        
+        // 1. IMPROVED SENDER EXTRACTION
+        const sender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id || req.body.UserResponse?.from;
         if (!sender) return res.status(200).send("OK");
         
-        const textRaw = req.body.content?.text || req.body.content?.body || (typeof req.body.content === 'string' ? req.body.content : "");
+        // 2. IMPROVED TEXT EXTRACTION
+        const textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || (typeof req.body.content === 'string' ? req.body.content : "");
         const lowerMsg = String(textRaw).toLowerCase().trim();
 
-        // 🏸 MASTER PING: Tests ONLY Connectivity
-        if (lowerMsg === "ping") {
-            await sendMessage(sender, "🏓 PONG! The bot is ALIVE and connected. 🚀");
+        console.log(`[11ZA] Msg from ${sender}: "${lowerMsg}"`);
+
+        // 🏸 MASTER PING & GREETING TEST
+        if (lowerMsg === "ping" || lowerMsg === "hey" || lowerMsg === "hi" || lowerMsg === "hello") {
+            console.log("[11ZA] Direct Reply Triggered!");
+            await sendMessage(sender, `Hey! I am ALIVE and connected. 🚀\n\nI received your message: "${textRaw}"`);
             return res.status(200).send("OK");
         }
 
         await connectDB();
         
-        console.log("📩 Webhook Payload From:", sender);
-
         const interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
         const type = msg.type || val.type || req.body.type || "text";
         
@@ -38,7 +43,7 @@ export const handleWebhook = async (req, res) => {
 
         let message = null;
 
-        // 1. Audio Processing
+        // --- Audio Processing ---
         if (isMedia || potentialUrl) {
             if (potentialUrl && potentialUrl.startsWith("http")) {
                 await sendMessage(sender, "Listening to your voice note... 🎧");
@@ -49,12 +54,10 @@ export const handleWebhook = async (req, res) => {
             }
         } else {
             message = textRaw;
-            if (typeof message === "object") message = message?.body || message?.text || "";
         }
 
         if (!message && !interactive && !isMedia) return res.status(200).send("OK");
 
-        // 2. Main Logic
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const host = req.headers.host;
         const baseUrl = `${protocol}://${host}`;
@@ -62,19 +65,9 @@ export const handleWebhook = async (req, res) => {
         let session = await Session.findOne({ sender });
         if (!session) session = await new Session({ sender, state: "IDLE", data: {} }).save();
 
-        const bookingKeywords = ["book test drive", "book drive", "test drive", "appointment", "booking"];
-        if (bookingKeywords.some(k => lowerMsg.includes(k))) {
-            const bookingData = session.data || {};
-            session.state = "COLLECTING_CAR";
-            await session.save();
-            await sendMessage(sender, "Which Mahindra model would you like to book? (e.g., Thar, XUV700)");
-            return res.status(200).send("OK");
-        }
-
-        // --- Fallback to AI ---
+        // --- AI Response Fallback ---
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
-        
         const aiResponse = await getAIResponse(message, historyContextForAi, baseUrl);
         
         await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
@@ -83,7 +76,7 @@ export const handleWebhook = async (req, res) => {
         res.status(200).send("OK");
 
     } catch (err) {
-        console.error("❌ Webhook Error:", err.message);
+        console.error("❌ Webhook Error:", err.stack);
         if (!res.headersSent) res.status(200).send("Error");
     }
 };
