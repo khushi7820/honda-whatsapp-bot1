@@ -26,15 +26,15 @@ export const handleWebhook = async (req, res) => {
         const interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
         const type = msg.type || val.type || req.body.type || "text";
         
-        // 2. PRIORITY: Audio/Media Tracking
         const isMedia = req.body.content?.contentType === "media" || type === "audio" || type === "voice";
         const mediaObj = req.body.content?.media || val.media || {};
         const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url;
 
         let message = null;
 
+        // 2. Audio Processing (Top Priority)
         if (isMedia || potentialUrl) {
-            console.log(`[11ZA] Media detected from ${sender}. URL: ${potentialUrl}`);
+            console.log(`[11ZA] Media detected. URL: ${potentialUrl}`);
             if (potentialUrl && potentialUrl.startsWith("http")) {
                 await sendMessage(sender, "Listening to your voice note... 🎧");
                 const audioBuffer = await downloadMedia(potentialUrl);
@@ -59,22 +59,22 @@ export const handleWebhook = async (req, res) => {
 
         if (!message && !interactive && !isMedia) return;
 
-        // 3. Main Session Logic
+        // 3. Main Session Management
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const host = req.headers.host;
         const baseUrl = `${protocol}://${host}`;
 
         let session = await Session.findOne({ sender });
-        if (!session) session = await new Session({ sender, state: "IDLE" }).save();
+        if (!session) session = await new Session({ sender, state: "IDLE", data: {} }).save();
 
         const lowerMsg = message?.toLowerCase() || "";
 
-        // --- Booking Keyword Intercept ---
-        const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment for test drive", "test drive request", "book", "book please", "booking"];
+        // --- Intelligent Booking Detection ---
+        const bookingKeywords = ["book test drive", "book drive", "test drive karni h", "test drive book", "appointment", "request drive", "book", "book please", "booking"];
         const carsList = [
             { keyword: "thar", name: "Thar" }, { keyword: "xuv700", name: "XUV700" }, { keyword: "scorpio-n", name: "Scorpio-N" },
             { keyword: "scorpio", name: "Scorpio-N" }, { keyword: "bolero neo", name: "Bolero Neo" }, { keyword: "bolero", name: "Bolero" },
-            { keyword: "marazzo", name: "Marazzo" }
+            { keyword: "marazzo", name: "Marazzo" }, { keyword: "xuv700", name: "XUV700" }, { keyword: "xuv 700", name: "XUV700" }
         ];
 
         if (bookingKeywords.some(k => lowerMsg.includes(k))) {
@@ -93,7 +93,7 @@ export const handleWebhook = async (req, res) => {
             if (!bookingData.carModel) {
                 session.state = "COLLECTING_CAR";
                 await session.save();
-                await sendMessage(sender, "Which Mahindra model would you like to book? (e.g., Thar, XUV700, Scorpio-N)");
+                await sendMessage(sender, "Which Mahindra model would you like to book for a test drive? (e.g., Thar, XUV700, Scorpio-N)");
                 return;
             }
 
@@ -163,13 +163,14 @@ export const handleWebhook = async (req, res) => {
                 return;
             }
 
-            if (replyId?.startsWith("slot_")) {
+            if (replyId?.startsWith("slot_") || replyId?.startsWith("time_")) {
                 session.state = "IDLE";
                 if (!session.data) session.data = {};
                 session.data.time = replyTitle;
                 await session.save();
-                const summary = `🚗 Car: ${session.data.carModel}\n🎨 Color: ${session.data.color}\n⛽ Fuel: ${session.data.fuel}\n📍 Pincode: ${session.data.pincode}\n📅 Date: ${session.data.date}\n⏰ Time: ${replyTitle}`;
-                await sendMessage(sender, `Perfect! 🎉 Summary:\n${summary}\n\nA representative will call you soon! 🏁`);
+
+                const summary = `Summary:\n🚗 Model: ${session.data.carModel}\n🎨 Color: ${session.data.color}\n⛽ Fuel: ${session.data.fuel}\n📍 Pincode: ${session.data.pincode}\n📅 Date: ${session.data.date}\n⏰ Time: ${replyTitle}`;
+                await sendMessage(sender, `Perfect! 🎉 Everything is set.\n\n${summary}\n\nA Mahindra representative will call you for confirmation! 🏁`);
                 return;
             }
         }
@@ -196,7 +197,7 @@ export const handleWebhook = async (req, res) => {
                 }
                 return;
             } else {
-                await sendMessage(sender, "Oops! Please enter a valid 6-digit pincode. 📍");
+                await sendMessage(sender, "Please enter a valid 6-digit Indian pincode. 📍");
                 return;
             }
         }
@@ -204,7 +205,6 @@ export const handleWebhook = async (req, res) => {
         // --- AI Response Fallback ---
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
-        
         const aiResponse = await getAIResponse(message, historyContextForAi, baseUrl);
         
         await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
