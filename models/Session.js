@@ -5,19 +5,16 @@ const SessionSchema = new mongoose.Schema({
     state: { type: String, default: "IDLE" }, 
     data: {
         pincode: String,
+        area: String,
+        selectedDealer: String,
         date: String,
-        time: String, // Consolidating slot/time to 'time'
+        time: String,
         carModel: String,
         color: String,
         fuel: String
-    },
-    lastUpdated: { type: Date, default: Date.now }
-});
-
-// Update lastUpdated on every save
-SessionSchema.pre('save', function(next) {
-    this.lastUpdated = Date.now();
-    next();
+    }
+}, { 
+    timestamps: true // This replaces the need for the manually-created pre-save hook
 });
 
 export default mongoose.model("Session", SessionSchema);
