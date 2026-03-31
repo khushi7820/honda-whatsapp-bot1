@@ -13,8 +13,7 @@ export const sendMessage = async (to, text) => {
         // Clear non-numeric chars from destination (e.g. "@s.whatsapp.net")
         const cleanTo = to.split("@")[0].replace(/\D/g, "");
         
-        console.log(`[11za] Sending Text to ${cleanTo}: "${text.slice(0, 50)}..."`);
-        console.log(`[11za] Debug Info - Origin: ${process.env.ZA_ORIGIN}, Token Length: ${process.env.ZA_TOKEN?.length || 0}`);
+        console.log(`[11za] Sending to ${cleanTo}. Token: ${String(process.env.ZA_TOKEN).slice(0, 4)}... (Len: ${String(process.env.ZA_TOKEN||"").length})`);
         
         const response = await axios.post(API_URL, {
             authToken: process.env.ZA_TOKEN,
@@ -22,16 +21,12 @@ export const sendMessage = async (to, text) => {
             text: text,
             originWebsite: process.env.ZA_ORIGIN,
             contentType: "text"
-        }, { timeout: 10000 }); // 10s timeout
+        }, { timeout: 10000 });
         
-        console.log("✅ 11za Success:", response.status, JSON.stringify(response.data));
+        console.log("✅ 11za Reply Status:", response.status, response.data);
         return response.data;
     } catch (error) {
-        console.error("❌ 11za Error Details:", {
-            status: error.response?.status,
-            data: error.response?.data,
-            message: error.message
-        });
+        console.error("❌ 11za ERROR:", error.response?.status, JSON.stringify(error.response?.data));
         throw error;
     }
 };
