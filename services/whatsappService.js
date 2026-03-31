@@ -3,82 +3,75 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+/**
+ * 11ZA API Configuration from stable test script.
+ */
 const API_URL = "https://api.11za.in/apis/sendMessage/sendMessages";
 
 /**
- * Send a plain text session message via 11za API.
+ * Send text message using 11za API format.
  */
 export const sendMessage = async (to, text) => {
     try {
-        // Clear non-numeric chars from destination (e.g. "@s.whatsapp.net")
-        const cleanTo = to.split("@")[0].replace(/\D/g, "");
-        
-        console.log(`[11za] Sending to ${cleanTo}. Token: ${String(process.env.ZA_TOKEN).slice(0, 4)}... (Len: ${String(process.env.ZA_TOKEN||"").length})`);
-        
-        const response = await axios.post(API_URL, {
+        const payload = {
             authToken: process.env.ZA_TOKEN,
-            sendto: cleanTo,
+            sendto: to,
             text: text,
             originWebsite: process.env.ZA_ORIGIN,
             contentType: "text"
-        }, { timeout: 10000 });
+        };
         
-        console.log("✅ 11za Reply Status:", response.status, response.data);
+        console.log(`[11za] Sending TEXT to ${to}...`);
+        const response = await axios.post(API_URL, payload);
         return response.data;
     } catch (error) {
-        console.error("❌ 11za ERROR:", error.response?.status, JSON.stringify(error.response?.data));
-        throw error;
+        console.error("❌ 11za API (Text) Error:", error.response?.status, error.response?.data || error.message);
+        return null;
     }
 };
 
 /**
- * Send an image via 11za API.
+ * Send image message using 11za API format.
  */
-export const sendImage = async (to, imageUrl, caption = "") => {
+export const sendImage = async (to, imageUrl, caption) => {
     try {
-        const cleanTo = to.split("@")[0].replace(/\D/g, "");
-        console.log(`[11za] Sending Image to ${cleanTo}: ${imageUrl}`);
-        
-        const response = await axios.post(API_URL, {
+        const payload = {
             authToken: process.env.ZA_TOKEN,
-            sendto: cleanTo,
-            type: "image",
-            media: { url: imageUrl, caption: caption },
-            originWebsite: process.env.ZA_ORIGIN
-        }, { timeout: 10000 });
+            sendto: to,
+            text: caption || "Image from Mahindra",
+            originWebsite: process.env.ZA_ORIGIN,
+            contentType: "image",
+            mediaUrl: imageUrl
+        };
 
-        console.log("✅ 11za Image Success:", response.status, JSON.stringify(response.data));
+        console.log(`[11za] Sending IMAGE to ${to}: ${imageUrl}`);
+        const response = await axios.post(API_URL, payload);
         return response.data;
     } catch (error) {
-        console.error("❌ 11za Image Error:", error.response?.status, JSON.stringify(error.response?.data) || error.message);
-        // Fallback to text link if image fails
-        return sendMessage(to, `${caption}\nView Image: ${imageUrl}`);
+        console.error("❌ 11za API (Image) Error:", error.response?.status, error.response?.data || error.message);
+        return null;
     }
 };
 
 /**
- * Send an interactive message (Buttons or Lists) via 11za API.
+ * Send interactive message using 11za API format (Template/Buttons).
  */
-export const sendInteractiveMessage = async (to, interactive) => {
+export const sendInteractiveMessage = async (to, templateData) => {
     try {
-        const cleanTo = to.split("@")[0].replace(/\D/g, "");
-        console.log(`[11za] Sending Interactive to ${cleanTo}...`);
-        
-        const response = await axios.post(API_URL, {
+        const payload = {
             authToken: process.env.ZA_TOKEN,
-            sendto: cleanTo,
-            type: "interactive",
-            interactive: interactive,
-            originWebsite: process.env.ZA_ORIGIN
-        }, { timeout: 10000 });
+            sendto: to,
+            originWebsite: process.env.ZA_ORIGIN,
+            contentType: "template",
+            ...templateData
+        };
 
-        console.log("✅ 11za Interactive Success:", response.status, JSON.stringify(response.data));
+        console.log(`[11za] Sending INTERACTIVE to ${to}...`);
+        const response = await axios.post(API_URL, payload);
         return response.data;
     } catch (error) {
-        console.error("❌ 11za Interactive Error:", error.response?.status, JSON.stringify(error.response?.data) || error.message);
-        // Fallback to text if interactive fails (already uses cleanTo inside sendMessage)
-        const fallbackText = interactive.body?.text || "Please choose an option from the menu.";
-        return sendMessage(to, fallbackText);
+        console.error("❌ 11za API (Interactive) Error:", error.response?.status, error.response?.data || error.message);
+        return null;
     }
 };
 
@@ -104,4 +97,3 @@ export const downloadMedia = async (url) => {
         return null;
     }
 };
-
