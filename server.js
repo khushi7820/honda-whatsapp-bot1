@@ -6,38 +6,31 @@ import chatRoutes from "./routes/chatRoutes.js";
 import galleryRoutes from "./routes/galleryRoutes.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 
-// Load env variables
 dotenv.config();
-
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Connect Database once
 connectDB();
 
 // Test route
 app.get("/", (req, res) => {
-    res.send("Server running 🚀");
+    res.send("Mahindra Bot is Live! 🚀");
 });
 
-// API Routes
-app.use("/api", chatRoutes);
+// IMPORTANT: Routing sync for 11za dashboard: /api/webhook/whatsapp
+app.use("/api", chatRoutes); // This mounts chatRoutes at /api
 app.use("/gallery", galleryRoutes);
 app.use("/booking", calendarRoutes);
 
-// Server start
 const PORT = process.env.PORT || 5000;
-
 const isVercel = process.env.VERCEL || process.env.NOW_REGION;
+
 if (!isVercel) {
     app.listen(PORT, () => {
         console.log(`🚀 Server locally active on port ${PORT}`);
-        console.log(`🔗 Webhook URL: http://localhost:${PORT}/api/chat/webhook`);
     });
 }
 
-
-export default app;
+export default app;
