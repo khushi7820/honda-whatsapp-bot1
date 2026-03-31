@@ -1,43 +1,14 @@
 /**
- * Interactive Message Templates for Mahindra Booking
+ * Text-based Interactive Menus for Mahindra Booking (Standard Compatibility)
  */
 
-export const getBookButton = () => ({
-    type: "button",
-    body: { text: "Test Drive: It's a quick 2-step, 1-minute process." },
-    action: {
-        buttons: [
-            { type: "reply", reply: { id: "action_book_test_drive", title: "Book Test Drive" } }
-        ]
-    }
-});
+export const getBookButton = () => {
+    return "🚀 *Ready to Book your Test Drive?*\n\nReplies with 'BOOK' to start the process!";
+};
 
-export const getCalendarCTA = (baseUrl) => ({
-    type: "cta_url",
-    body: { text: "For an exact time and date, please open our visual booking calendar 📅" },
-    action: {
-        name: "cta_url",
-        parameters: {
-            display_text: "Open Calendar",
-            url: `${baseUrl}/booking/calendar`
-        }
-    }
-});
-
-export const getGalleryCTA = (url) => ({
-    type: "cta_url",
-    body: { text: "Tap here to explore high-quality 360° photos and models! 📸" },
-    action: {
-        name: "cta_url",
-        parameters: {
-            display_text: "View Gallery",
-            url: url
-        }
-    }
-});
-
-export const getDateList = () => {
+export const getDateListText = () => {
     const dates = [];
+    let text = "🗓️ *Select a Date for your Test Drive*\n\nPlease reply with the *Number* (1-7):\n\n";
     for (let i = 0; i < 7; i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
@@ -46,84 +17,29 @@ export const getDateList = () => {
             day: 'numeric', 
             month: 'short' 
         }).format(d);
-        dates.push({
-            id: `date_${i}`,
-            title: label,
-            description: i === 0 ? "Today" : (i === 1 ? "Tomorrow" : "Upcoming slot")
-        });
+        const desc = i === 0 ? "(Today)" : (i === 1 ? "(Tomorrow)" : "");
+        text += `${i + 1}. *${label}* ${desc}\n`;
+        dates.push({ id: `date_${i}`, title: label });
     }
-
-    return {
-        type: "list",
-        header: { type: "text", text: "Test Drive Calendar" },
-        body: { text: "What day should I block for your test drive? 🗓️" },
-        footer: { text: "Mahindra Automobile" },
-        action: {
-            button: "Calendar",
-            sections: [
-                {
-                    title: "Next 7 Days",
-                    rows: dates
-                }
-            ]
-        }
-    };
+    return text;
 };
 
-export const getSlotList = (date) => ({
-    type: "list",
-    header: { type: "text", text: "Select a Time Slot" },
-    body: { text: `We have several slots available for ${date}. Which one works best for you?` },
-    footer: { text: "Mahindra Automobile" },
-    action: {
-        button: "Choose Slot",
-        sections: [
-            {
-                title: "Morning",
-                rows: [
-                    { id: "slot_10am", title: "10:00 AM", description: "Fresh Start" },
-                    { id: "slot_11am", title: "11:00 AM", description: "Mid Morning" }
-                ]
-            },
-            {
-                title: "Afternoon",
-                rows: [
-                    { id: "slot_02pm", title: "02:00 PM", description: "Lunch Break" },
-                    { id: "slot_04pm", title: "04:00 PM", description: "Evening Drive" }
-                ]
-            }
-        ]
-    }
-});
-
-export const getColorList = (carName, colors) => {
-    const rows = colors.slice(0, 10).map((c, i) => ({ id: `color_${i}`, title: c }));
-    return {
-        type: "list",
-        header: { type: "text", text: "Select Color" },
-        body: { text: `Please choose a color for your ${carName}:` },
-        footer: { text: "Mahindra Automobile" },
-        action: {
-            button: "View Colors",
-            sections: [{ title: "Available Colors", rows }]
-        }
-    };
+export const getSlotListText = (date) => {
+    return `🕒 *Select a Time Slot for ${date}*\n\nPlease reply with the *Number*:\n\n1. *10:00 AM* (Morning)\n2. *11:00 AM* (Morning)\n3. *02:00 PM* (Afternoon)\n4. *04:00 PM* (Evening)`;
 };
 
-export const getFuelList = (carName, fuelTypeStr) => {
+export const getColorListText = (carName, colors) => {
+    let text = `🎨 *Select Color for your ${carName}*\n\nPlease reply with the *Number*:\n\n`;
+    colors.slice(0, 8).forEach((c, i) => {
+        text += `${i + 1}. *${c}*\n`;
+    });
+    return text;
+};
+
+export const getFuelListText = (carName, fuelTypeStr) => {
     const isBoth = fuelTypeStr.toLowerCase().includes("petrol") && fuelTypeStr.toLowerCase().includes("diesel");
-    const rows = isBoth 
-        ? [{ id: "fuel_petrol", title: "Petrol" }, { id: "fuel_diesel", title: "Diesel" }]
-        : [{ id: "fuel_diesel", title: "Diesel ONLY" }];
-
-    return {
-        type: "list",
-        header: { type: "text", text: "Select Fuel Type" },
-        body: { text: `Please choose the fuel type for your ${carName}:` },
-        footer: { text: "Mahindra Automobile" },
-        action: {
-            button: "View Fuel Types",
-            sections: [{ title: "Available Fuel Types", rows }]
-        }
-    };
+    if (isBoth) {
+        return `⛽ *Select Fuel Type for ${carName}*\n\nPlease reply with the *Number*:\n\n1. *Petrol*\n2. *Diesel*`;
+    }
+    return `⛽ *Fuel Type*: ${fuelTypeStr} (Standard)`;
 };

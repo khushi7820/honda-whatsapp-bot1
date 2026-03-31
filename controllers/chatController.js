@@ -10,85 +10,74 @@ import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
     try {
-        console.log("📩 RAW PAYLOAD:", JSON.stringify(req.body, null, 2));
-
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
-        // 1. EXTRACT SENDER & NAME
         let rawSender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id || req.body.UserResponse?.from;
         if (!rawSender) return res.status(200).send("OK");
         
         const sender = String(rawSender).replace(/^\+/, '');
         const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "Unknown User";
-        console.log(`[11ZA] Processing message from: ${sender} (${senderName})`);
         
-        // 2. EXTRACT TEXT & INTERACTIVE DATA
         const textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || "";
         const lowerMsg = String(textRaw).toLowerCase().trim();
-        
-        const interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
-        const listId = interactive?.list_reply?.id;
-        const btnId = interactive?.button_reply?.id;
 
-        // 3. CONNECT DB
         await connectDB();
         
-        const type = msg.type || val.type || req.body.type || "text";
-        const isMedia = req.body.content?.contentType === "media" || type === "audio" || type === "voice";
-        const potentialUrl = req.body.content?.media?.url || val.media?.url || req.body.media_url;
-
-        let message = textRaw;
-        if (isMedia && potentialUrl) {
-            const audioBuffer = await downloadMedia(potentialUrl);
-            if (audioBuffer) message = await transcribeAudio(audioBuffer);
-        }
+        let session = await Session.findOne({ sender });
+        if (!session) session = await new Session({ sender, state: "IDLE", data: {} }).save();
 
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const host = req.headers.host;
         const baseUrl = `${protocol}://${host}`;
 
-        let session = await Session.findOne({ sender });
-        if (!session) session = await new Session({ sender, state: "IDLE", data: {} }).save();
-
-        // 🎯 INTERACTIVE RESPONSE HANDLING (Calendar/Slots/Etc)
-        if (listId) {
-            if (listId.startsWith("date_")) {
-                const dateLabel = interactive.list_reply.title;
-                session.data.date = dateLabel;
-                await session.save();
-                console.log(`[Booking] Date Selected: ${dateLabel}`);
-                await sendInteractiveMessage(sender, templates.getSlotList(dateLabel));
-                return res.status(200).send("OK");
-            }
-            if (listId.startsWith("slot_")) {
-                const slotLabel = interactive.list_reply.title;
-                session.data.time = slotLabel;
-                await session.save();
-                console.log(`[Booking] Slot Selected: ${slotLabel}`);
-                
-                // Confirm booking and create lead
-                const finalMsg = `✅ *Test Drive Scheduled!*\n\nVehicle: *${session.data.carModel}*\nDate: *${session.data.date}*\nTime: *${session.data.time}*\nLocation: *${session.data.area || session.data.pincode}*\n\nOur team from *${session.data.selectedDealer || 'Mahindra'}* will see you then!`;
-                await sendMessage(sender, finalMsg);
-                
-                await new Lead({
-                    sender,
-                    name: senderName,
-                    carModel: session.data.carModel,
-                    pincode: session.data.pincode,
-                    area: session.data.area,
-                    selectedDealer: session.data.selectedDealer,
-                    date: session.data.date,
-                    time: session.data.time
-                }).save();
-                
-                return res.status(200).send("OK");
-            }
+        // --- 1. STATE-BASED HANDLER (Handling Numbers 1, 2, 3...) ---
+        if (session.state === "AWAITING_DATE" && /^[1-7]$/.test(lowerMsg)) {
+            const index = parseInt(lowerMsg) - 1;
+            const d = new Date();
+            d.setDate(d.getDate() + index);
+            const dateStr = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(d);
+            
+            session.data.date = dateStr;
+            session.state = "AWAITING_SLOT";
+            await session.save();
+            
+            await sendMessage(sender, templates.getSlotListText(dateStr));
+            return res.status(200).send("OK_PROCESSED_DATE");
         }
 
-        // --- PINCODE EXTRACTION & INTERACTIVE CALENDAR TRIGGER ---
-        const pinMatch = String(message).match(/\b\d{6}\b/);
+        if (session.state === "AWAITING_SLOT" && /^[1-4]$/.test(lowerMsg)) {
+            const slots = ["10:00 AM", "11:00 AM", "02:00 PM", "04:00 PM"];
+            const slotStr = slots[parseInt(lowerMsg) - 1];
+            
+            session.data.time = slotStr;
+            session.state = "IDLE"; // Reset to IDLE after full booking
+            await session.save();
+            
+            const areaName = session.data.area || session.data.pincode;
+            const dealerName = session.data.selectedDealer || 'our team';
+            
+            const confirmMsg = `✅ *Booking Confirmed!*\n\n*Name*: ${senderName}\n*Phone*: ${sender}\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${session.data.date}\n*Time*: ${session.data.time}\n*Location*: ${areaName}\n\nAn executive from *${dealerName}* will contact you shortly!`;
+            await sendMessage(sender, confirmMsg);
+            
+            // Finalize Lead
+            await new Lead({
+                sender,
+                name: senderName,
+                carModel: session.data.carModel || "Unspecified",
+                pincode: session.data.pincode,
+                area: session.data.area,
+                selectedDealer: session.data.selectedDealer,
+                date: session.data.date,
+                time: session.data.time
+            }).save();
+            
+            return res.status(200).send("OK_BOOKING_FINALIZED");
+        }
+
+        // --- 2. PINCODE DETECTION (Triggers AWAITING_DATE) ---
+        const pinMatch = lowerMsg.match(/\b\d{6}\b/);
         if (pinMatch) {
             const pincode = pinMatch[0];
             session.data.pincode = pincode;
@@ -101,19 +90,21 @@ export const handleWebhook = async (req, res) => {
                 locMsg = `📍 This pincode is for *${dealerInfo.area}*! We have a showroom there: *${dealerInfo.name}*.`;
             }
             
-            console.log(`[Flow] Pincode detected. Sending location and calendar. Stopping execution here.`);
             await sendMessage(sender, locMsg);
+            session.state = "AWAITING_DATE";
             await session.save();
-            await sendInteractiveMessage(sender, templates.getDateList());
-            return res.status(200).send("OK_STOPPED_AT_PINCODE");
+            
+            // Send Text Calendar
+            await sendMessage(sender, templates.getDateListText());
+            return res.status(200).send("OK_STARTED_BOOKING_FLOW");
         }
 
-        // --- AI Response ---
+        // --- 3. AI RESPONSE (Fallback) ---
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
-        const aiResponse = await getAIResponse(message, historyContextForAi, baseUrl, session);
-        await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
+        const aiResponse = await getAIResponse(textRaw || lowerMsg, historyContextForAi, baseUrl, session);
+        await new Chat({ sender, content: textRaw || lowerMsg, reply: aiResponse, role: "user" }).save();
         
         await sendMessage(sender, aiResponse);
 
