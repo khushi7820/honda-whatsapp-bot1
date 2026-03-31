@@ -21,7 +21,15 @@
       "dest": "server.js"
     },
     {
-      "src": "/gallery/(.*)",
+      "src": "/api/webhook/whatsapp",
+      "dest": "server.js"
+    },
+    {
+      "src": "/health",
+      "dest": "server.js"
+    },
+    {
+      "src": "/gallery(.*)",
       "dest": "server.js"
     },
     {

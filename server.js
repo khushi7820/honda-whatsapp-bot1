@@ -32,8 +32,14 @@ app.get("/", (req, res) => {
     res.status(200).send("Mahindra Bot is Live! 🚀 Status: Online");
 });
 
-// Sync with Dashboard: /api/chat/webhook
+// Sync with Dashboard: /api/chat/webhook & /api/webhook/whatsapp
 app.use("/api/chat", chatRoutes);
+
+// Direct support for the second common URL pattern
+import { handleWebhook, verifyWebhook } from "./controllers/chatController.js";
+app.post("/api/webhook/whatsapp", handleWebhook);
+app.get("/api/webhook/whatsapp", verifyWebhook);
+
 app.use("/gallery", galleryRoutes);
 app.use("/booking", calendarRoutes);
 
