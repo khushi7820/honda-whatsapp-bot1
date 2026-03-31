@@ -9,16 +9,25 @@ import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
     try {
-        await connectDB();
-        
-        console.log("📩 Webhook Payload:", JSON.stringify(req.body, null, 2));
-
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
-        
         const sender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id;
+
         if (!sender) return res.status(200).send("OK");
+        
+        const textRaw = req.body.content?.text || req.body.content?.body || (typeof req.body.content === 'string' ? req.body.content : "");
+        const lowerMsg = String(textRaw).toLowerCase().trim();
+
+        // 🏸 MASTER PING: Tests ONLY Connectivity
+        if (lowerMsg === "ping") {
+            await sendMessage(sender, "🏓 PONG! The bot is ALIVE and connected. 🚀");
+            return res.status(200).send("OK");
+        }
+
+        await connectDB();
+        
+        console.log("📩 Webhook Payload From:", sender);
 
         const interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
         const type = msg.type || val.type || req.body.type || "text";
@@ -36,14 +45,10 @@ export const handleWebhook = async (req, res) => {
                 const audioBuffer = await downloadMedia(potentialUrl);
                 if (audioBuffer) {
                     message = await transcribeAudio(audioBuffer);
-                    if (!message) {
-                        await sendMessage(sender, "I couldn't hear that clearly. Can you try typing? 😊");
-                        return res.status(200).send("OK");
-                    }
                 }
             }
         } else {
-            message = req.body.content?.text || req.body.content?.body || (typeof req.body.content === 'string' ? req.body.content : null);
+            message = textRaw;
             if (typeof message === "object") message = message?.body || message?.text || "";
         }
 
@@ -57,9 +62,6 @@ export const handleWebhook = async (req, res) => {
         let session = await Session.findOne({ sender });
         if (!session) session = await new Session({ sender, state: "IDLE", data: {} }).save();
 
-        const lowerMsg = message?.toLowerCase() || "";
-
-        // --- Booking logic ---
         const bookingKeywords = ["book test drive", "book drive", "test drive", "appointment", "booking"];
         if (bookingKeywords.some(k => lowerMsg.includes(k))) {
             const bookingData = session.data || {};
@@ -78,7 +80,6 @@ export const handleWebhook = async (req, res) => {
         await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
         await sendMessage(sender, aiResponse);
 
-        // Final Ack
         res.status(200).send("OK");
 
     } catch (err) {
