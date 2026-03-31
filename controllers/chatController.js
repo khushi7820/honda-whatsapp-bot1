@@ -48,16 +48,18 @@ export const handleWebhook = async (req, res) => {
         }
 
         if (!message && !interactive) {
-            // "11ZA Media Detection" (Pattern matched with D:\11za_bot)
+            // "11ZA Media Detection" (Deep Inspection for 11za formats)
             const isMedia = req.body.content?.contentType === "media";
-            const mediaObj = req.body.content?.media || {};
-            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url;
+            const mediaObj = req.body.content?.media || val.media || {};
+            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url || val.media?.url;
+
+            console.log(`[DEBUG] Media Detection: isMedia=${isMedia}, type=${type}, potentialUrl=${potentialUrl ? "EXISTS" : "MISSING"}`);
 
             if (isMedia || type === "audio" || type === "voice" || potentialUrl) {
                 console.log(`[11ZA MEDIA DETECTION] Triggered! URL: ${potentialUrl}`);
                 
-                // CRITICAL: Send 200 OK immediately for audio to prevent timeout
-                res.status(200).send("OK");
+                // Send 200 OK immediately for 11za timeout window
+                if (!res.headersSent) res.status(200).send("OK");
 
                 if (potentialUrl && potentialUrl.startsWith("http")) {
                     await sendMessage(sender, "Listening to your voice note... 🎧");
@@ -65,22 +67,25 @@ export const handleWebhook = async (req, res) => {
                     const audioBuffer = await downloadMedia(potentialUrl);
                     if (audioBuffer) {
                         message = await transcribeAudio(audioBuffer);
-                        console.log(`[11ZA Transcribed]: ${message}`);
+                        console.log(`[11ZA Transcribed Success]: ${message}`);
                         
-                        // Continue to standard AI processing with transcribed message
-                        if (!message) return; // Exit if transcription failed
+                        if (!message) {
+                            return await sendMessage(sender, "I heard you, but couldn't understand the words. Can you try again or type? 😊");
+                        }
                     } else {
-                        return sendMessage(sender, "I couldn't download the audio. Please try again! 😊");
+                         console.error("[DEBUG] Audio download failed!");
+                         return await sendMessage(sender, "I couldn't download the audio. Please try again or type! 😊");
                     }
                 } else {
-                    return sendMessage(sender, "I couldn't process this voice note format. Please try typing! 😊");
+                    console.error("[DEBUG] No valid audio URL found in payload");
+                    return; // Fail silently if no URL
                 }
             } else {
-                return res.status(200).send("No message mapping found");
+                if (!res.headersSent) res.status(200).send("No message mapping found");
+                return;
             }
         } else {
-             // For text/interactive, we send 200 later or now
-             res.status(200).send("OK");
+             if (!res.headersSent) res.status(200).send("OK");
         }
 
         // 1. Get/Create Session
@@ -113,16 +118,47 @@ export const handleWebhook = async (req, res) => {
         ];
 
         if (bookingKeywords.some(k => lowerMsg.includes(k))) {
-            session.state = "COLLECTING_PINCODE";
+            const bookingData = session.data || {};
             
+            // 1. Identify Model
             const foundCar = carsList.find(c => lowerMsg.includes(c.keyword));
-            if (foundCar) {
-                if (!session.data) session.data = {};
-                session.data.carModel = foundCar.name;
+            if (foundCar) bookingData.carModel = foundCar.name;
+
+            // 2. Identify Color
+            const colors = ["black", "white", "red", "grey", "silver"];
+            for (const c of colors) if (lowerMsg.includes(c)) bookingData.color = c.charAt(0).toUpperCase() + c.slice(1);
+
+            // 3. Identify Fuel
+            const fuels = ["petrol", "diesel"];
+            for (const f of fuels) if (lowerMsg.includes(f)) bookingData.fuel = f.charAt(0).toUpperCase() + f.slice(1);
+
+            session.data = bookingData;
+            
+            // 4. Decision: What to ask next?
+            if (!bookingData.carModel) {
+                session.state = "COLLECTING_CAR";
+                await session.save();
+                await sendMessage(sender, "Which Mahindra model would you like to book for a test drive? (e.g., Thar, XUV700, Scorpio-N)");
+                return res.status(200).send("OK");
             }
 
+            if (!bookingData.color) {
+                session.state = "COLLECTING_COLOR";
+                await session.save();
+                // Send automated color list if car is known
+                const car = await Car.findOne({ name: bookingData.carModel });
+                if (car && templates.getColorList) {
+                    await sendInteractiveMessage(sender, templates.getColorList(car.name, car.colors));
+                } else {
+                    await sendMessage(sender, `Which color would you like for your ${bookingData.carModel}?`);
+                }
+                return res.status(200).send("OK");
+            }
+
+            // If we have Car and Color, go to Pincode (or Fuel)
+            session.state = "COLLECTING_PINCODE";
             await session.save();
-                await sendMessage(sender, "Great! To find the nearest Mahindra showroom and plan your test drive, please share your 6-digit pin code (e.g., 400069). 📍");
+            await sendMessage(sender, `Awesome choice! A ${bookingData.color} ${bookingData.carModel}. 🚀\n\nPlease share your 6-digit pin code to find the nearest showroom.`);
             return res.status(200).send("OK");
         }
 
@@ -202,11 +238,10 @@ export const handleWebhook = async (req, res) => {
             const pincode = message?.replace(/\D/g, "");
             // Valid Indian Pincode: 6 digits, doesn't start with 0
             if (pincode && /^[1-9][0-9]{5}$/.test(pincode)) {
-                session.state = "COLLECTING_DATE";
                 if (!session.data) session.data = {};
                 session.data.pincode = pincode;
                 
-                // Try to find if user talked about a specific car recently
+                // 1. SMART CHECK: If CarModel is missing, try history or ask
                 if (!session.data.carModel) {
                     const historyForCar = await Chat.findOne({ sender, content: /thar|xuv|scorpio|bolero|marazzo/i }).sort({ timestamp: -1 });
                     if (historyForCar) {
@@ -215,9 +250,16 @@ export const handleWebhook = async (req, res) => {
                         if(foundInHistory) session.data.carModel = foundInHistory.name;
                     }
                 }
-                
-                // Intercept and ask color if CarModel is known
-                if (session.data.carModel) {
+
+                if (!session.data.carModel) {
+                    session.state = "COLLECTING_CAR";
+                    await session.save();
+                    await sendMessage(sender, "Thank you! Which Mahindra model would you like to book for a test drive? 🏎️");
+                    return res.status(200).send("OK");
+                }
+
+                // 2. SMART CHECK: If Color is missing, ask
+                if (!session.data.color) {
                     const car = await Car.findOne({ name: { $regex: new RegExp(session.data.carModel, "i") } });
                     if (car && car.colors && car.colors.length > 0) {
                         session.state = "COLLECTING_COLOR";
@@ -227,16 +269,15 @@ export const handleWebhook = async (req, res) => {
                     }
                 }
 
+                // 3. Move to Date
                 session.state = "COLLECTING_DATE";
                 await session.save();
                 
-                // Dealer Search Logic inside Pincode Flow
                 const dealer = getDealerByPincode(pincode);
-                const dealerMsg = dealer ? `\n\n📌 *Nearest Showroom Found!*: \n🏠 *${dealer.name}* \n📍 ${dealer.address} \n📞 Call: ${dealer.phone}` : "";
+                const dealerMsg = dealer ? `\n\n📌 *Nearest Showroom Found!*: \n🏠 *${dealer.name}* \n📍 ${dealer.address}` : "";
                 
-                // Keep Calendar as clean short text since 11za rejects cta_url
                 const shortBaseUrl = baseUrl.replace(/^https?:\/\//, "");
-                await sendMessage(sender, `What day should I block for your test drive?${dealerMsg}\n\n📅 *Open Calendar*: ${shortBaseUrl}/booking/calendar`);
+                await sendMessage(sender, `Perfect! What day should I block for your test drive?${dealerMsg}\n\n📅 *Open Calendar*: ${shortBaseUrl}/booking/calendar`);
                 await sendInteractiveMessage(sender, templates.getDateList());
                 return res.status(200).send("OK");
             } else {
