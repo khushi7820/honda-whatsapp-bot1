@@ -14,6 +14,16 @@ process.on("uncaughtException", (err) => {
 dotenv.config();
 const app = express();
 
+(async () => {
+    try {
+        console.log("🛠️ Attempting DB Connection...");
+        await connectDB();
+        console.log("✅ DB Connected Successfully!");
+    } catch (err) {
+        console.error("❌ DB Connection Failed:", err.message);
+    }
+})();
+
 app.use(cors());
 app.use(express.json());
 
