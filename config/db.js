@@ -1,4 +1,16 @@
 import mongoose from "mongoose";
+import dns from "dns";
+
+// 🔥 SMART DNS FIX: Only apply locally to fix Atlas SRV issues. Skip on Vercel to prevent EPERM crashes.
+const isVercel = process.env.VERCEL || process.env.NOW_REGION;
+if (!isVercel) {
+    try {
+        dns.setServers(["8.8.8.8", "1.1.1.1"]);
+        console.log("🌐 Local Environment: DNS servers set to Google (8.8.8.8)");
+    } catch (e) {
+        console.warn("⚠️ DNS override not supported, skipping.");
+    }
+}
 
 let cached = global.mongoose;
 
@@ -7,12 +19,8 @@ if (!cached) {
 }
 
 export const connectDB = async () => {
-    // If we already have a ready connection, verify it's still alive
     if (cached.conn) {
-        if (mongoose.connection.readyState === 1) {
-            return cached.conn;
-        }
-        console.warn("⚠️ MongoDB connection stale. Reconnecting...");
+        if (mongoose.connection.readyState === 1) return cached.conn;
         cached.conn = null;
         cached.promise = null;
     }
@@ -20,21 +28,20 @@ export const connectDB = async () => {
     if (!cached.promise) {
         const uri = process.env.MONGO_URI;
         if (!uri) {
-            console.error("❌ CRITICAL: MONGO_URI is not defined in environment variables!");
+            console.error("❌ MONGO_URI missing!");
             return null;
         }
 
         cached.promise = mongoose.connect(uri, {
-            serverSelectionTimeoutMS: 20000, // Increased for serverless cold-starts
+            serverSelectionTimeoutMS: 30000,
             socketTimeoutMS: 45000,
             bufferCommands: false,
         }).then((m) => {
-            console.log("✅ MongoDB Connected (Vercel Ready)");
+            console.log(isVercel ? "✅ MongoDB Connected (Vercel)" : "✅ MongoDB Connected (Local)");
             return m;
         }).catch((err) => {
-            console.error("❌ MongoDB connection failed:", err.message);
+            console.error("❌ MongoDB Error:", err.message);
             cached.promise = null;
-            cached.conn = null;
             throw err;
         });
     }

@@ -8,7 +8,20 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://honda-whatsapp-bot1.vercel.app") => {
+export const transcribeAudio = async (buffer) => {
+  try {
+    const transcription = await groq.audio.transcriptions.create({
+      file: await Groq.toFile(buffer, "audio.ogg"),
+      model: "whisper-large-v3",
+    });
+    return transcription.text;
+  } catch (error) {
+    console.error("Transcription Error:", error.message);
+    return null;
+  }
+};
+
+export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://autoai-xi.vercel.app") => {
   try {
     // Guard: Prevent sending null/empty messages to Groq
     if (!userMessage || typeof userMessage !== "string" || userMessage.trim().length === 0) {
@@ -27,38 +40,43 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     )).join("\n\n");
 
     const systemPrompt = `
-        You are a specialized Honda Advisor with PERFECT MEMORY.
+        You are a specialized Mahindra Advisor with PERFECT MEMORY.
         
         Inventory:
         ${carContext}
 
         Guidelines:
-        - **SIMPLE GREETINGS**: If the user just says "hey", "hi", "hello", "hello sir", respond with a simple, friendly greeting: "Hi! Welcome to Honda. How can I assist you with our cars today?" 
-        - DO NOT mention previous cars or bookings in a simple greeting. Only use memory if they ask a question or for details.
+        - **SIMPLE GREETINGS**: Respond with: "Hi! Welcome to Mahindra. How can I assist you with our SUVs today?" 
         
-        - **USER HISTORY (For Questions)**: If the user asks for details or has a specific query (e.g. "mileage?"), use history to see which car they were talking about.
+        - **EMI CALCULATOR**: If the user asks for "EMI" or "monthly payment" for a car:
+          - Use a fixed 9.5% annual interest rate.
+          - Formula (estimate): (Principal + (Principal * 0.095 * Years)) / (Years * 12).
+          - Show monthly payment for 5 years and 7 years.
         
-        - **GENERAL LIST**: If the user asks for a list of available cars or "which cars do you have", DO NOT provide detailed features. Simply reply with a clean bulleted list of car names, and ask which one they want to explore.
+        - **COMPARISON**: If the user wants to compare two cars (e.g. "Thar vs Scorpio"):
+          - Create a simple point-by-point comparison (Price, Mileage, Fuel).
+          - Highlight which one is better for what purpose (e.g. Thar for Off-roading).
+
+        - **DEALER LOCATOR**: If people ask for showrooms, tell them: "Just provide your 6-digit pin code, and I'll find the nearest dealer for you! 📍"
+
+        - **GENERAL LIST**: Simply reply with a bulleted list of car names.
         
         **PREMIUM RESPONSE FORMAT**:
-        *Honda [Car Name]*
+        *Mahindra [Car Name]*
         
         💰 Price Range: [Price from DB]
-        
         🎨 Color Available: [Colors from DB]
-        
         ⛽ Fuel Type: [Fuel from DB]
-        
         📊 Mileage: [Mileage]
     
         📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[car-id]
 
-        **IMPORTANT**: At the end of every car recommendation or detail, ALWAYS end by asking: "Would you like a *hands-on drive* with the [Car Name]? 🚗"
+        **IMPORTANT**: Always end by asking: "Would you like a *hands-on drive* with the [Car Name]? 🚗"
 
         - **STRICT STYLE**:
-          - Only bold the *Car Name* (single asterisks).
+          - Only bold the *Car Name*.
           - No bold for labels like Price, Colors, etc.
-          - Use double line breaks between lines for maximum readability.
+          - Use double line breaks between lines.
         `;
 
     const messages = [
