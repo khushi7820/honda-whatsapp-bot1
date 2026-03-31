@@ -59,11 +59,29 @@ export const handleWebhook = async (req, res) => {
         let session = await Session.findOne({ sender });
         if (!session) session = await new Session({ sender, state: "IDLE", data: {} }).save();
 
+        // --- PINCODE EXTRACTION & SMART LOCALIZATION ---
+        const pinMatch = String(message).match(/\b\d{6}\b/);
+        let dealerInfo = null;
+        if (pinMatch) {
+            const pincode = pinMatch[0];
+            session.data.pincode = pincode;
+            dealerInfo = getDealerByPincode(pincode);
+            if (dealerInfo) {
+                session.data.selectedDealer = dealerInfo.name;
+                session.data.area = dealerInfo.area;
+                console.log(`📍 Found Local Dealer: ${dealerInfo.name} in ${dealerInfo.area}`);
+            }
+        }
+        await session.save();
+
         // --- AI Response ---
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
-        const aiResponse = await getAIResponse(message, historyContextForAi, baseUrl);
+        // Pass localized context to AI
+        const contextString = dealerInfo ? `\n--- LOCAL CONTEXT ---\nUSER PINCODE: ${pinMatch[0]}\nAREA: ${dealerInfo.area}\nDEALER: ${dealerInfo.name}\nADDRESS: ${dealerInfo.address}\n---` : "";
+        
+        const aiResponse = await getAIResponse(message, historyContextForAi + contextString, baseUrl, session);
         
         await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
         await sendMessage(sender, aiResponse);
@@ -73,9 +91,9 @@ export const handleWebhook = async (req, res) => {
         if (carMatch) {
             const carId = carMatch[1];
             const carDoc = await Car.findOne({ name: { $regex: new RegExp(carId.replace(/-/g, ' '), 'i') } });
-            if (carDoc && carDoc.images && carDoc.images.length > 0) {
-                console.log(`[BOT] Sending image for ${carDoc.name}...`);
-                await sendImage(sender, carDoc.images[0], `✨ The Stunning ${carDoc.name}`);
+            if (carDoc && (carDoc.images?.length > 0 || carDoc.imageUrl)) {
+                const img = carDoc.images?.[0] || carDoc.imageUrl;
+                await sendImage(sender, img, `✨ The Stunning ${carDoc.name}`);
             }
         }
 

@@ -21,8 +21,20 @@ export const transcribeAudio = async (buffer) => {
   }
 };
 
-export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://autoai-xi.vercel.app") => {
+export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://autoai-xi.vercel.app", sessionData = {}) => {
   try {
+    // Construct User Profile Context from session
+    const userProfile = sessionData ? `
+        User Status: ${sessionData.state || "NEW"}
+        Previous/Current Booking Details:
+        - Car: ${sessionData.carModel || "None Selected"}
+        - Date: ${sessionData.date || "None Selected"}
+        - Time Slot: ${sessionData.time || "None Selected"}
+        - Color: ${sessionData.color || "None Selected"}
+        - Fuel Type: ${sessionData.fuel || "None Selected"}
+        - Pincode: ${sessionData.pincode || "None Selected"}
+    ` : "User is new.";
+
     // Guard: Prevent sending null/empty messages to Groq
     if (!userMessage || typeof userMessage !== "string" || userMessage.trim().length === 0) {
       console.warn("[AI] Skipping Groq call — userMessage is empty/null:", userMessage);
@@ -45,8 +57,18 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         Inventory:
         ${carContext}
 
+        Context:
+        ${userProfile}
+
         Guidelines:
-        - **SIMPLE GREETINGS**: Respond with: "Hi! Welcome to Mahindra. How can I assist you with our SUVs today?" 
+        - **MEMORY**: If the "User Profile Context" shows a Car and Date already selected, DON'T ask for them again. Congratulate them on their choice or help with further questions.
+        
+        - **LOCALIZED SERVICE**: If "LOCAL CONTEXT" is provided in the message history:
+          - Greet the user by their neighborhood (e.g. "I see you're in Vesu! 📍").
+          - Explicitly mention the **Dealer Name** and **Address** when discussing bookings or visits.
+          - Make the user feel like you are a local expert.
+
+        - **SIMPLE GREETINGS**: If the user is just saying hello, respond with: "Hi! Welcome to Mahindra. How can I assist you with our SUVs today?" 
         
         - **EMI CALCULATOR**: If the user asks for "EMI" or "monthly payment" for a car:
           - Use a fixed 9.5% annual interest rate.
