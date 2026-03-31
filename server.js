@@ -43,13 +43,19 @@ app.get("/api/webhook/whatsapp", verifyWebhook);
 app.use("/gallery", galleryRoutes);
 app.use("/booking", calendarRoutes);
 
-// Health check with debug info
+// Health check with debug info for Vercel
 app.get("/health", async (req, res) => {
     try {
         await connectDB();
-        res.status(200).json({ status: "OK", db: "Connected", env: process.env.VERCEL ? "Production" : "Local" });
+        res.status(200).json({ 
+            status: "OK", 
+            db: "Connected", 
+            env: process.env.VERCEL ? "Production" : "Local",
+            version: "1.0.5",
+            timestamp: new Date().toISOString()
+        });
     } catch (err) {
-        res.status(500).json({ status: "Error", message: err.message, stack: err.stack });
+        res.status(500).json({ status: "Error", message: err.message });
     }
 });
 

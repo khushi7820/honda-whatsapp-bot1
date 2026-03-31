@@ -59,7 +59,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         
         2. **IF PINCODE PROVIDED**:
            - If a pincode is in the context or message, acknowledge the location (e.g. "Great! Since you're near ${sessionData.area || 'your location'}...").
-           - Confirm that an executive from ${sessionData.selectedDealer || 'our team'} will call to finalize the date/time.
+           - Let the user know they can now select their preferred date and time from the menu.
 
         3. **CAR INFO**: 
            - When showing car details, use this EXACT COMPACT format:
