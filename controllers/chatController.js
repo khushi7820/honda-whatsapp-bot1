@@ -22,47 +22,42 @@ export const handleWebhook = async (req, res) => {
         const sender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id;
         if (!sender) return;
 
-        let type = msg.type || val.type || req.body.type || "text";
-        let message = 
-            req.body.content?.text || 
-            req.body.content?.body ||
-            req.body.content || 
-            null;
-
-        if (typeof message === "object") message = message?.body || message?.text || message?.content || null;
-
         const interactive = msg.interactive || val.interactive || req.body.interactive || req.body.UserResponse;
+        
+        const type = msg.type || val.type || req.body.type || "text";
+        
+        // 2. PRIORITY: Audio/Media Tracking (Must be before message extraction)
+        const isMedia = req.body.content?.contentType === "media" || type === "audio" || type === "voice";
+        const mediaObj = req.body.content?.media || val.media || {};
+        const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url;
 
-        // 2. Audio/Media Tracking
-        if (!message && !interactive) {
-            const isMedia = req.body.content?.contentType === "media";
-            const mediaObj = req.body.content?.media || {};
-            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url;
-
-            if (isMedia || type === "audio" || type === "voice" || potentialUrl) {
-                console.log(`[11ZA] Processing Audio from ${sender}...`);
+        if (isMedia || potentialUrl) {
+            console.log(`[11ZA] Media detected from ${sender}. URL: ${potentialUrl}`);
+            
+            if (potentialUrl && potentialUrl.startsWith("http")) {
+                await sendMessage(sender, "Listening to your voice note... 🎧");
                 
-                if (potentialUrl && potentialUrl.startsWith("http")) {
-                    await sendMessage(sender, "Listening to your voice note... 🎧");
+                const audioBuffer = await downloadMedia(potentialUrl);
+                if (audioBuffer) {
+                    message = await transcribeAudio(audioBuffer);
+                    console.log(`[11ZA] Transcribed: "${message}"`);
                     
-                    const audioBuffer = await downloadMedia(potentialUrl);
-                    if (audioBuffer) {
-                        message = await transcribeAudio(audioBuffer);
-                        console.log(`[11ZA] Transcribed: "${message}"`);
-                        
-                        if (!message) {
-                            return await sendMessage(sender, "I couldn't hear that clearly. Can you try typing? 😊");
-                        }
-                    } else {
-                        return await sendMessage(sender, "Failed to download audio. Please try again! 😊");
+                    if (!message) {
+                        return await sendMessage(sender, "I couldn't hear that clearly. Can you try typing? 😊");
                     }
                 } else {
-                    return;
+                    return await sendMessage(sender, "Failed to download audio. Please try again! 😊");
                 }
             } else {
-                return;
+                return; // End if no URL
             }
+        } else {
+            // Only extract text if NOT media
+            message = req.body.content?.text || req.body.content?.body || (typeof req.body.content === 'string' ? req.body.content : null);
+            if (typeof message === "object") message = message?.body || message?.text || null;
         }
+
+        if (!message && !interactive && !isMedia) return;
 
         // 1. Get/Create Session
         const protocol = req.headers['x-forwarded-proto'] || 'https';
