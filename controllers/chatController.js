@@ -40,16 +40,21 @@ export const handleWebhook = async (req, res) => {
         // --- Audio Processing ---
         if (isMedia || potentialUrl) {
             if (potentialUrl && potentialUrl.startsWith("http")) {
+                console.log(`[Audio] Processing media from: ${potentialUrl}`);
                 const audioBuffer = await downloadMedia(potentialUrl);
                 if (audioBuffer) {
                     message = await transcribeAudio(audioBuffer);
+                    console.log(`[Audio] Transcription: "${message}"`);
                 }
             }
         } else {
             message = textRaw;
         }
 
-        if (!message && !interactive && !isMedia) return res.status(200).send("OK");
+        if (!message && !interactive && !isMedia) {
+            console.warn("[Webhook] No message content found.");
+            return res.status(200).send("OK");
+        }
 
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const host = req.headers.host;
@@ -71,7 +76,7 @@ export const handleWebhook = async (req, res) => {
                 session.data.area = dealerInfo.area;
                 console.log(`📍 Found Local Dealer: ${dealerInfo.name} in ${dealerInfo.area}`);
             } else {
-                console.log(`📍 Registered Pincode: ${pincode} (No specific local mapping found)`);
+                console.log(`📍 Registered Pincode: ${pincode} (No local mapping found)`);
             }
         }
         await session.save();
@@ -86,25 +91,30 @@ export const handleWebhook = async (req, res) => {
         if (dealerInfo) {
             contextString += `AREA: ${dealerInfo.area}\nDEALER: ${dealerInfo.name}\nADDRESS: ${dealerInfo.address}\n`;
         } else if (pincode) {
-            contextString += `NOTE: This pincode is valid, but we don't have a specific branch in our quick-lookup for this area yet.\n`;
+            contextString += `NOTE: This pincode is valid, but no specific local branch mapping for now.\n`;
         }
         contextString += `---\n`;
         
+        console.log(`[AI] Dispatching request for ${sender}...`);
         const aiResponse = await getAIResponse(message, historyContextForAi + contextString, baseUrl, session);
+        console.log(`[AI] Response ready.`);
         
         await new Chat({ sender, content: message, reply: aiResponse, role: "user" }).save();
+        
+        console.log(`[11za] Sending reply to ${sender}...`);
         await sendMessage(sender, aiResponse);
+        console.log(`[11za] Reply sent.`);
 
         // 🎯 SMART IMAGE CAROUSEL/PREVIEW
         const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
         if (carMatch) {
             const carId = carMatch[1];
-            // Better regex: match 'Scorpio-N' correctly even if URL is 'scorpio-n'
             const flexibleSearch = carId.replace(/-/g, '[\\s-]'); 
             const carDoc = await Car.findOne({ name: { $regex: new RegExp(flexibleSearch, 'i') } });
             
             if (carDoc && (carDoc.images?.length > 0 || carDoc.imageUrl)) {
                 const img = carDoc.images?.[0] || carDoc.imageUrl;
+                console.log(`[11za] Sending image preview for ${carId}...`);
                 await sendImage(sender, img, `✨ The Stunning ${carDoc.name}`);
             }
         }
@@ -112,8 +122,9 @@ export const handleWebhook = async (req, res) => {
         res.status(200).send("OK");
 
     } catch (err) {
-        console.error("❌ Webhook Error:", err.stack);
-        if (!res.headersSent) res.status(200).send("Error");
+        console.error("❌ CRITICAL WEBHOOK ERROR:", err.message);
+        console.error(err.stack);
+        if (!res.headersSent) res.status(500).json({ status: "error", error: err.message });
     }
 };
 
