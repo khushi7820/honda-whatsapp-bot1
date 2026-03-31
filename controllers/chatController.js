@@ -48,14 +48,17 @@ export const handleWebhook = async (req, res) => {
         }
 
         if (!message && !interactive) {
-            // "11ZA Media Detection" (Based on successful pattern from support_bot)
+            // "11ZA Media Detection" (Pattern matched with D:\11za_bot)
             const isMedia = req.body.content?.contentType === "media";
             const mediaObj = req.body.content?.media || {};
-            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url;
+            const potentialUrl = mediaObj.url || mediaObj.link || req.body.media_url || val.media_url;
 
             if (isMedia || type === "audio" || type === "voice" || potentialUrl) {
                 console.log(`[11ZA MEDIA DETECTION] Triggered! URL: ${potentialUrl}`);
                 
+                // CRITICAL: Send 200 OK immediately for audio to prevent timeout
+                res.status(200).send("OK");
+
                 if (potentialUrl && potentialUrl.startsWith("http")) {
                     await sendMessage(sender, "Listening to your voice note... 🎧");
                     
@@ -63,16 +66,21 @@ export const handleWebhook = async (req, res) => {
                     if (audioBuffer) {
                         message = await transcribeAudio(audioBuffer);
                         console.log(`[11ZA Transcribed]: ${message}`);
+                        
+                        // Continue to standard AI processing with transcribed message
+                        if (!message) return; // Exit if transcription failed
+                    } else {
+                        return sendMessage(sender, "I couldn't download the audio. Please try again! 😊");
                     }
-                }
-                
-                if (!message) {
-                    await sendMessage(sender, "I couldn't hear that clearly. Kripya dubaara voice note bhein! 😊");
-                    return res.status(200).send("Audio failed");
+                } else {
+                    return sendMessage(sender, "I couldn't process this voice note format. Please try typing! 😊");
                 }
             } else {
                 return res.status(200).send("No message mapping found");
             }
+        } else {
+             // For text/interactive, we send 200 later or now
+             res.status(200).send("OK");
         }
 
         // 1. Get/Create Session
