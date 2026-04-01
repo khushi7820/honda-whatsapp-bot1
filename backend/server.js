@@ -64,7 +64,7 @@ app.get("/health", async (req, res) => {
             status: "OK", 
             db: "Connected", 
             env: process.env.VERCEL ? "Production" : "Local",
-            version: "1.0.7",
+            version: "1.0.8",
             timestamp: new Date().toISOString()
         });
     } catch (err) {
