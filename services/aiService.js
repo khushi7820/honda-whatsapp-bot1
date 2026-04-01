@@ -55,9 +55,9 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
            🎨 Colors: [Colors]
            ⛽ Fuel: [Fuel]
            📊 Mileage: [Mileage]
-           📸 Virtual Showroom: ${baseUrl.replace(/^https?:\/\//, "")}/gallery
-           
-        4. **CATALOG REDIRECT**: For list of models, provide the Official Catalog: ${baseUrl.replace(/^https?:\/\//, "")}/gallery
+           (Note: Do not provide any photo links here).
+        
+        4. **CATALOG**: If the user specifically asks for the 'catalog' or 'showroom', then only provide: ${baseUrl.replace(/^https?:\/\//, "")}/gallery
         
         5. **BOOKING FLOW**:
            - Once the user is interested, ask for their 6-digit Pincode and provide personal booking link.
