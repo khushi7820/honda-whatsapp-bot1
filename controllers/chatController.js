@@ -144,7 +144,11 @@ export const handleWebhook = async (req, res) => {
             const carDoc = await Car.findOne({ name: { $regex: new RegExp(carIdMatch.replace(/-/g, '[\\s-]'), 'i') } });
             if (carDoc) {
                 session.data.carModel = carDoc.name; await session.save();
-                await sendImage(sender, carDoc.images?.[0] || carDoc.imageUrl, `✨ Premium ${carDoc.name}`);
+                
+                const imgSource = carDoc.images?.[0] || carDoc.imageUrl;
+                const finalImgUrl = imgSource.startsWith("/") ? `${baseUrl}${imgSource}` : imgSource;
+                
+                await sendImage(sender, finalImgUrl, `✨ Premium ${carDoc.name}`);
             }
         }
         res.status(200).send("OK");

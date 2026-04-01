@@ -26,6 +26,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/images', express.static('public/images')); // Enable self-hosted images
 
 // Main Entry Point
 app.get("/", (req, res) => {
