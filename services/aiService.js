@@ -49,23 +49,21 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         2. **STRICT LANGUAGE MIRRORING**: 
            - Respond in the EXACT SAME LANGUAGE and SCRIPT as the CURRENT user message. 
            - **IF** the user message is in English -> Reply ONLY in English.
-           - **IF** the user message is in Hinglish -> Reply ONLY in Hinglish.
-           - **IGNORE** the 'Detected Language' from session data if the user has switched languages now.
+           - **IF** the user message is in Latin-script Hinglish -> Reply ONLY in Latin-script Hinglish.
+           - **IF** user switches language, IGNORE previous session script and MATCH the new one.
         
         3. **NO DEVANAGARI FOR ENGLISH/HINGLISH**: NEVER use Pure Hindi (Devanagari) script for English or Hinglish users.
         
-        3. **HYPER-DIRECT ANSWERS (STRICT)**: 
-           - Respond **ONLY** to what the user asked. 
+        4. **HYPER-DIRECT ANSWERS (STRICT)**: 
+           - Respond **ONLY** to what the user asked. No extra junk!
            - **IF** user asks for Price -> Give ONLY Price.
            - **IF** user asks for Features -> Give ONLY Features.
-           - DO NOT provide the full spec list (Mileage, Fuel, colors) unless the user asks for "Full Details" or "Everything".
-           - **NO REPEATED GREETINGS**: Do not say "Welcome to Mahindra" more than once.
+           - DO NOT provide the full spec list unless the user asks for "Full Details".
+           - **NO REPEATED GREETINGS**: Do not say "Welcome to Mahindra" more than once per conversation.
         
-        4. **NO CHAT LINKS**: **STRICTLY PROHIBITED** to provide image links in the chat.
+        5. **NO CHAT LINKS**: **STRICTLY PROHIBITED** to provide image links in the chat.
         
-        5. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if the user explicitly asks for "Catalog", "Showroom", or a complete "List".
-
-        6. **LANGUAGE TAG**: Always start with '[LANG:gu]', '[LANG:hi]', or '[LANG:en]'.
+        6. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if the user explicitly asks for "Catalog", "Showroom", or a complete "List".
         `;
 
     const messages = [
@@ -76,7 +74,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     const completion = await groq.chat.completions.create({
       messages,
       model: "llama-3.3-70b-versatile",
-      temperature: 0.3, // Lower temperature for extreme rule following
+      temperature: 0.3, 
     });
 
     return completion.choices[0]?.message?.content;
