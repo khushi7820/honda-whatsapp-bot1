@@ -11,21 +11,19 @@ import axios from "axios";
 
 export const handleWebhook = async (req, res) => {
     try {
-        console.log("📩 [DEBUG] WEBHOOK PAYLOAD RECEIVED:", JSON.stringify(req.body, null, 2));
+        console.log("📩 WEBHOOK RECEIVED...");
 
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
         let rawSender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id || req.body.UserResponse?.from || req.body.whatsapp?.senderNumber;
-
         if (!rawSender) return res.status(200).send("OK");
         
         const sender = String(rawSender).replace(/^\+/, '');
         const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "User";
         
         let textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || "";
-        
         const mediaUrl = req.body.media_url || req.body.content?.media?.url || val.media?.url || msg.audio?.link || msg.voice?.link;
         const type = req.body.content?.contentType || msg.type || val.type || (req.body.media_url ? "audio" : "text");
         const isAudio = (type === "audio" || type === "voice" || (mediaUrl && mediaUrl.includes(".ogg")));
@@ -39,99 +37,97 @@ export const handleWebhook = async (req, res) => {
         const host = req.headers.host;
         const baseUrl = `${protocol}://${host}`;
 
-        // --- 🎥 AUDIO PROCESSING ---
+        // Language Context Helper
+        const talkInLanguage = async (englishText) => {
+            if (!session.data.language || session.data.language === "english" || session.data.language === "en") return englishText;
+            const translationAi = await getAIResponse(`Translate this to ${session.data.language}: ${englishText}`, "", baseUrl, session);
+            return translationAi.replace(/\[LANG:.*?\]/g, "").trim();
+        };
+
+        // --- 🎥 AUDIO ---
         if (isAudio && mediaUrl) {
-            try {
-                const audioBuffer = await downloadMedia(mediaUrl);
-                if (audioBuffer && audioBuffer.length > 0) {
-                    const transcribed = await transcribeAudio(audioBuffer);
-                    if (transcribed) textRaw = transcribed;
-                }
-            } catch (aErr) { console.error("[Audio Error]", aErr.message); }
+            const buffer = await downloadMedia(mediaUrl);
+            if (buffer) {
+                const transcribed = await transcribeAudio(buffer);
+                if (transcribed) textRaw = transcribed;
+            }
         }
 
         const lowerMsg = String(textRaw).toLowerCase().trim();
 
-        // --- 🎯 0. GREETING HANDLER ---
+        // --- 🎯 0. GREETINGS ---
         const greetings = ["hi", "hello", "hey", "hyy", "hy", "hii", "heyy"];
         if (greetings.includes(lowerMsg)) {
-            session.state = "IDLE";
-            session.data = {};
-            await session.save();
+            session.state = "IDLE"; session.data = {}; await session.save();
             await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?");
-            return res.status(200).send("GREETED");
+            return res.status(200).send("OK");
         }
 
         // --- 🎯 WEB CALENDAR RETURN ---
         if (textRaw.startsWith("CONFIRM_BOOKING:")) {
             const parts = textRaw.split(":")[1].split("|");
-            const dateStr = parts[0];
-            const timeStr = parts[1];
-            
-            session.data.date = dateStr;
-            session.data.time = timeStr;
+            const dateStr = parts[0]; const timeStr = parts[1];
+            session.data.date = dateStr; session.data.time = timeStr;
             const areaName = session.data.area || session.data.pincode;
             const dealerName = session.data.selectedDealer || 'Mahindra Dealer';
             
-            await sendMessage(sender, `✅ *Test Drive Confirmed!*\n\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${dateStr}\n*Time*: ${timeStr}\n*Location*: ${areaName}\n\nOur team from *${dealerName}* will call you shortly to confirm! 🏎️💨`);
+            const rawConfirm = `✅ *Test Drive Confirmed!*\n\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${dateStr}\n*Time*: ${timeStr}\n*Location*: ${areaName}\n\nOur team from *${dealerName}* will call you shortly to confirm! 🏎️💨`;
+            const translatedConfirm = await talkInLanguage(rawConfirm);
+            await sendMessage(sender, translatedConfirm);
             
             await new Lead({
-                sender, name: senderName,
-                carModel: session.data.carModel,
-                pincode: session.data.pincode,
-                area: session.data.area,
-                selectedDealer: session.data.selectedDealer,
-                date: dateStr, time: timeStr
+                sender, name: senderName, carModel: session.data.carModel, pincode: session.data.pincode,
+                area: session.data.area, selectedDealer: session.data.selectedDealer, date: dateStr, time: timeStr
             }).save();
             
-            session.state = "IDLE";
-            await session.save();
+            session.state = "IDLE"; await session.save();
             return res.status(200).send("OK");
         }
 
-        // --- 🎯 2. UNIVERSAL PINCODE DETECTION (LIVE SEARCH) ---
+        // --- 🎯 2. PINCODE LOOKUP (LIVE) ---
         const pinMatch = lowerMsg.match(/\b\d{6}\b/);
         if (pinMatch) {
-            const pincode = pinMatch[0];
-            session.data.pincode = pincode;
-            let displayLocation = "Your Area";
-            
+            const pincode = pinMatch[0]; session.data.pincode = pincode;
+            let displayLoc = "Your Area";
             try {
-                // 🕵️‍♂️ LIVE PINCODE LOOKUP (Postal API)
                 const pinRes = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
                 if (pinRes.data?.[0]?.Status === "Success") {
-                    const postOffice = pinRes.data[0].PostOffice[0];
-                    displayLocation = `${postOffice.Name}, ${postOffice.District}`;
+                    const po = pinRes.data[0].PostOffice[0];
+                    displayLoc = `${po.Name}, ${po.District}`;
                 }
-            } catch (err) { console.error("Pincode API Error"); }
+            } catch (e) {}
 
-            // Check if we have a SPECIFIC dealer mapped
             const dealerInfo = getDealerByPincode(pincode);
-            if (dealerInfo) {
-                session.data.selectedDealer = dealerInfo.name;
-                session.data.area = dealerInfo.area;
-            } else {
-                session.data.selectedDealer = "Mahindra Showroom";
-                session.data.area = displayLocation;
-            }
+            if (dealerInfo) { session.data.selectedDealer = dealerInfo.name; session.data.area = dealerInfo.area; }
+            else { session.data.selectedDealer = "Mahindra Dealer"; session.data.area = displayLoc; }
             
             const carId = session.data.carModel ? session.data.carModel.toLowerCase().replace(/\s+/g, '-') : "suv";
             const calendarLink = `${baseUrl}/booking/calendar?carId=${carId}&phone=${sender}`;
-            const promptMsg = `📍 Pincode: *${displayLocation}*!\n\nKripaya booking ke liye date aur time select karein: \n\n🔗 *Book Calendar*: ${calendarLink}`;
             
-            await sendMessage(sender, promptMsg);
-            session.state = "IDLE";
-            await session.save();
+            const rawPrompt = `📍 Pincode: *${displayLoc}*!\n\nKripaya booking ke liye date aur time select karein: \n\n🔗 *Book Calendar*: ${calendarLink}`;
+            const translatedPrompt = await talkInLanguage(rawPrompt);
+            await sendMessage(sender, translatedPrompt);
+            
+            session.state = "IDLE"; await session.save();
             return res.status(200).send("OK");
         }
 
         // --- 🎯 3. AI RESPONSE ---
         if (!lowerMsg && type === "text") return res.status(200).send("OK");
-
+        
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
-        const aiResponse = await getAIResponse(textRaw || "Hello", historyContextForAi, baseUrl, session);
+        let aiResponse = await getAIResponse(textRaw || "Hello", historyContextForAi, baseUrl, session);
+        
+        // 🌏 LANGUAGE EXTRACTION
+        const langMatch = aiResponse.match(/\[LANG:(.*?)\]/i);
+        if (langMatch) {
+            session.data.language = langMatch[1].trim();
+            aiResponse = aiResponse.replace(/\[LANG:.*?\]/g, "").trim();
+            await session.save();
+        }
+
         await new Chat({ sender, content: textRaw || "audio", reply: aiResponse, role: "user" }).save();
         await sendMessage(sender, aiResponse);
 
@@ -141,16 +137,14 @@ export const handleWebhook = async (req, res) => {
             const carIdMatch = carMatch[1];
             const carDoc = await Car.findOne({ name: { $regex: new RegExp(carIdMatch.replace(/-/g, '[\\s-]'), 'i') } });
             if (carDoc) {
-                session.data.carModel = carDoc.name;
-                await session.save();
+                session.data.carModel = carDoc.name; await session.save();
                 await sendImage(sender, carDoc.images?.[0] || carDoc.imageUrl, `✨ Premium ${carDoc.name}`);
             }
         }
-
         res.status(200).send("OK");
 
     } catch (err) {
-        console.error("❌ WEBHOOK ERROR:", err.message);
+        console.error("❌ ERROR:", err.message);
         if (!res.headersSent) res.status(500).json({ status: "error" });
     }
 };

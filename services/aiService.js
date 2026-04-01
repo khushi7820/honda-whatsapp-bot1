@@ -61,7 +61,13 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
            - If the user has ALREADY seen the details (e.g., they say "book this", "yes", "confirm"), DO NOT repeat the whole list! Instead, just say: 
              "Excellent! Let's get started with your [Car Name] booking. Please provide your 6-digit Pincode! 📍"
 
-        6. **CONCISE**: No long essays. 2-3 sentences max.
+        6. **LANGUAGE (CRITICAL)**:
+           - **DETECT** the language of the user (Gujarati, Hindi, Marathi, etc.).
+           - **ALWAYS** respond in the user's language.
+           - At the **VERY START** of your response, add a hidden tag like this: '[LANG:gu]' (for Gujarati), '[LANG:hi]' (for Hindi), '[LANG:en]' (for English).
+           - This tag is for the backend to remember the user's language.
+
+        7. **CONCISE**: No long essays. 2-3 sentences max.
         `;
 
     const messages = [

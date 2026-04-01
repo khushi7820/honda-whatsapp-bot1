@@ -11,7 +11,8 @@ const SessionSchema = new mongoose.Schema({
         time: String,
         carModel: String,
         color: String,
-        fuel: String
+        fuel: String,
+        language: { type: String, default: "english" } // Added language tracking
     }
 }, { 
     timestamps: true // This replaces the need for the manually-created pre-save hook
