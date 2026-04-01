@@ -6,6 +6,7 @@ import { sendMessage } from "../services/whatsappService.js";
 import axios from "axios";
 
 export const verifyWebhook = (req, res) => {
+    console.log("🔍 Verifying Webhook...");
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
@@ -18,13 +19,19 @@ export const verifyWebhook = (req, res) => {
 
 export const handleWebhook = async (req, res) => {
     try {
+        console.log("📥 WEBHOOK RECEIVED...");
         const body = req.body;
-        if (!body || !body.messages) return res.status(200).send("OK");
+        if (!body || !body.messages) {
+            console.log("⚠️ No messages in body");
+            return res.status(200).send("OK");
+        }
 
         const message = body.messages[0];
         const sender = message.from;
         const type = message.type;
         let textRaw = "";
+
+        console.log(`📨 Message from ${sender} (Type: ${type})`);
 
         if (type === "text") {
             textRaw = message.text.body;
@@ -48,13 +55,10 @@ export const handleWebhook = async (req, res) => {
         const lowerMsg = textRaw ? textRaw.toLowerCase() : "";
         const baseUrl = `${req.protocol}://${req.get('host')}`;
 
-        // 🚀 BRAND-APPROVED GREETING (RAW ENGLISH)
+        // 🚀 BRAND-APPROVED GREETING
         if (["hi", "hello", "hyy", "helo", "yo"].includes(lowerMsg)) {
             const firstGreeting = "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?";
             await sendMessage(sender, firstGreeting);
-            session.data.history.push({ role: "user", content: textRaw });
-            session.data.history.push({ role: "assistant", content: firstGreeting });
-            await session.save();
             return res.status(200).send("OK");
         }
 
@@ -100,7 +104,7 @@ export const handleWebhook = async (req, res) => {
             return res.status(200).send("OK");
         }
 
-        // 🚀 GLOBAL REDIRECTION SYSTEM: INTENT DETECTION
+        // 🚀 GLOBAL REDIRECTION SYSTEM
         const cars = await Car.find({});
         let detectedCarName = null;
         for (const car of cars) {
@@ -119,7 +123,7 @@ export const handleWebhook = async (req, res) => {
             return res.status(200).send("OK");
         }
 
-        // 🧠 AI CONGENIAL ADVISOR (FALLBACK)
+        // 🧠 AI CONGENIAL ADVISOR
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         let historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
 
