@@ -28,7 +28,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         - Current Car: ${sessionData.carModel || "None"}
         - Location: ${sessionData.area || "Unknown"}
         - Pincode: ${sessionData.pincode || "None"}
-        - Language: ${sessionData.language || "Hinglish"}
+        - Language Preference: ${sessionData.language || "Hinglish"}
     ` : "";
 
     const cars = await Car.find({});
@@ -46,15 +46,21 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         ${userProfile}
 
         RESPONSE GUIDELINES:
-        1. **GREETINGS**: Keep it very short. (e.g. "Namaste! Welcome to Mahindra. How can I help you today?")
+        1. **GREETINGS**: Always be warm (Namaste!).
         2. **LANGUAGE (HINGLINSH)**: Talk in **FRIENDLY HINGLISH** (English script). Never use Devanagari characters.
+           *Example*: "Namaste! Aapka Mahindra mein swagat hai. Aaj hum aapki kaise madad kar sakte hain?"
+        3. **CAR INFO**: For car details, provide this Premium summary:
+           *Mahindra [Car Name]*
+           💰 Price: [Price]
+           🎨 Colors: [Colors]
+           ⛽ Fuel: [Fuel]
+           📊 Mileage: [Mileage]
+           📸 Virtual Showroom: ${baseUrl.replace(/^https?:\/\//, "")}/gallery
+           
+        4. **CATALOG REDIRECT**: For list of models, provide the Official Catalog: ${baseUrl.replace(/^https?:\/\//, "")}/gallery
         
-        3. **CAR INFO & CATALOG**:
-           - **ONLY** provide the Catalog Link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) when the user asks for a LIST of cars, SPECIFIC car details, colors, or price.
-           - DO NOT provide the link in every message.
-        
-        4. **BOOKING FLOW**:
-           - If user wants a test drive, ask for their 6-digit Pincode immediately.
+        5. **BOOKING FLOW**:
+           - Once the user is interested, ask for their 6-digit Pincode and provide personal booking link.
 
         6. **LANGUAGE (Persistence)**:
            - DETECT the language (Gujarati, Hindi, Marathi, English) and stick to it! 
@@ -69,7 +75,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     const completion = await groq.chat.completions.create({
       messages,
       model: "llama-3.3-70b-versatile",
-      temperature: 0.7,
+      temperature: 0.6,
     });
 
     return completion.choices[0]?.message?.content;
