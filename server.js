@@ -1,6 +1,19 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+
+// 🌍 Initialize Environment Variables FIRST
+dotenv.config();
+
+console.log("-----------------------------------------");
+console.log(`🔌 Env Loaded: 
+  PORT: ${process.env.PORT || 5000}
+  DB: ${process.env.MONGO_URI ? "READY" : "MISSING"}
+  AI: ${process.env.GROQ_API_KEY ? "READY" : "MISSING"}
+  ZA: ${process.env.ZA_TOKEN ? "READY" : "MISSING"}
+`);
+console.log("-----------------------------------------");
+
 import { connectDB } from "./config/db.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import galleryRoutes from "./routes/galleryRoutes.js";
@@ -11,7 +24,6 @@ process.on("uncaughtException", (err) => {
     console.error("CRITICAL ERROR:", err.stack);
 });
 
-dotenv.config();
 const app = express();
 
 (async () => {
