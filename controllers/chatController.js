@@ -53,6 +53,16 @@ export const handleWebhook = async (req, res) => {
         const lowerMsg = String(textRaw).toLowerCase().trim();
         if (!lowerMsg && type === "text") return res.status(200).send("OK");
 
+        // --- 🎯 0. GREETING HANDLER (Consistent Short Response) ---
+        const greetings = ["hi", "hello", "hey", "hy", "hyy", "hii", "heyy"];
+        if (greetings.includes(lowerMsg)) {
+            session.state = "IDLE"; 
+            session.data = {};
+            await session.save();
+            await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?");
+            return res.status(200).send("OK");
+        }
+
         // --- 🎯 1. STATE-BASED HANDLER (Handling Numbers 1, 2, 3...) ---
         if (session.state === "AWAITING_DATE" && /^[1-7]$/.test(lowerMsg)) {
             const index = parseInt(lowerMsg) - 1;
