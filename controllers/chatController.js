@@ -12,35 +12,64 @@ export async function handleWebhook(req, res) {
         const body = req.body;
         console.log("📦 BODY:", JSON.stringify(body, null, 2));
 
-        // Standard Meta Cloud API / 11za structure
-        let messages = body.messages;
-        if (!messages && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
-            messages = body.entry[0].changes[0].value.messages;
+        let sender, type, textRaw = "";
+
+        // 1️⃣ Custom 11za format
+        if (body.from && body.content) {
+            sender = body.from;
+            type = body.content.contentType || "text";
+            if (type === "text") {
+                textRaw = body.content.text || "";
+            } else if (type === "audio") {
+                // If it's a media pointer in 11za's format
+                const mediaId = body.content.mediaId || body.messageId; 
+                // We'll handle this media below using the universal downloader
+            }
+        }
+        // 2️⃣ Standard Meta Cloud API format
+        else if (body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
+            const msgObj = body.entry[0].changes[0].value.messages[0];
+            sender = msgObj.from;
+            type = msgObj.type;
+            if (type === "text") textRaw = msgObj.text.body;
+            else if (type === "audio") textRaw = ""; // Will be processed below
+        }
+        // 3️⃣ Direct body.messages format (legacy)
+        else if (body.messages && body.messages[0]) {
+            sender = body.messages[0].from;
+            type = body.messages[0].type;
+            textRaw = type === "text" ? body.messages[0].text.body : "";
         }
 
-        if (!messages || messages.length === 0) {
-            console.log("⚠️ No messages found in payload (likely status update or empty)");
+        if (!sender) {
+            console.log("⚠️ No sender or message content found in any supported format.");
             return res.status(200).send("OK");
         }
 
-        const message = messages[0];
-        const sender = message.from;
-        const type = message.type;
-        let textRaw = "";
+        console.log(`📨 Message from ${sender} (Type: ${type}) | Text: ${textRaw}`);
 
-        console.log(`📨 Message from ${sender} (Type: ${type})`);
+        // 🎤 Audio Processing
+        if (type === "audio") {
+            try {
+                // Determine mediaId based on format
+                let mediaId = "";
+                if (body.content && body.content.mediaId) mediaId = body.content.mediaId;
+                else if (body.messages && body.messages[0].audio) mediaId = body.messages[0].audio.id;
+                else if (body.entry && body.entry[0].changes[0].value.messages[0].audio) mediaId = body.entry[0].changes[0].value.messages[0].audio.id;
 
-        if (type === "text") {
-            textRaw = message.text.body;
-        } else if (type === "audio") {
-            const mediaId = message.audio.id;
-            const mediaUrl = `https://v1.11za.com/v1/media/${mediaId}`;
-            const response = await axios.get(mediaUrl, {
-                headers: { 'Authorization': `Bearer ${process.env.ZA_TOKEN}` },
-                responseType: 'arraybuffer'
-            });
-            textRaw = await transcribeAudio(Buffer.from(response.data));
-            console.log("🎤 Audio Transcribed:", textRaw);
+                if (mediaId) {
+                    const mediaUrl = `https://v1.11za.com/v1/media/${mediaId}`;
+                    console.log(`🎤 Downloading audio from ${mediaUrl}...`);
+                    const response = await axios.get(mediaUrl, {
+                        headers: { 'Authorization': `Bearer ${process.env.ZA_TOKEN}` },
+                        responseType: 'arraybuffer'
+                    });
+                    textRaw = await transcribeAudio(Buffer.from(response.data));
+                    console.log("🎤 Audio Transcribed:", textRaw);
+                }
+            } catch (err) {
+                console.error("❌ Audio Transcription Failed:", err.message);
+            }
         }
 
         let session = await Session.findOne({ sender });
