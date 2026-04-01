@@ -33,9 +33,9 @@ export const connectDB = async () => {
         }
 
         cached.promise = mongoose.connect(uri, {
-            serverSelectionTimeoutMS: 30000,
-            socketTimeoutMS: 45000,
-            bufferCommands: false,
+            serverSelectionTimeoutMS: 60000,
+            socketTimeoutMS: 60000,
+            bufferCommands: true,
         }).then((m) => {
             console.log(isVercel ? "✅ MongoDB Connected (Vercel)" : "✅ MongoDB Connected (Local)");
             return m;
