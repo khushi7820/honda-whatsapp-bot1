@@ -35,7 +35,7 @@ export const sendImage = async (to, imageUrl, caption) => {
             sendto: to,
             text: caption || "Image from Mahindra",
             originWebsite: process.env.ZA_ORIGIN,
-            contentType: "image",
+            contentType: "Image", // Capitalised might be required
             mediaUrl: imageUrl
         };
         const response = await axios.post(API_URL, payload);
