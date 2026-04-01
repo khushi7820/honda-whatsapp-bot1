@@ -16,14 +16,12 @@ export const handleWebhook = async (req, res) => {
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
-        // 1. EXTRACT SENDER
         let rawSender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id || req.body.UserResponse?.from;
         if (!rawSender) return res.status(200).send("OK");
         
         const sender = String(rawSender).replace(/^\+/, '');
         const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "Guest User";
         
-        // 2. EXTRACT CONTENT (Text or Audio)
         let textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || "";
         const type = req.body.content?.contentType || msg.type || val.type || "text";
         const mediaUrl = req.body.content?.media?.url || val.media?.url || req.body.media_url;
@@ -38,55 +36,40 @@ export const handleWebhook = async (req, res) => {
         const baseUrl = `${protocol}://${host}`;
 
         // --- 🎥 AUDIO TRANSCRIPTION ---
-        if ((type === "audio" || type === "voice" || req.body.content?.contentType === "audio") && mediaUrl) {
-            console.log(`[Audio] Downloading from ${mediaUrl}...`);
+        if ((type === "audio" || type === "voice") && mediaUrl) {
             const audioBuffer = await downloadMedia(mediaUrl);
             if (audioBuffer) {
                 const transcribed = await transcribeAudio(audioBuffer);
-                if (transcribed) {
-                    console.log(`[Audio] Transcribed: ${transcribed}`);
-                    textRaw = transcribed;
-                }
+                if (transcribed) textRaw = transcribed;
             }
         }
 
         const lowerMsg = String(textRaw).toLowerCase().trim();
-        if (!lowerMsg && type === "text") return res.status(200).send("OK");
 
-        // --- 🎯 0. GREETING HANDLER (Consistent Short Response) ---
-        const greetings = ["hi", "hello", "hey", "hy", "hyy", "hii", "heyy"];
+        // --- 🎯 0. GREETING HANDLER ---
+        const greetings = ["hi", "hello", "hey", "hyy", "hy", "hii", "heyy"];
         if (greetings.includes(lowerMsg)) {
-            session.state = "IDLE"; 
+            session.state = "IDLE";
             session.data = {};
             await session.save();
             await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?");
             return res.status(200).send("OK");
         }
 
-        // --- 🎯 1. STATE-BASED HANDLER (Handling Numbers 1, 2, 3...) ---
-        if (session.state === "AWAITING_DATE" && /^[1-7]$/.test(lowerMsg)) {
-            const index = parseInt(lowerMsg) - 1;
-            const d = new Date();
-            d.setDate(d.getDate() + index);
-            const dateStr = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(d);
+        // --- 🎯 WEB CALENDAR RETURN (CONFIRM_BOOKING:Date|Slot) ---
+        if (textRaw.startsWith("CONFIRM_BOOKING:")) {
+            const parts = textRaw.split(":")[1].split("|");
+            const dateStr = parts[0];
+            const timeStr = parts[1];
             
             session.data.date = dateStr;
-            session.state = "AWAITING_SLOT";
+            session.data.time = timeStr;
             await session.save();
             
-            await sendMessage(sender, templates.getSlotListText(dateStr));
-            return res.status(200).send("OK");
-        }
-
-        if (session.state === "AWAITING_SLOT" && /^[1-4]$/.test(lowerMsg)) {
-            const slots = ["10:00 AM", "11:00 AM", "02:00 PM", "04:00 PM"];
-            const slotStr = slots[parseInt(lowerMsg) - 1];
-            
-            session.data.time = slotStr;
             const areaName = session.data.area || session.data.pincode;
             const dealerName = session.data.selectedDealer || 'Mahindra';
             
-            const confirmMsg = `✅ *Test Drive Scheduled!*\n\n*Name*: ${senderName}\n*Phone*: ${sender}\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${session.data.date}\n*Time*: ${session.data.time}\n*Location*: ${areaName}\n\nAn executive from *${dealerName}* will contact you to confirm!`;
+            const confirmMsg = `✅ *Test Drive Confirmed!*\n\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${dateStr}\n*Time*: ${timeStr}\n*Location*: ${areaName}\n\nOur team from *${dealerName}* will call you shortly to confirm! 🏎️💨`;
             await sendMessage(sender, confirmMsg);
             
             await new Lead({
@@ -96,8 +79,8 @@ export const handleWebhook = async (req, res) => {
                 pincode: session.data.pincode,
                 area: session.data.area,
                 selectedDealer: session.data.selectedDealer,
-                date: session.data.date,
-                time: session.data.time
+                date: dateStr,
+                time: timeStr
             }).save();
             
             session.state = "IDLE";
@@ -105,28 +88,30 @@ export const handleWebhook = async (req, res) => {
             return res.status(200).send("OK");
         }
 
-        // --- 🎯 2. PINCODE DETECTION ---
+        // --- 🎯 2. PINCODE DETECTION (Triggers Web Calendar Link) ---
         const pinMatch = lowerMsg.match(/\b\d{6}\b/);
         if (pinMatch) {
             const pincode = pinMatch[0];
             session.data.pincode = pincode;
             const dealerInfo = getDealerByPincode(pincode);
             
-            let locMsg = `📍 I see you're providing pincode ${pincode}.`;
             if (dealerInfo) {
                 session.data.selectedDealer = dealerInfo.name;
                 session.data.area = dealerInfo.area;
-                locMsg = `📍 This pincode is for *${dealerInfo.area}*! Showroom: *${dealerInfo.name}*.`;
             }
             
-            await sendMessage(sender, locMsg);
-            session.state = "AWAITING_DATE";
+            const carId = session.data.carModel ? session.data.carModel.toLowerCase().replace(/\s+/g, '-') : "suv";
+            const calendarLink = `${baseUrl}/booking/calendar?carId=${carId}&phone=${sender}`;
+            
+            const promptMsg = `📍 This pincode is for *${dealerInfo?.area || 'your area'}*!\n\nKripaya apna comfortable date aur time select karne ke liye niche di gayi link par click karein: \n\n🔗 *Book Calendar*: ${calendarLink}`;
+            
+            await sendMessage(sender, promptMsg);
+            session.state = "IDLE"; // We reset to IDLE because the web link handles the state
             await session.save();
-            await sendMessage(sender, templates.getDateListText());
             return res.status(200).send("OK");
         }
 
-        // --- 🎯 3. AI RESPONSE (Premium Personas) ---
+        // --- 🎯 3. AI RESPONSE ---
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
@@ -135,14 +120,13 @@ export const handleWebhook = async (req, res) => {
         
         await sendMessage(sender, aiResponse);
 
-        // IMAGE HANDLER
+        // Image Preview Handler
         const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
         if (carMatch) {
-            const carId = carMatch[1];
-            const carDoc = await Car.findOne({ name: { $regex: new RegExp(carId.replace(/-/g, '[\\s-]'), 'i') } });
+            const carIdMatch = carMatch[1];
+            const carDoc = await Car.findOne({ name: { $regex: new RegExp(carIdMatch.replace(/-/g, '[\\s-]'), 'i') } });
             if (carDoc) {
-                const img = carDoc.images?.[0] || carDoc.imageUrl;
-                await sendImage(sender, img, `✨ Premium ${carDoc.name}`);
+                await sendImage(sender, carDoc.images?.[0] || carDoc.imageUrl, `✨ Premium ${carDoc.name}`);
             }
         }
 
