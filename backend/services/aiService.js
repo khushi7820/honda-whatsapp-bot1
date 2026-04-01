@@ -64,11 +64,11 @@ Your tone: Professional, Sophisticated, Exclusive.
     };
 
     try {
-      const completion = await getCompletion("llama-3.3-70b-versatile", 0.3);
+      const completion = await getCompletion("llama-3.1-8b-instant", 0.5);
       return completion.choices[0]?.message?.content;
     } catch (primaryError) {
       console.warn("⚠️ Primary AI Model Busy/Failed, switching to Fallback...");
-      const fallbackCompletion = await getCompletion("llama-3.1-8b-instant", 0.5);
+      const fallbackCompletion = await getCompletion("llama-3.2-1b-preview", 0.6);
       return fallbackCompletion.choices[0]?.message?.content;
     }
   } catch (error) {
