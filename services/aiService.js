@@ -16,80 +16,69 @@ export const transcribeAudio = async (buffer) => {
     });
     return transcription.text;
   } catch (error) {
-    console.error("Transcription Error:", error.message);
+    console.error("❌ Transcription Error:", error.message);
     return null;
   }
 };
 
 export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://autoai-xi.vercel.app", sessionData = {}) => {
   try {
-    // Construct User Profile Context from session
     const userProfile = sessionData ? `
-        User Status: ${sessionData.state || "NEW"}
-        Known Details:
-        - Car: ${sessionData.carModel || "None"}
+        User Status: ${sessionData.state || "IDLE"}
+        - Current Car: ${sessionData.carModel || "None"}
+        - Location: ${sessionData.area || "Unknown"}
         - Pincode: ${sessionData.pincode || "None"}
-        - Area: ${sessionData.area || "None"}
-        - Dealer: ${sessionData.selectedDealer || "None"}
-    ` : "User is new.";
+    ` : "";
 
-    if (!userMessage || typeof userMessage !== "string" || userMessage.trim().length === 0) {
-      return "I didn't catch that. Could you please type your message?";
-    }
-
-    const safeUserMessage = String(userMessage).trim();
     const cars = await Car.find({});
     const carContext = cars.map(car => (
-      `Name: ${car.name}, Price: ${car.price}, Colors: ${car.colors.join(", ")}, Fuel: ${car.fuelType}, ID: ${car.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`
-    )).join("\n");
+      `Name: ${car.name}, Price: ${car.price}, Colors: ${car.colors.join(", ")}, Fuel: ${car.fuelType}, Mileage: ${car.mileage}, ID: ${car.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`
+    )).join("\n\n");
 
     const systemPrompt = `
-        You are a specialized Mahindra Sales Expert. Be concise, professional, and helpful. 
-        
+        You are a Premium Mahindra Sales Advisor. Help users choose and book Mahindra SUVs.
+
         INVENTORY:
         ${carContext}
 
-        USER CURRENT SESSION:
+        USER CONTEXT:
         ${userProfile}
 
-        RULES:
-        1. **BOOKING SHORTCUT**: 
-           - If the user wants to book (e.g., "book this", "I want to buy"), don't be wordy. 
-           - Ask: "Would you like to select a specific Color or Fuel type? If not, just provide your 6-digit Pincode to continue with the booking! 📍"
+        RESPONSE GUIDELINES:
+        1. **GREETINGS**: Always be polite. (e.g. "Namaste! Welcome to Mahindra. How can I help you?")
+        2. **LANGUAGE**: If user speaks Hindi/Hinglish, reply in friendly Hinglish. Otherwise, use professional English.
+        3. **PREMIUM FORMAT**: When discussing cars, use this format:
+           *Mahindra [Car Name]*
+           💰 Price: [Price]
+           🎨 Colors: [Colors]
+           ⛽ Fuel: [Fuel]
+           📊 Mileage: [Mileage]
+           📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[car-id]
         
-        2. **IF PINCODE PROVIDED**:
-           - If a pincode is in the context or message, acknowledge the location (e.g. "Great! Since you're near ${sessionData.area || 'your location'}...").
-           - Let the user know they can now select their preferred date and time from the menu.
+        4. **BOOKING FLOW**:
+           - If the user wants to book (e.g., "book this", "I want a test drive"), say: 
+             "Excellent choice! Would you like to pick a color first, or should we go straight to booking? If you're ready, just provide your 6-digit Pincode! 📍"
 
-        3. **CAR INFO**: 
-           - When showing car details, use this EXACT COMPACT format:
-             *Mahindra [Car Name]*
-             Price: [Price]
-             Colors: [Colors]
-             Fuel: [Fuel]
-             Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[car-id]
-           - Ask ONLY ONE question at the end: "Shall we proceed with a test drive booking? 🚗"
+        5. **LOCATION**:
+           - If the user provides a pincode, congratulate them and mention the local area/dealer if available in context.
 
-        4. **GENERAL**:
-           - Use simple Hindi-English (Hinglish) if the user does, otherwise professional English.
-           - NO long paragraphs. Max 2-3 sentences per response.
-           - Do NOT repeat info already in the "USER CURRENT SESSION".
+        6. **CONCISE YET PREMIUM**: Keep it professional. No long essays, but don't be too robotic.
         `;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `History:\n${historyContext}\n\nCurrent Message: ${safeUserMessage}` }
+      { role: "user", content: `History:\n${historyContext}\n\nCurrent Message: ${userMessage}` }
     ];
 
     const completion = await groq.chat.completions.create({
       messages,
       model: "llama-3.3-70b-versatile",
-      temperature: 0.5,
+      temperature: 0.6,
     });
 
-    return completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that.";
+    return completion.choices[0]?.message?.content;
   } catch (error) {
-    console.error("AI Service Error:", error?.message || error);
-    return "I'm having a bit of trouble thinking right now. Please try again soon.";
+    console.error("❌ AI Service Error:", error.message);
+    return "I'm having a bit of trouble thinking right now. Please try again.";
   }
 };

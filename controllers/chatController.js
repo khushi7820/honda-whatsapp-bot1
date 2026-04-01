@@ -10,18 +10,23 @@ import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
     try {
+        console.log("📩 RAW PAYLOAD:", JSON.stringify(req.body, null, 2));
+
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
+        // 1. EXTRACT SENDER
         let rawSender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id || req.body.UserResponse?.from;
         if (!rawSender) return res.status(200).send("OK");
         
         const sender = String(rawSender).replace(/^\+/, '');
-        const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "Unknown User";
+        const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "Guest User";
         
-        const textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || "";
-        const lowerMsg = String(textRaw).toLowerCase().trim();
+        // 2. EXTRACT CONTENT (Text or Audio)
+        let textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || "";
+        const type = req.body.content?.contentType || msg.type || val.type || "text";
+        const mediaUrl = req.body.content?.media?.url || val.media?.url || req.body.media_url;
 
         await connectDB();
         
@@ -32,7 +37,23 @@ export const handleWebhook = async (req, res) => {
         const host = req.headers.host;
         const baseUrl = `${protocol}://${host}`;
 
-        // --- 1. STATE-BASED HANDLER (Handling Numbers 1, 2, 3...) ---
+        // --- 🎥 AUDIO TRANSCRIPTION ---
+        if ((type === "audio" || type === "voice" || req.body.content?.contentType === "audio") && mediaUrl) {
+            console.log(`[Audio] Downloading from ${mediaUrl}...`);
+            const audioBuffer = await downloadMedia(mediaUrl);
+            if (audioBuffer) {
+                const transcribed = await transcribeAudio(audioBuffer);
+                if (transcribed) {
+                    console.log(`[Audio] Transcribed: ${transcribed}`);
+                    textRaw = transcribed;
+                }
+            }
+        }
+
+        const lowerMsg = String(textRaw).toLowerCase().trim();
+        if (!lowerMsg && type === "text") return res.status(200).send("OK");
+
+        // --- 🎯 1. STATE-BASED HANDLER (Handling Numbers 1, 2, 3...) ---
         if (session.state === "AWAITING_DATE" && /^[1-7]$/.test(lowerMsg)) {
             const index = parseInt(lowerMsg) - 1;
             const d = new Date();
@@ -44,7 +65,7 @@ export const handleWebhook = async (req, res) => {
             await session.save();
             
             await sendMessage(sender, templates.getSlotListText(dateStr));
-            return res.status(200).send("OK_PROCESSED_DATE");
+            return res.status(200).send("OK");
         }
 
         if (session.state === "AWAITING_SLOT" && /^[1-4]$/.test(lowerMsg)) {
@@ -52,20 +73,16 @@ export const handleWebhook = async (req, res) => {
             const slotStr = slots[parseInt(lowerMsg) - 1];
             
             session.data.time = slotStr;
-            session.state = "IDLE"; // Reset to IDLE after full booking
-            await session.save();
-            
             const areaName = session.data.area || session.data.pincode;
-            const dealerName = session.data.selectedDealer || 'our team';
+            const dealerName = session.data.selectedDealer || 'Mahindra';
             
-            const confirmMsg = `✅ *Booking Confirmed!*\n\n*Name*: ${senderName}\n*Phone*: ${sender}\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${session.data.date}\n*Time*: ${session.data.time}\n*Location*: ${areaName}\n\nAn executive from *${dealerName}* will contact you shortly!`;
+            const confirmMsg = `✅ *Test Drive Scheduled!*\n\n*Name*: ${senderName}\n*Phone*: ${sender}\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${session.data.date}\n*Time*: ${session.data.time}\n*Location*: ${areaName}\n\nAn executive from *${dealerName}* will contact you to confirm!`;
             await sendMessage(sender, confirmMsg);
             
-            // Finalize Lead
             await new Lead({
                 sender,
                 name: senderName,
-                carModel: session.data.carModel || "Unspecified",
+                carModel: session.data.carModel,
                 pincode: session.data.pincode,
                 area: session.data.area,
                 selectedDealer: session.data.selectedDealer,
@@ -73,10 +90,12 @@ export const handleWebhook = async (req, res) => {
                 time: session.data.time
             }).save();
             
-            return res.status(200).send("OK_BOOKING_FINALIZED");
+            session.state = "IDLE";
+            await session.save();
+            return res.status(200).send("OK");
         }
 
-        // --- 2. PINCODE DETECTION (Triggers AWAITING_DATE) ---
+        // --- 🎯 2. PINCODE DETECTION ---
         const pinMatch = lowerMsg.match(/\b\d{6}\b/);
         if (pinMatch) {
             const pincode = pinMatch[0];
@@ -87,35 +106,33 @@ export const handleWebhook = async (req, res) => {
             if (dealerInfo) {
                 session.data.selectedDealer = dealerInfo.name;
                 session.data.area = dealerInfo.area;
-                locMsg = `📍 This pincode is for *${dealerInfo.area}*! We have a showroom there: *${dealerInfo.name}*.`;
+                locMsg = `📍 This pincode is for *${dealerInfo.area}*! Showroom: *${dealerInfo.name}*.`;
             }
             
             await sendMessage(sender, locMsg);
             session.state = "AWAITING_DATE";
             await session.save();
-            
-            // Send Text Calendar
             await sendMessage(sender, templates.getDateListText());
-            return res.status(200).send("OK_STARTED_BOOKING_FLOW");
+            return res.status(200).send("OK");
         }
 
-        // --- 3. AI RESPONSE (Fallback) ---
+        // --- 🎯 3. AI RESPONSE (Premium Personas) ---
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
-        const aiResponse = await getAIResponse(textRaw || lowerMsg, historyContextForAi, baseUrl, session);
-        await new Chat({ sender, content: textRaw || lowerMsg, reply: aiResponse, role: "user" }).save();
+        const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session);
+        await new Chat({ sender, content: textRaw, reply: aiResponse, role: "user" }).save();
         
         await sendMessage(sender, aiResponse);
 
-        // 🎯 IMAGE PREVIEW
+        // IMAGE HANDLER
         const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
         if (carMatch) {
             const carId = carMatch[1];
             const carDoc = await Car.findOne({ name: { $regex: new RegExp(carId.replace(/-/g, '[\\s-]'), 'i') } });
             if (carDoc) {
                 const img = carDoc.images?.[0] || carDoc.imageUrl;
-                await sendImage(sender, img, `✨ The Stunning ${carDoc.name}`);
+                await sendImage(sender, img, `✨ Premium ${carDoc.name}`);
             }
         }
 
