@@ -120,12 +120,15 @@ export const handleWebhook = async (req, res) => {
         
         await sendMessage(sender, aiResponse);
 
-        // Image Preview Handler
+        // Image Preview Handler & Car Memory
         const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
         if (carMatch) {
             const carIdMatch = carMatch[1];
             const carDoc = await Car.findOne({ name: { $regex: new RegExp(carIdMatch.replace(/-/g, '[\\s-]'), 'i') } });
             if (carDoc) {
+                // Save it to session memory
+                session.data.carModel = carDoc.name;
+                await session.save();
                 await sendImage(sender, carDoc.images?.[0] || carDoc.imageUrl, `✨ Premium ${carDoc.name}`);
             }
         }

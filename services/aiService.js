@@ -57,7 +57,8 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
            📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[ID from INVENTORY]
         
         5. **BOOKING FLOW**:
-           - If the user wants to book, say: 
+           - If the user wants to book (e.g., "I want to book XUV700"), ALWAYS provide the **SPECIFIC CAR INFO** (Price, Colors, etc.) first!
+           - Then, in the same message or the next sentence, say: 
              "Excellent choice! To continue with the booking, just provide your 6-digit Pincode! 📍"
 
         6. **CONCISE**: No long essays. 2-3 sentences max.
