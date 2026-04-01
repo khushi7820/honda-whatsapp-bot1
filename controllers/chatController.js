@@ -137,19 +137,28 @@ export const handleWebhook = async (req, res) => {
         await new Chat({ sender, content: textRaw || "audio", reply: aiResponse, role: "user" }).save();
         await sendMessage(sender, aiResponse);
 
-        // Memory & Image Preview
-        const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
-        if (carMatch) {
-            const carIdMatch = carMatch[1];
-            const carDoc = await Car.findOne({ name: { $regex: new RegExp(carIdMatch.replace(/-/g, '[\\s-]'), 'i') } });
-            if (carDoc) {
-                session.data.carModel = carDoc.name; await session.save();
-                
-                const imgSource = carDoc.images?.[0] || carDoc.imageUrl;
-                const finalImgUrl = imgSource.startsWith("/") ? `${baseUrl}${imgSource}` : imgSource;
-                
-                await sendImage(sender, finalImgUrl, `✨ Premium ${carDoc.name}`);
+        // --- 🎯 SMART CAR MODEL DETECTION ---
+        const allCars = await Car.find({});
+        let detectedCar = null;
+
+        // Check for car names in AI Response or User Message
+        for (const car of allCars) {
+            const carRegex = new RegExp(`\\b${car.name}\\b`, 'i');
+            if (carRegex.test(aiResponse) || carRegex.test(textRaw)) {
+                detectedCar = car;
+                break;
             }
+        }
+
+        if (detectedCar) {
+            session.data.carModel = detectedCar.name;
+            await session.save();
+            console.log(`📌 DETECTED CAR: ${detectedCar.name}`);
+            
+            // Send Image Preview (No link, just the photo!)
+            const imgSource = detectedCar.images?.[0] || detectedCar.imageUrl;
+            const finalImgUrl = imgSource.startsWith("/") ? `${baseUrl}${imgSource}` : imgSource;
+            await sendImage(sender, finalImgUrl, `✨ Premium ${detectedCar.name}`);
         }
         res.status(200).send("OK");
 
