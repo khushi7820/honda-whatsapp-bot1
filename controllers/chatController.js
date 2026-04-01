@@ -10,23 +10,46 @@ import { getDealerByPincode } from "../utils/dealerData.js";
 
 export const handleWebhook = async (req, res) => {
     try {
-        console.log("📩 RAW PAYLOAD:", JSON.stringify(req.body, null, 2));
+        console.log("📩 [DEBUG] WEBHOOK PAYLOAD RECEIVED:", JSON.stringify(req.body, null, 2));
 
         const entry = req.body?.entry?.[0];
         const val = entry?.changes?.[0]?.value || req.body;
         const msg = val?.messages?.[0] || req.body;
         
-        let rawSender = req.body.from || msg.from || req.body.sender || val.contacts?.[0]?.wa_id || req.body.UserResponse?.from;
-        if (!rawSender) return res.status(200).send("OK");
+        // 1. ROBUST SENDER EXTRACTION
+        let rawSender = req.body.from || 
+                        msg.from || 
+                        req.body.sender || 
+                        val.contacts?.[0]?.wa_id || 
+                        req.body.UserResponse?.from || 
+                        req.body.whatsapp?.senderNumber;
+
+        if (!rawSender) {
+            console.warn("⚠️ [DEBUG] No Sender found in payload.");
+            return res.status(200).send("OK_NO_SENDER");
+        }
         
         const sender = String(rawSender).replace(/^\+/, '');
-        const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "Guest User";
+        const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "User";
         
+        // 2. ROBUST CONTENT EXTRACTION
         let textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || "";
         
-        // 🔎 ENHANCED AUDIO DETECTION
-        const type = req.body.content?.contentType || msg.type || val.type || (req.body.media_url ? "audio" : "text");
-        const mediaUrl = req.body.content?.media?.url || val.media?.url || req.body.media_url || msg.audio?.link || msg.voice?.link;
+        // 🔎 MASTER MEDIA CHECK (Checking every possible 11za field)
+        const mediaUrl = req.body.media_url || 
+                         req.body.content?.media?.url || 
+                         val.media?.url || 
+                         msg.audio?.link || 
+                         msg.voice?.link || 
+                         val.messages?.[0]?.audio?.link;
+
+        const isAudio = (req.body.content?.contentType === "audio") || 
+                        (msg.type === "audio") || 
+                        (msg.type === "voice") || 
+                        (mediaUrl && mediaUrl.includes(".ogg")) ||
+                        (req.body.type === "audio");
+
+        console.log(`🔎 [DEBUG] Processing Message from ${sender}. isAudio: ${isAudio}, mediaUrl: ${mediaUrl}`);
 
         await connectDB();
         
@@ -37,31 +60,30 @@ export const handleWebhook = async (req, res) => {
         const host = req.headers.host;
         const baseUrl = `${protocol}://${host}`;
 
-        // --- 🎥 AUDIO TRANSCRIPTION BLOCK ---
-        if ((type === "audio" || type === "voice") && mediaUrl) {
-            console.log(`[Audio Debug] Type: ${type}, URL: ${mediaUrl}`);
+        // --- 🎥 AUDIO PROCESSING ---
+        if (isAudio && mediaUrl) {
+            console.log(`[Audio] 🚀 Starting transcription for ${mediaUrl}`);
             try {
                 const audioBuffer = await downloadMedia(mediaUrl);
                 if (audioBuffer && audioBuffer.length > 0) {
-                    console.log(`[Audio Debug] Download Success! Buffer size: ${audioBuffer.length}`);
                     const transcribed = await transcribeAudio(audioBuffer);
                     if (transcribed) {
-                        console.log(`[Audio Debug] Transcribed Text: "${transcribed}"`);
+                        console.log(`[Audio] ✅ SUCCESS: "${transcribed}"`);
                         textRaw = transcribed;
                     } else {
-                        console.error("[Audio Debug] Transcription failed or returned empty.");
+                        console.error("[Audio] ❌ Transcription returned empty.");
                     }
                 } else {
-                    console.error("[Audio Debug] Failed to download or empty buffer.");
+                    console.error("[Audio] ❌ Buffer is empty after download.");
                 }
             } catch (aErr) {
-                console.error("[Audio Debug] Critical Transcription Error:", aErr.message);
+                console.error("[Audio] ❌ Crash during audio process:", aErr.message);
             }
         }
 
         const lowerMsg = String(textRaw).toLowerCase().trim();
 
-        // --- 🎯 0. GREETING HANDLER ---
+        // --- 🎯 0. GREETING HANDLER (hi/hello check) ---
         const greetings = ["hi", "hello", "hey", "hyy", "hy", "hii", "heyy"];
         if (greetings.includes(lowerMsg)) {
             session.state = "IDLE";
@@ -113,22 +135,25 @@ export const handleWebhook = async (req, res) => {
             
             const carId = session.data.carModel ? session.data.carModel.toLowerCase().replace(/\s+/g, '-') : "suv";
             const calendarLink = `${baseUrl}/booking/calendar?carId=${carId}&phone=${sender}`;
-            const promptMsg = `📍 This pincode is for *${dealerInfo?.area || 'your area'}*!\n\nKripaya apna comfortable date aur time select karne ke liye niche di gayi link par click karein: \n\n🔗 *Book Calendar*: ${calendarLink}`;
+            const promptMsg = `📍 Pincode: *${dealerInfo?.area || 'your area'}*!\n\nKripaya booking ke liye date aur time select karein: \n\n🔗 *Book Calendar*: ${calendarLink}`;
             
             await sendMessage(sender, promptMsg);
             session.state = "IDLE";
             await session.save();
-            return res.status(200).send("OK_PIN_HANDLED");
+            return res.status(200).send("OK_PINCODE");
         }
 
         // --- 🎯 3. AI RESPONSE ---
-        if (!lowerMsg && (type === "text")) return res.status(200).send("OK_EMPTY");
+        if (!lowerMsg && (type === "text")) {
+           console.warn(`[DEBUG] Empty message, skipping AI.`);
+           return res.status(200).send("OK_EMPTY");
+        }
 
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
-        const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session);
-        await new Chat({ sender, content: textRaw, reply: aiResponse, role: "user" }).save();
+        const aiResponse = await getAIResponse(textRaw || "Hello", historyContextForAi, baseUrl, session);
+        await new Chat({ sender, content: textRaw || "audio_message", reply: aiResponse, role: "user" }).save();
         
         await sendMessage(sender, aiResponse);
 
@@ -147,7 +172,7 @@ export const handleWebhook = async (req, res) => {
         res.status(200).send("OK");
 
     } catch (err) {
-        console.error("❌ WEBHOOK ERROR:", err.message);
+        console.error("❌ WEBHOOK ERROR:", err.message, err.stack);
         if (!res.headersSent) res.status(500).json({ status: "error", error: err.message });
     }
 };
