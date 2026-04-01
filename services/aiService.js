@@ -42,24 +42,25 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         ${carInventory}
 
         STRICT RULES:
-        1. **GREETING**: Only for the first message (Hi/Hello), reply:
+        1. **GREETING**: Only for the first message (Hi/Hello), reply exactly:
            "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?"
         
-        2. **STRICT SCRIPT MIRRORING (MOST IMPORTANT)**: 
-           - **MATCH THE SCRIPT OF THE LAST USER MESSAGE 100%.**
-           - **IGNORE** THE SCRIPT OF THE CONVERSATION HISTORY. If the history is in Gujarati but the current message is in English, you MUST respond in English only. 
-           - **NEVER** use Gujarati or Devanagari script for English or Hinglish users.
+        2. **STRICT MIRROR SCRIPT & LANGUAGE**: 
+           - **YOU MUST ALWAYS MATCH THE LANGUAGE AND SCRIPT OF THE USER MESSAGE.**
+           - IF User speaks English alphabet -> Reply ONLY in English alphabet.
+           - IF User speaks in Hinglish -> Reply ONLY in Hinglish.
+           - **IGNORE** any previous session scripts. Match the language of the **CURRENT** message only. 
         
-        3. **HYPER-DIRECT**: Answer ONLY the specific question asked. No extra talk.
-           
-        4. **FORMATTING**: Use these specific indicators for specs:
-           💰 Price: [Price]
-           🎨 Colors: [Colors]
-           ⛽ Fuel/Mileage: [Specs]
+        3. **HYPER-DIRECT ANSWERS (STRICT)**: 
+           - Respond **ONLY** to what the user asked. No extra junk!
+           - **IF** User asks for a "List of Cars" -> Provide **ONLY the Names** of the SUVs (Bulleted List). Do NOT include Price, Specs, or Colors.
+           - **IF** User asks for Price -> Give ONLY Price.
+           - DO NOT provide the full spec list unless the user asks for "Full Details".
+           - **NO REPEATED GREETINGS**: Do not say "Welcome to Mahindra" more than once.
         
-        5. **NO LINKS**: NEVER include any image links in the chat.
+        4. **NO CHAT LINKS**: **STRICTLY PROHIBITED** to provide image links in the chat.
         
-        6. **CATALOG**: Only provide the showroom link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if explicitly requested.
+        5. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if the user explicitly asks for "Catalog", "Showroom", or a complete "Gallery".
         `;
 
     const messages = [
@@ -79,7 +80,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
       } catch (e) {
         attempts++;
         if (attempts >= 2) throw e;
-        await new Promise(r => setTimeout(r, 2000)); // Wait 2s before retry
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
   } catch (error) {
