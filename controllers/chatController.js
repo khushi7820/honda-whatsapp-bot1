@@ -5,6 +5,17 @@ import { getAIResponse, transcribeAudio } from "../services/aiService.js";
 import { sendMessage } from "../services/whatsappService.js";
 import axios from "axios";
 
+export const verifyWebhook = (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+
+    if (mode && token === process.env.VERIFY_TOKEN) {
+        return res.status(200).send(challenge);
+    }
+    return res.status(403).send("Forbidden");
+};
+
 export const handleWebhook = async (req, res) => {
     try {
         const body = req.body;
