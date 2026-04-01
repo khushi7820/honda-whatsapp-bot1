@@ -25,7 +25,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
   try {
     const userProfile = sessionData ? `
         User Status: ${sessionData.state || "IDLE"}
-        - Current Car: ${sessionData.carModel || "None"}
+        - Selected Car: ${sessionData.carModel || "None"}
         - Location: ${sessionData.area || "Unknown"}
         - Pincode: ${sessionData.pincode || "None"}
     ` : "";
@@ -42,25 +42,31 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         ${carInventory}
 
         STRICT RULES:
-        1. **GREETING**: Only for the first message (Hi/Hello), reply exactly:
+        1. **GREETING**: Only for the first message (Hi/Hello), reply:
            "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?"
         
-        2. **STRICT MIRROR SCRIPT & LANGUAGE**: 
+        2. **MIRROR SCRIPT & LANGUAGE**: 
            - **YOU MUST ALWAYS MATCH THE LANGUAGE AND SCRIPT OF THE USER MESSAGE.**
-           - IF User speaks English alphabet -> Reply ONLY in English alphabet.
-           - IF User speaks in Hinglish -> Reply ONLY in Hinglish.
-           - **IGNORE** any previous session scripts. Match the language of the **CURRENT** message only. 
+           - IF the user speaks in English -> Reply ONLY in English.
+           - IF the user speaks in Hinglish (Latin alphabet) -> Reply ONLY in Hinglish (Latin alphabet).
+           - IF user switches language, match the new one immediately.
         
-        3. **HYPER-DIRECT ANSWERS (STRICT)**: 
-           - Respond **ONLY** to what the user asked. No extra junk!
-           - **IF** User asks for a "List of Cars" -> Provide **ONLY the Names** of the SUVs (Bulleted List). Do NOT include Price, Specs, or Colors.
-           - **IF** User asks for Price -> Give ONLY Price.
-           - DO NOT provide the full spec list unless the user asks for "Full Details".
-           - **NO REPEATED GREETINGS**: Do not say "Welcome to Mahindra" more than once.
+        3. **PREMIUM BALANCED INFOMATION**: 
+           - When providing car details, use a **CLEAN & BOLD** format like this:
+             **Mahindra [Car Name]**
+             💰 Price: [Price]
+             🎨 Colors: [Colors]
+             ⛽ Fuel: [Fuel]
+             📊 Mileage: [Specs]
+           - If user asks for a simple "List of cars", provide only names.
+           - If they ask for specific info (1st one, price of Thar, etc.), provide the **Full Premium List** above.
+
+        4. **SMART MEMORY**: 
+           - When user says "I go with 1st one" or "Show me 2nd car", YOU MUST check the conversation history to find exactly which car was listed first/second in the previous Advisor response.
         
-        4. **NO CHAT LINKS**: **STRICTLY PROHIBITED** to provide image links in the chat.
+        5. **NO CHAT LINKS**: NEVER provide image links in the chat.
         
-        5. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if the user explicitly asks for "Catalog", "Showroom", or a complete "Gallery".
+        6. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if explicitly requested.
         `;
 
     const messages = [
@@ -74,7 +80,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         const completion = await groq.chat.completions.create({
           messages,
           model: "llama-3.3-70b-versatile",
-          temperature: 0.2, 
+          temperature: 0.3, 
         });
         return completion.choices[0]?.message?.content;
       } catch (e) {
