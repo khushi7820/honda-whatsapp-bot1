@@ -28,6 +28,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         - Current Car: ${sessionData.carModel || "None"}
         - Location: ${sessionData.area || "Unknown"}
         - Pincode: ${sessionData.pincode || "None"}
+        - Previously Detected Language: ${sessionData.language || "English"}
     ` : "";
 
     const cars = await Car.find({});
