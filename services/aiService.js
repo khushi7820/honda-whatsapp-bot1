@@ -57,9 +57,9 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
            📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[ID from INVENTORY]
         
         5. **BOOKING FLOW**:
-           - If the user wants to book (e.g., "I want to book XUV700"), ALWAYS provide the **SPECIFIC CAR INFO** (Price, Colors, etc.) first!
-           - Then, in the same message or the next sentence, say: 
-             "Excellent choice! To continue with the booking, just provide your 6-digit Pincode! 📍"
+           - If it's the FIRST time the user asks about a car or mentions booking, provide the **SPECIFIC CAR INFO** (Price, Colors, etc.) first, then ask for the Pincode.
+           - If the user has ALREADY seen the details (e.g., they say "book this", "yes", "confirm"), DO NOT repeat the whole list! Instead, just say: 
+             "Excellent! Let's get started with your [Car Name] booking. Please provide your 6-digit Pincode! 📍"
 
         6. **CONCISE**: No long essays. 2-3 sentences max.
         `;
