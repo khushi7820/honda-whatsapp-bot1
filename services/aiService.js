@@ -75,21 +75,21 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     ];
 
     let attempts = 0;
-    while (attempts < 3) {
+    while (attempts < 5) {
       try {
         const completion = await groq.chat.completions.create({
           messages,
-          model: "llama-3.1-70b-versatile",
-          temperature: 0.1,
+          model: "llama-3.3-70b-versatile",
+          temperature: 0.2,
         });
         return completion.choices[0]?.message?.content;
       } catch (e) {
         attempts++;
-        if (attempts >= 3) {
-          console.error("❌ Final AI Failure after 3 attempts:", e.message);
+        if (attempts >= 5) {
+          console.error("❌ Final AI Failure after 5 attempts:", e.message);
           throw e;
         }
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 2000 * attempts)); // Exponential backoff
       }
     }
   } catch (error) {
