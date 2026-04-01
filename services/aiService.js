@@ -73,8 +73,8 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "mixtral-8x7b-32768",
-      temperature: 0.4, 
+      model: "llama-3.1-8b-instant",
+      temperature: 0.5, 
     });
 
     return completion.choices[0]?.message?.content;
