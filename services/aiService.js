@@ -73,7 +73,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-70b-versatile",
       temperature: 0.3, 
     });
 
