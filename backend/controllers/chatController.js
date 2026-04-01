@@ -84,6 +84,16 @@ export async function handleWebhook(req, res) {
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase() : "";
+        
+        // 🔄 SESSION RESET
+        if (["reset", "restart", "start over", "cancel"].includes(lowerMsg)) {
+            session.state = "IDLE";
+            session.data = {};
+            await session.save();
+            await sendMessage(sender, "✅ Session Reset! How can I assist you today?");
+            return res.status(200).send("OK");
+        }
+
         const baseUrl = `${req.protocol}://${req.get('host')}`;
 
         // 🧠 AI CONTEXT (Moving up for global use)
