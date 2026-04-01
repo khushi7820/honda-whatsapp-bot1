@@ -10,8 +10,10 @@ export async function handleWebhook(req, res) {
     try {
         console.log("📥 WEBHOOK RECEIVED...");
         const body = req.body;
+        console.log("📦 BODY:", JSON.stringify(body, null, 2));
+
         if (!body || !body.messages) {
-            console.log("⚠️ No messages in body");
+            console.log("⚠️ No message array in body");
             return res.status(200).send("OK");
         }
 
