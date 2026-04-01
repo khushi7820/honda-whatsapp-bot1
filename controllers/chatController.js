@@ -58,14 +58,10 @@ export const handleWebhook = async (req, res) => {
         // --- 🎯 0. GREETINGS ---
         const greetings = ["hi", "hello", "hey", "hyy", "hy", "hii", "heyy"];
         if (greetings.includes(lowerMsg)) {
-            const currentLang = session.data.language || "english"; // Keep language
             session.state = "IDLE"; 
-            session.data = { language: currentLang }; 
             await session.save();
-            
-            const rawHi = "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?";
-            const translatedHi = await talkInLanguage(rawHi);
-            await sendMessage(sender, translatedHi);
+            const brandHi = "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?";
+            await sendMessage(sender, brandHi); // Send in RAW English (No translation!)
             return res.status(200).send("OK");
         }
 
