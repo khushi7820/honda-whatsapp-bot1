@@ -67,13 +67,21 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
       { role: "user", content: `History:\n${historyContext}\n\nCurrent Message: ${userMessage}` }
     ];
 
-    const completion = await groq.chat.completions.create({
-      messages,
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.3, 
-    });
-
-    return completion.choices[0]?.message?.content;
+    let attempts = 0;
+    while (attempts < 2) {
+      try {
+        const completion = await groq.chat.completions.create({
+          messages,
+          model: "llama-3.3-70b-versatile",
+          temperature: 0.3,
+        });
+        return completion.choices[0]?.message?.content;
+      } catch (e) {
+        attempts++;
+        if (attempts >= 2) throw e;
+        await new Promise(r => setTimeout(r, 2000)); // Wait 2s before retry
+      }
+    }
   } catch (error) {
     console.error("❌ AI Service Error:", error.message);
     return "I'm having a bit of trouble thinking right now. Please try again.";
