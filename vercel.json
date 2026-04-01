@@ -8,6 +8,7 @@
         "includeFiles": [
           "models/**",
           "routes/**",
+          "controllers/**",
           "services/**",
           "utils/**",
           "config/**",
