@@ -53,7 +53,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
            🎨 Colors: [Colors]
            ⛽ Fuel: [Fuel]
            📊 Mileage: [Mileage]
-           📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[car-id]
+           📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[ID from INVENTORY]
         
         4. **BOOKING FLOW**:
            - If the user wants to book (e.g., "book this", "I want a test drive"), say: 
