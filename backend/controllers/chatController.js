@@ -117,8 +117,11 @@ export async function handleWebhook(req, res) {
 
         // 🚀 INITIAL GREETING - Fall through to AI for Mirroring
         const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii"];
-        if (greetings.includes(lowerMsg) && session.state === "IDLE") {
-            console.log("👋 Greeting detected. Flowing to AI for premium mirrored response.");
+        if (greetings.includes(lowerMsg)) {
+            console.log("👋 Greeting detected. Resetting session for fresh interaction.");
+            session.state = "IDLE";
+            session.data = {};
+            await session.save();
         } 
         
         // 📍 PINCODE STEP (Realistic Dealer Lookup)
