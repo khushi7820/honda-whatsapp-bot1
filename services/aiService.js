@@ -21,13 +21,14 @@ export const transcribeAudio = async (buffer) => {
   }
 };
 
-export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://autoai-xi.vercel.app", sessionData = {}) => {
+export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://honda-whatsapp-bot1-paje.vercel.app", sessionData = {}) => {
   try {
     const userProfile = sessionData ? `
         User Status: ${sessionData.state || "IDLE"}
         - Current Car: ${sessionData.carModel || "None"}
         - Location: ${sessionData.area || "Unknown"}
         - Pincode: ${sessionData.pincode || "None"}
+        - Language: ${sessionData.language || "Hinglish"}
     ` : "";
 
     const cars = await Car.find({});
@@ -45,29 +46,25 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         ${userProfile}
 
         RESPONSE GUIDELINES:
-        1. **GREETINGS**: Always be polite. (e.g. "Namaste! Welcome to Mahindra. How can I help you?")
-        2. **LANGUAGE**: If user speaks Hindi/Hinglish, reply in friendly Hinglish. Otherwise, use professional English.
-        3. **CAR LIST**: If the user asks for a list or available models, provide ONLY a clean bulleted list of car names. (e.g. "We have the following SUVs: • Mahindra Thar • XUV700 ...").
-        4. **SPECIFIC CAR INFO**: If the user asks about a SPECIFIC car, use this PREMIUM format:
+        1. **GREETINGS**: Always be warm (Namaste!).
+        2. **LANGUAGE (HINGLINSH)**: If its Hindi, talk in **FRIENDLY HINGLISH** (English script)! Never use Devanagari characters.
+           *Example*: "Aapka Mahindra mein welcome hai! SUV collection dekhne ke liye catalog link check karein."
+        3. **CAR INFO**: For car details, provide this Premium summary:
            *Mahindra [Car Name]*
            💰 Price: [Price]
            🎨 Colors: [Colors]
            ⛽ Fuel: [Fuel]
            📊 Mileage: [Mileage]
            📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[ID from INVENTORY]
+           
+        4. **CATALOG REDIRECT**: Always provide our Official Digital Catalog for full visuals: ${baseUrl.replace(/^https?:\/\//, "")}/gallery
         
         5. **BOOKING FLOW**:
-           - If it's the FIRST time the user asks about a car or mentions booking, provide the **SPECIFIC CAR INFO** (Price, Colors, etc.) first, then ask for the Pincode.
-           - If the user has ALREADY seen the details (e.g., they say "book this", "yes", "confirm"), DO NOT repeat the whole list! Instead, just say: 
-             "Excellent! Let's get started with your [Car Name] booking. Please provide your 6-digit Pincode! 📍"
+           - Once the user is interested, ask for their 6-digit Pincode and provide the personal booking link.
 
-        6. **LANGUAGE (CRITICAL)**:
-           - **DETECT** the language of the user (Gujarati, Hindi, Marathi, etc.).
-           - **ALWAYS** respond in the user's language.
-           - At the **VERY START** of your response, add a hidden tag like this: '[LANG:gu]' (for Gujarati), '[LANG:hi]' (for Hindi), '[LANG:en]' (for English).
-           - This tag is for the backend to remember the user's language.
-
-        7. **CONCISE**: No long essays. 2-3 sentences max.
+        6. **LANGUAGE (Persistence)**:
+           - DETECT the language (Gujarati, Hindi, Marathi, English) and stick to it! 
+           - ADD DETECTION TAG AT START: '[LANG:gu]' (Gujarati), '[LANG:hi]' (Hinglish), '[LANG:en]' (English).
         `;
 
     const messages = [
@@ -78,7 +75,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     const completion = await groq.chat.completions.create({
       messages,
       model: "llama-3.3-70b-versatile",
-      temperature: 0.6,
+      temperature: 0.7,
     });
 
     return completion.choices[0]?.message?.content;
