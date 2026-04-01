@@ -70,15 +70,21 @@ export const sendInteractiveMessage = async (to, templateData) => {
     }
 };
 
-/**
- * Download media from 11za URL.
- */
 export const downloadMedia = async (url) => {
     try {
-        const fullUrl = url.startsWith("http") ? url : `${process.env.ZA_ORIGIN}${url}`;
+        let fullUrl = url.startsWith("http") ? url : `${process.env.ZA_ORIGIN}${url}`;
+        
+        // Ensure authToken is present if not in URL
+        if (!fullUrl.includes("authToken=")) {
+            const separator = fullUrl.includes("?") ? "&" : "?";
+            fullUrl += `${separator}authToken=${process.env.ZA_TOKEN}`;
+        }
+
+        console.log(`[Media Debug] Downloading from: ${fullUrl.split('authToken=')[0]}... [TOKEN HIDDEN]`);
+
         const response = await axios.get(fullUrl, { 
             responseType: "arraybuffer",
-            headers: { "authToken": process.env.ZA_TOKEN }
+            timeout: 8000 // 8 second timeout
         });
         return Buffer.from(response.data);
     } catch (error) {

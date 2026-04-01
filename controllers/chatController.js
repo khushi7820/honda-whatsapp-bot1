@@ -23,8 +23,10 @@ export const handleWebhook = async (req, res) => {
         const senderName = val?.contacts?.[0]?.profile?.name || req.body.whatsapp?.senderName || "Guest User";
         
         let textRaw = req.body.content?.text || req.body.content?.body || req.body.UserResponse || req.body.text || "";
-        const type = req.body.content?.contentType || msg.type || val.type || "text";
-        const mediaUrl = req.body.content?.media?.url || val.media?.url || req.body.media_url;
+        
+        // 🔎 ENHANCED AUDIO DETECTION
+        const type = req.body.content?.contentType || msg.type || val.type || (req.body.media_url ? "audio" : "text");
+        const mediaUrl = req.body.content?.media?.url || val.media?.url || req.body.media_url || msg.audio?.link || msg.voice?.link;
 
         await connectDB();
         
@@ -35,12 +37,25 @@ export const handleWebhook = async (req, res) => {
         const host = req.headers.host;
         const baseUrl = `${protocol}://${host}`;
 
-        // --- 🎥 AUDIO TRANSCRIPTION ---
+        // --- 🎥 AUDIO TRANSCRIPTION BLOCK ---
         if ((type === "audio" || type === "voice") && mediaUrl) {
-            const audioBuffer = await downloadMedia(mediaUrl);
-            if (audioBuffer) {
-                const transcribed = await transcribeAudio(audioBuffer);
-                if (transcribed) textRaw = transcribed;
+            console.log(`[Audio Debug] Type: ${type}, URL: ${mediaUrl}`);
+            try {
+                const audioBuffer = await downloadMedia(mediaUrl);
+                if (audioBuffer && audioBuffer.length > 0) {
+                    console.log(`[Audio Debug] Download Success! Buffer size: ${audioBuffer.length}`);
+                    const transcribed = await transcribeAudio(audioBuffer);
+                    if (transcribed) {
+                        console.log(`[Audio Debug] Transcribed Text: "${transcribed}"`);
+                        textRaw = transcribed;
+                    } else {
+                        console.error("[Audio Debug] Transcription failed or returned empty.");
+                    }
+                } else {
+                    console.error("[Audio Debug] Failed to download or empty buffer.");
+                }
+            } catch (aErr) {
+                console.error("[Audio Debug] Critical Transcription Error:", aErr.message);
             }
         }
 
@@ -53,10 +68,10 @@ export const handleWebhook = async (req, res) => {
             session.data = {};
             await session.save();
             await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?");
-            return res.status(200).send("OK");
+            return res.status(200).send("OK_GREETED");
         }
 
-        // --- 🎯 WEB CALENDAR RETURN (CONFIRM_BOOKING:Date|Slot) ---
+        // --- 🎯 WEB CALENDAR RETURN ---
         if (textRaw.startsWith("CONFIRM_BOOKING:")) {
             const parts = textRaw.split(":")[1].split("|");
             const dateStr = parts[0];
@@ -64,13 +79,10 @@ export const handleWebhook = async (req, res) => {
             
             session.data.date = dateStr;
             session.data.time = timeStr;
-            await session.save();
-            
             const areaName = session.data.area || session.data.pincode;
             const dealerName = session.data.selectedDealer || 'Mahindra';
             
-            const confirmMsg = `✅ *Test Drive Confirmed!*\n\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${dateStr}\n*Time*: ${timeStr}\n*Location*: ${areaName}\n\nOur team from *${dealerName}* will call you shortly to confirm! 🏎️💨`;
-            await sendMessage(sender, confirmMsg);
+            await sendMessage(sender, `✅ *Test Drive Confirmed!*\n\n*Car*: ${session.data.carModel || 'Mahindra SUV'}\n*Date*: ${dateStr}\n*Time*: ${timeStr}\n*Location*: ${areaName}\n\nOur team from *${dealerName}* will call you shortly to confirm! 🏎️💨`);
             
             await new Lead({
                 sender,
@@ -85,16 +97,15 @@ export const handleWebhook = async (req, res) => {
             
             session.state = "IDLE";
             await session.save();
-            return res.status(200).send("OK");
+            return res.status(200).send("OK_CONFIRMED");
         }
 
-        // --- 🎯 2. PINCODE DETECTION (Triggers Web Calendar Link) ---
+        // --- 🎯 2. PINCODE DETECTION ---
         const pinMatch = lowerMsg.match(/\b\d{6}\b/);
         if (pinMatch) {
             const pincode = pinMatch[0];
             session.data.pincode = pincode;
             const dealerInfo = getDealerByPincode(pincode);
-            
             if (dealerInfo) {
                 session.data.selectedDealer = dealerInfo.name;
                 session.data.area = dealerInfo.area;
@@ -102,16 +113,17 @@ export const handleWebhook = async (req, res) => {
             
             const carId = session.data.carModel ? session.data.carModel.toLowerCase().replace(/\s+/g, '-') : "suv";
             const calendarLink = `${baseUrl}/booking/calendar?carId=${carId}&phone=${sender}`;
-            
             const promptMsg = `📍 This pincode is for *${dealerInfo?.area || 'your area'}*!\n\nKripaya apna comfortable date aur time select karne ke liye niche di gayi link par click karein: \n\n🔗 *Book Calendar*: ${calendarLink}`;
             
             await sendMessage(sender, promptMsg);
-            session.state = "IDLE"; // We reset to IDLE because the web link handles the state
+            session.state = "IDLE";
             await session.save();
-            return res.status(200).send("OK");
+            return res.status(200).send("OK_PIN_HANDLED");
         }
 
         // --- 🎯 3. AI RESPONSE ---
+        if (!lowerMsg && (type === "text")) return res.status(200).send("OK_EMPTY");
+
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
         
@@ -120,13 +132,12 @@ export const handleWebhook = async (req, res) => {
         
         await sendMessage(sender, aiResponse);
 
-        // Image Preview Handler & Car Memory
+        // Memory & Image Preview
         const carMatch = aiResponse.match(/gallery\/([a-z0-9-]+)/i);
         if (carMatch) {
             const carIdMatch = carMatch[1];
             const carDoc = await Car.findOne({ name: { $regex: new RegExp(carIdMatch.replace(/-/g, '[\\s-]'), 'i') } });
             if (carDoc) {
-                // Save it to session memory
                 session.data.carModel = carDoc.name;
                 await session.save();
                 await sendImage(sender, carDoc.images?.[0] || carDoc.imageUrl, `✨ Premium ${carDoc.name}`);
