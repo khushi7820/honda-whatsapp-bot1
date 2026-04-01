@@ -47,7 +47,8 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         RESPONSE GUIDELINES:
         1. **GREETINGS**: Always be polite. (e.g. "Namaste! Welcome to Mahindra. How can I help you?")
         2. **LANGUAGE**: If user speaks Hindi/Hinglish, reply in friendly Hinglish. Otherwise, use professional English.
-        3. **PREMIUM FORMAT**: When discussing cars, use this format:
+        3. **CAR LIST**: If the user asks for a list or available models, provide ONLY a clean bulleted list of car names. (e.g. "We have the following SUVs: • Mahindra Thar • XUV700 ...").
+        4. **SPECIFIC CAR INFO**: If the user asks about a SPECIFIC car, use this PREMIUM format:
            *Mahindra [Car Name]*
            💰 Price: [Price]
            🎨 Colors: [Colors]
@@ -55,14 +56,11 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
            📊 Mileage: [Mileage]
            📸 View Photos: ${baseUrl.replace(/^https?:\/\//, "")}/gallery/[ID from INVENTORY]
         
-        4. **BOOKING FLOW**:
-           - If the user wants to book (e.g., "book this", "I want a test drive"), say: 
-             "Excellent choice! Would you like to pick a color first, or should we go straight to booking? If you're ready, just provide your 6-digit Pincode! 📍"
+        5. **BOOKING FLOW**:
+           - If the user wants to book, say: 
+             "Excellent choice! To continue with the booking, just provide your 6-digit Pincode! 📍"
 
-        5. **LOCATION**:
-           - If the user provides a pincode, congratulate them and mention the local area/dealer if available in context.
-
-        6. **CONCISE YET PREMIUM**: Keep it professional. No long essays, but don't be too robotic.
+        6. **CONCISE**: No long essays. 2-3 sentences max.
         `;
 
     const messages = [
