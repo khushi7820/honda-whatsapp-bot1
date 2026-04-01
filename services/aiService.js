@@ -28,7 +28,6 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         - Current Car: ${sessionData.carModel || "None"}
         - Location: ${sessionData.area || "Unknown"}
         - Pincode: ${sessionData.pincode || "None"}
-        - Previously Detected Language: ${sessionData.language || "English"}
     ` : "";
 
     const cars = await Car.find({});
@@ -46,24 +45,23 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         1. **FIRST GREETING**: If the user message is just a greeting (Hi, Hello, Hyy, etc.), YOU MUST reply EXACTLY with:
            "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?"
         
-        2. **STRICT LANGUAGE MIRRORING**: 
-           - Respond in the EXACT SAME LANGUAGE and SCRIPT as the CURRENT user message. 
-           - **IF** the user message is in English -> Reply ONLY in English.
-           - **IF** the user message is in Latin-script Hinglish -> Reply ONLY in Latin-script Hinglish.
-           - **IF** user switches language, IGNORE previous session script and MATCH the new one.
+        2. **STRICT SCRIPT MIRRORING (CRITICAL)**: 
+           - **YOU MUST REPLICATE THE SCRIPT OF THE USER'S LAST MESSAGE 100%.**
+           - IF User speaks in English alphabet -> Reply ONLY in English alphabet.
+           - IF User speaks in Hinglish -> Reply ONLY in Hinglish.
+           - **NEVER** use Gujarati or Devanagari script if the current user message is in English. 
+           - **IGNORE** the language of previous messages. Match the language of the **CURRENT** message only. 
         
-        3. **NO DEVANAGARI FOR ENGLISH/HINGLISH**: NEVER use Pure Hindi (Devanagari) script for English or Hinglish users.
-        
-        4. **HYPER-DIRECT ANSWERS (STRICT)**: 
+        3. **HYPER-DIRECT ANSWERS (STRICT)**: 
            - Respond **ONLY** to what the user asked. No extra junk!
            - **IF** user asks for Price -> Give ONLY Price.
            - **IF** user asks for Features -> Give ONLY Features.
            - DO NOT provide the full spec list unless the user asks for "Full Details".
-           - **NO REPEATED GREETINGS**: Do not say "Welcome to Mahindra" more than once per conversation.
+           - **NO REPEATED GREETINGS**: Do not say "Welcome to Mahindra" more than once.
         
-        5. **NO CHAT LINKS**: **STRICTLY PROHIBITED** to provide image links in the chat.
+        4. **NO CHAT LINKS**: **STRICTLY PROHIBITED** to provide image links in the chat.
         
-        6. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if the user explicitly asks for "Catalog", "Showroom", or a complete "List".
+        5. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if the user explicitly asks for "Catalog", "Showroom", or a complete "List".
         `;
 
     const messages = [
@@ -74,7 +72,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     const completion = await groq.chat.completions.create({
       messages,
       model: "llama-3.1-8b-instant",
-      temperature: 0.5, 
+      temperature: 0.2, 
     });
 
     return completion.choices[0]?.message?.content;
