@@ -106,17 +106,28 @@ export async function handleWebhook(req, res) {
             console.log("👋 Greeting detected. Flowing to AI for premium mirrored response.");
         } 
         
-        // 🏁 SALES FUNNEL: PINCODE -> COLOR -> DATE -> TIME -> SUMMARY
+        // 📍 PINCODE STEP (Realistic Dealer Lookup)
         else if (session.state === "PINCODE") {
             const pincodeVal = textRaw.match(/\d{6}/);
             if (pincodeVal) {
-                session.data.pincode = pincodeVal[0];
-                const areaName = "Mahindra City Store, Mumbai"; 
+                const pc = pincodeVal[0];
+                session.data.pincode = pc;
+                
+                // Demo Database
+                const DEALERS = {
+                    "400001": "Mahindra Sterling, South Mumbai",
+                    "395007": "Mahindra NBS International, Surat",
+                    "110001": "Mahindra Koncept Motors, Delhi",
+                    "411001": "Sahyadri Mahindra, Pune",
+                    "400064": "Mahindra Provincial-Liberty, Malad"
+                };
+                
+                const areaName = DEALERS[pc] || "Our nearest Authorized Dealership in your region"; 
                 session.data.area = areaName;
                 session.state = "COLOR_SELECTION";
                 await session.save();
                 
-                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Pincode ${pincodeVal[0]} verified at ${areaName}. Warmly acknowledge and ask for their preferred Color for Mahindra ${session.data.carModel}. Stay premium.`);
+                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Pincode ${pc} verified. Dealership: ${areaName}. Appreciate and ask for their preferred Color for Mahindra ${session.data.carModel}. EXTREMELY BRIEF.`);
                 await sendMessage(sender, aiResponse);
                 return res.status(200).send("OK");
             }
@@ -144,8 +155,8 @@ export async function handleWebhook(req, res) {
         }
 
         else if (session.state === "TIME_SELECTION") {
-            const summaryData = `Car: Mahindra ${session.data.carModel}, Color: ${session.data.color}, Date: ${session.data.date}, Time: ${textRaw}, Location: ${session.data.area}`;
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `BOOKING COMPLETE. Generate a final summary in a premium format with these details: ${summaryData}. Use the user's language and script.`);
+            const summaryData = `*Car*: ${session.data.carModel}\n*Color*: ${session.data.color}\n*Date*: ${session.data.date}\n*Time*: ${textRaw}\n*Location*: ${session.data.area}`;
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `FINAL SUMMARY. Provide a VERY BRIEF confirmation (max 2 sentences) in user's language and show this summary: ${summaryData}`);
             
             session.state = "IDLE";
             session.data = {}; 
