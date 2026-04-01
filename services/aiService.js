@@ -23,13 +23,6 @@ export const transcribeAudio = async (buffer) => {
 
 export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://honda-whatsapp-bot1-paje.vercel.app", sessionData = {}) => {
   try {
-    const userProfile = sessionData ? `
-        User Status: ${sessionData.state || "IDLE"}
-        - Selected Car: ${sessionData.carModel || "None"}
-        - Location: ${sessionData.area || "Unknown"}
-        - Pincode: ${sessionData.pincode || "None"}
-    ` : "";
-
     const cars = await Car.find({});
     const carInventory = cars.map(car => (
       `Name: ${car.name}, Price: ${car.price}, Colors: ${car.colors.join(", ")}, Fuel: ${car.fuelType}, Mileage: ${car.mileage}, ID: ${car.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`
@@ -45,28 +38,29 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         1. **GREETING**: Only for the first message (Hi/Hello), reply:
            "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?"
         
-        2. **MIRROR SCRIPT & LANGUAGE**: 
+        2. **STRICT MIRROR SCRIPT & LANGUAGE**: 
            - **YOU MUST ALWAYS MATCH THE LANGUAGE AND SCRIPT OF THE USER MESSAGE.**
-           - IF the user speaks in English -> Reply ONLY in English.
-           - IF the user speaks in Hinglish (Latin alphabet) -> Reply ONLY in Hinglish (Latin alphabet).
-           - IF user switches language, match the new one immediately.
+           - IF User speaks English alphabet -> Reply ONLY in English alphabet.
+           - IF User speaks in Hinglish -> Reply ONLY in Hinglish.
+           - **IGNORE** any previous session scripts. Match the language of the **CURRENT** message only. 
         
         3. **PREMIUM BALANCED INFOMATION**: 
-           - When providing car details, use a **CLEAN & BOLD** format like this:
+           - When providing car details, use a **CLEAN & BOLD** format:
              **Mahindra [Car Name]**
              💰 Price: [Price]
              🎨 Colors: [Colors]
              ⛽ Fuel: [Fuel]
              📊 Mileage: [Specs]
-           - If user asks for a simple "List of cars", provide only names.
-           - If they ask for specific info (1st one, price of Thar, etc.), provide the **Full Premium List** above.
+           - If user asks for specific info or references (1st one, etc.), provide this full premium list.
 
-        4. **SMART MEMORY**: 
-           - When user says "I go with 1st one" or "Show me 2nd car", YOU MUST check the conversation history to find exactly which car was listed first/second in the previous Advisor response.
-        
-        5. **NO CHAT LINKS**: NEVER provide image links in the chat.
-        
-        6. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if explicitly requested.
+        4. **BOOKING REDIRECTION (CRITICAL)**: 
+           - IF the user wants to "Book", "Test Drive", or is "Interested", you MUST ask for their **6-digit Pincode** to check availability.
+           - DO NOT provide links for booking. Only ask for the Pincode.
+           - Mention that we will confirm their **Location** once they provide the Pincode.
+
+        5. **CATALOG (STRICT)**: 
+           - **ONLY** provide the showroom link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) IF the user explicitly asks for "Catalog", "Showroom", or a complete "List of cars". 
+           - **NEVER** include the gallery link in general responses or booking flows.
         `;
 
     const messages = [
@@ -76,7 +70,7 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
 
     const getCompletion = async (modelName, temp) => {
       let attempts = 0;
-      while (attempts < 2) { // 2 attempts per model
+      while (attempts < 2) {
         try {
           return await groq.chat.completions.create({
             messages,
@@ -92,12 +86,10 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     };
 
     try {
-      // 🚀 Level 1: Standard Smart Model
       const completion = await getCompletion("llama-3.3-70b-versatile", 0.3);
       return completion.choices[0]?.message?.content;
     } catch (primaryError) {
       console.warn("⚠️ Primary AI Model Busy/Failed, switching to Fallback...");
-      // 🛡️ Level 2: Highly Reliable Fallback Model
       const fallbackCompletion = await getCompletion("llama-3.1-8b-instant", 0.5);
       return fallbackCompletion.choices[0]?.message?.content;
     }
