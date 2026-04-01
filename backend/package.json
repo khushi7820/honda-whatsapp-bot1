@@ -1,12 +1,13 @@
 {
-  "name": "mahindra-whatsapp-bot-root",
+  "name": "backend",
   "version": "1.0.0",
-  "main": "backend/server.js",
+  "description": "Mahindra Webhook Backend",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "cd backend && node server.js",
-    "build": "cd backend && npm install",
-    "seed": "cd backend && node seedCars.js && node seed_images.js"
+    "start": "node server.js",
+    "build": "npm install",
+    "seed": "node seedCars.js && node seed_images.js"
   },
   "dependencies": {
     "axios": "^1.13.6",

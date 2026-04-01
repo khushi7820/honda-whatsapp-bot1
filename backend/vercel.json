@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "models/**",
+          "routes/**",
+          "controllers/**",
+          "services/**",
+          "utils/**",
+          "config/**",
+          "public/images/**"
+        ]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/images/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/api/chat/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/api/webhook/whatsapp",
+      "dest": "server.js"
+    },
+    {
+      "src": "/health",
+      "dest": "server.js"
+    },
+    {
+      "src": "/gallery(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/booking/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/",
+      "dest": "server.js"
+    }
+  ]
+}
