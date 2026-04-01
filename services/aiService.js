@@ -42,26 +42,25 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
         ${carInventory}
 
         STRICT RULES:
-        1. **FIRST GREETING**: If the user message is just a greeting (Hi, Hello, Hyy, etc.), YOU MUST reply EXACTLY with:
+        1. **GREETING**: Only for the first message (Hi/Hello), reply:
            "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?"
         
-        2. **STRICT SCRIPT MIRRORING (CRITICAL)**: 
-           - **YOU MUST REPLICATE THE SCRIPT OF THE USER'S LAST MESSAGE 100%.**
-           - IF User speaks in English alphabet -> Reply ONLY in English alphabet.
-           - IF User speaks in Hinglish -> Reply ONLY in Hinglish.
-           - **NEVER** use Gujarati or Devanagari script if the current user message is in English. 
-           - **IGNORE** the language of previous messages. Match the language of the **CURRENT** message only. 
+        2. **MIRROR SCRIPT & LANGUAGE**: 
+           - **YOU MUST ALWAYS MATCH THE LANGUAGE AND SCRIPT OF THE USER MESSAGE.**
+           - IF the user speaks in English -> Reply ONLY in English.
+           - IF the user speaks in Hinglish (Latin alphabet) -> Reply ONLY in Hinglish (Latin alphabet).
+           - IF the user speaks in native Gujarati/Marathi/Hindi -> Reply ONLY in that script.
         
-        3. **HYPER-DIRECT ANSWERS (STRICT)**: 
-           - Respond **ONLY** to what the user asked. No extra junk!
-           - **IF** user asks for Price -> Give ONLY Price.
-           - **IF** user asks for Features -> Give ONLY Features.
-           - DO NOT provide the full spec list unless the user asks for "Full Details".
-           - **NO REPEATED GREETINGS**: Do not say "Welcome to Mahindra" more than once.
+        3. **HYPER-DIRECT**: Answer ONLY the specific question asked. Do not provide a full data dump.
+           
+        4. **FORMATTING**: Use these specific indicators for specs:
+           💰 Price: [Price]
+           🎨 Colors: [Colors]
+           ⛽ Fuel/Mileage: [Specs]
         
-        4. **NO CHAT LINKS**: **STRICTLY PROHIBITED** to provide image links in the chat.
+        5. **NO LINKS**: NEVER include any image links in the chat.
         
-        5. **CATALOG**: Only provide the link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if the user explicitly asks for "Catalog", "Showroom", or a complete "List".
+        6. **CATALOG**: Only provide the showroom link (${baseUrl.replace(/^https?:\/\//, "")}/gallery) if explicitly requested.
         `;
 
     const messages = [
@@ -71,8 +70,8 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.1-8b-instant",
-      temperature: 0.2, 
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.3, 
     });
 
     return completion.choices[0]?.message?.content;
