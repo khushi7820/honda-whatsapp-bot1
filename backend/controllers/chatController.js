@@ -9,6 +9,11 @@ import axios from "axios";
 export async function handleWebhook(req, res) {
     try {
         console.log("📥 WEBHOOK RECEIVED...");
+        
+        // 🛠️ SERVERLESS DB HYDRATION: Ensure connection is alive before any Mongoose calls
+        const { connectDB } = await import("../config/db.js");
+        await connectDB();
+
         const body = req.body;
         console.log("📦 BODY:", JSON.stringify(body, null, 2));
 
