@@ -118,7 +118,14 @@ export const handleWebhook = async (req, res) => {
         if (!lowerMsg && type === "text") return res.status(200).send("OK");
         
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
-        const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
+        let historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
+
+        // --- 🎯 LINGUISTIC SHIELD: FILTER OUT NON-MATCHING SCRIPTS ---
+        const isEnglishScript = /^[A-Za-z0-9\s.,?!'"]+$/.test(textRaw);
+        if (isEnglishScript) {
+            // Remove any non-latin script (Gujarati, Marathi, etc.) to prevent AI distraction
+            historyContextForAi = historyContextForAi.split("\n").filter(line => /^[A-Za-z0-9\s.,?!'":*-]+$/.test(line)).join("\n");
+        }
         
         let aiResponse = await getAIResponse(textRaw || "Hello", historyContextForAi, baseUrl, session);
         
