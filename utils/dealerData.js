@@ -15,6 +15,20 @@ export const dealers = [
         ]
     },
     { 
+        city: "Nashik", 
+        locations: [
+            { pincode: "422001", area: "Nashik City", name: "Jitendra Mahindra", address: "Mumbai-Agra Highway, Nashik", phone: "0253-2222222" },
+            { pincode: "422003", area: "Panchavati", name: "Jitendra Mahindra", address: "Adgaon, Nashik", phone: "0253-2222222" }
+        ]
+    },
+    { 
+        city: "Pune", 
+        locations: [
+            { pincode: "411001", area: "Pune City", name: "Sahyadri Mahindra", address: "Baner Road, Pune", phone: "020-22222222" },
+            { pincode: "411045", area: "Baner", name: "Silver Jubilee Mahindra", address: "Baner, Pune", phone: "020-22222222" }
+        ]
+    },
+    { 
         city: "Jalgaon", 
         locations: [
             { pincode: "425001", area: "Jalgaon City", name: "Ganesh Mahindra", address: "Nasirabad Highway, Jalgaon", phone: "0257-2211111" }
