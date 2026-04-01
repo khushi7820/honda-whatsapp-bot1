@@ -74,26 +74,35 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
       { role: "user", content: `History:\n${historyContext}\n\nCurrent Message: ${userMessage}` }
     ];
 
-    let attempts = 0;
-    while (attempts < 5) {
-      try {
-        const completion = await groq.chat.completions.create({
-          messages,
-          model: "llama-3.3-70b-versatile",
-          temperature: 0.2,
-        });
-        return completion.choices[0]?.message?.content;
-      } catch (e) {
-        attempts++;
-        if (attempts >= 5) {
-          console.error("❌ Final AI Failure after 5 attempts:", e.message);
-          throw e;
+    const getCompletion = async (modelName, temp) => {
+      let attempts = 0;
+      while (attempts < 2) { // 2 attempts per model
+        try {
+          return await groq.chat.completions.create({
+            messages,
+            model: modelName,
+            temperature: temp,
+          });
+        } catch (e) {
+          attempts++;
+          if (attempts >= 2) throw e;
+          await new Promise(r => setTimeout(r, 1500));
         }
-        await new Promise(r => setTimeout(r, 2000 * attempts)); // Exponential backoff
       }
+    };
+
+    try {
+      // 🚀 Level 1: Standard Smart Model
+      const completion = await getCompletion("llama-3.3-70b-versatile", 0.3);
+      return completion.choices[0]?.message?.content;
+    } catch (primaryError) {
+      console.warn("⚠️ Primary AI Model Busy/Failed, switching to Fallback...");
+      // 🛡️ Level 2: Highly Reliable Fallback Model
+      const fallbackCompletion = await getCompletion("llama-3.1-8b-instant", 0.5);
+      return fallbackCompletion.choices[0]?.message?.content;
     }
   } catch (error) {
-    console.error("❌ AI Service Error:", error.message);
+    console.error("❌ Critical AI Failure:", error.message);
     return "I'm having a bit of trouble thinking right now. Please try again.";
   }
 };
