@@ -75,17 +75,20 @@ export const getAIResponse = async (userMessage, historyContext = "", baseUrl = 
     ];
 
     let attempts = 0;
-    while (attempts < 2) {
+    while (attempts < 3) {
       try {
         const completion = await groq.chat.completions.create({
           messages,
-          model: "llama-3.3-70b-versatile",
-          temperature: 0.3, 
+          model: "llama-3.1-70b-versatile",
+          temperature: 0.1,
         });
         return completion.choices[0]?.message?.content;
       } catch (e) {
         attempts++;
-        if (attempts >= 2) throw e;
+        if (attempts >= 3) {
+          console.error("❌ Final AI Failure after 3 attempts:", e.message);
+          throw e;
+        }
         await new Promise(r => setTimeout(r, 2000));
       }
     }
