@@ -12,7 +12,7 @@ router.get("/", async (req, res) => {
         
         const catalogCards = cars.map(car => {
             const img = (car.images && car.images.length > 0) ? car.images[0] : (car.imageUrl || "");
-            const proxiedUrl = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(img)}`;
+            const proxiedUrl = img; // Use direct or DB-proxied URL
             
             return `
             <a href="/gallery/${car.name.toLowerCase().replace(/\s+/g, '-')}" class="card-link">
@@ -84,12 +84,11 @@ router.get("/:carName", async (req, res) => {
         }
 
         const imagesHtml = car.images.map(img => {
-            const proxiedUrl = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(img)}`;
-            return `<div class="card"><img src="${proxiedUrl}" alt="${car.name}" referrerpolicy="no-referrer"></div>`;
+            return `<div class="card"><img src="${img}" alt="${car.name}" referrerpolicy="no-referrer"></div>`;
         }).join("");
 
         const mainImg = car.images?.[0] || car.imageUrl;
-        const metaImg = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&url=${encodeURIComponent(mainImg)}`;
+        const metaImg = mainImg;
 
         const html = `
 <!DOCTYPE html>
