@@ -12,12 +12,18 @@ export async function handleWebhook(req, res) {
         const body = req.body;
         console.log("📦 BODY:", JSON.stringify(body, null, 2));
 
-        if (!body || !body.messages) {
-            console.log("⚠️ No message array in body");
+        // Standard Meta Cloud API / 11za structure
+        let messages = body.messages;
+        if (!messages && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
+            messages = body.entry[0].changes[0].value.messages;
+        }
+
+        if (!messages || messages.length === 0) {
+            console.log("⚠️ No messages found in payload (likely status update or empty)");
             return res.status(200).send("OK");
         }
 
-        const message = body.messages[0];
+        const message = messages[0];
         const sender = message.from;
         const type = message.type;
         let textRaw = "";
