@@ -1,92 +1,77 @@
+// Version 1.1.42 - Atomic Pincode Fix (No Emojis allowed during booking)
 import Groq from "groq-sdk";
-import Car from "../models/Car.js";
 import dotenv from "dotenv";
+import Car from "../models/Car.js";
 
 dotenv.config();
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
+export async function transcribeAudio(buffer) {
+    try {
+        const file = new File([buffer], "audio.ogg", { type: "audio/ogg" });
+        const transcription = await groq.audio.transcriptions.create({
+            file,
+            model: "whisper-large-v3-turbo",
+            response_format: "text",
+        });
+        return transcription;
+    } catch (error) {
+        console.error("❌ Transcription Failed:", error.message);
+        return null;
+    }
+}
 
-export const transcribeAudio = async (buffer) => {
-  try {
-    const transcription = await groq.audio.transcriptions.create({
-      file: await Groq.toFile(buffer, "audio.mp3"),
-      model: "whisper-large-v3-turbo",
-    });
-    return transcription.text;
-  } catch (error) {
-    console.error("❌ Transcription Error:", error.message);
-    return null;
-  }
-};
-
-export const getAIResponse = async (userMessage, historyContext = "", baseUrl = "https://mahindra-whatsapp-bot.vercel.app", sessionData = {}, directive = "") => {
+export async function getAIResponse(userMessage, history, baseUrl, session) {
   try {
     const cars = await Car.find({});
+    // No Emojis in Knowledge Base to prevent copy-paste hallucination
     const carInventory = cars.map(car => (
-      `Name: ${car.name}, Price: ${car.price}, Colors: ${car.colors.join(", ")}, Fuel: ${car.fuelType}, Mileage: ${car.mileage}`
-    )).join("\n\n");
+      `CAR_NAME: ${car.name}\nPRICE: ${car.price}\nCOLORS: ${car.colors.join(", ")}\nFUEL: ${car.fuelType}\nMILEAGE: ${car.mileage}\nFEATURES: ${car.features?.join(", ")}\nDESC: ${car.description}`
+    )).join("\n\n---\n\n");
 
-    const containsDevanagari = /[\u0900-\u097F]/.test(userMessage);
-    const scriptHint = containsDevanagari ? "USER SCRIPT: HINDI/DEVANAGARI." : "USER SCRIPT: LATIN/ENGLISH/HINGLISH.";
+    const currentCar = session.data.carModel || "Mahindra SUV";
 
     const systemPrompt = `
-You are a **Showroom Assistant** at a Premium Mahindra Dealership. 
-Your tone: Natural, Helpful, Professional (like a real human consultant). Talk normally, don't mention technical things. 
+You are a natural, professional Mahindra Sales Advisor.
+CURRENT TOPIC: **${currentCar}**. 
 
-**DETECTED PREFERENCE**: ${sessionData?.data?.language || "Detect from input"}
+**CRITICAL RULE - PINCODE ONLY (NO EMOJIS):**
+If the user says "book", "buy", "interested", or "test drive":
+- Your ONLY response must be a single line asking for a 6-digit Pincode.
+- **NEVER** include prices (💰), colors (🎨), fuel (⛽), or performance (📊) emojis in this message.
+- **NEVER** include the car specifications in this message.
+- Example: "Excellent! Please share your 6nd-digit Pincode to search for the nearest dealership."
 
-**STRICT LANGUAGE RULES:**
-1. **STICK TO PREFERENCE**: You MUST reply in the language specified in **DETECTED PREFERENCE** above.
-2. **HINDI/HINGLISH RULE**: If PREFERENCE is **hinglish** or input is **Hindi**, reply in **Hinglish Text** (Hindi written in English characters).
-3. **GUJARATI**: If PREFERENCE is **gujarati**, reply in **Gujarati**.
-4. **ENGLISH**: If PREFERENCE is **english**, reply in **English**.
-5. **NO TECH TALK**: Never mention "audio detected". Just answer naturally.
+**CONVERSATION RULES:**
+1. **STRICT CAR LOCK**: Stay on **${currentCar}** unless a new car is named.
+2. **FORMATTING**: Use BULLETS (🛡️) on NEW LINES for features/safety ONLY IF specifically asked.
+3. **KNOWLEDGE**: ${carInventory}
 
-**CONVERSATION RULES (STRICT):**
-1. **MESSAGE PRIORITY**: ALWAYS prioritize the **Current Message** over the history. 
-2. **LIST OF CARS**: If the user asks for a "list of cars" or "all cars", provide a short professional intro, then a list of ALL available names with 🚙 emojis. DO NOT provide details (specs) for everyone at once. Just names.
-3. **DETAIL MODE**: If asked for a specific car, use the Emoji Template (💰 🎨 ⛽ 📊) on NEW LINES (\\n) and ask for Pincode.
-4. **BREVITY**: MAX 5-6 lines total. Keep it tight.
-5. **KNOWLEDGE**: ${carInventory}
-
-**AUDIO FAILURE RULE:**
-If input says "(Audio Empty)" or error, ask the user to type instead.
+**LANGUAGE:**
+Mirror the user (Hinglish/Gujarati/English) as per session preference.
 `;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `[SCRIPT HINT: ${scriptHint}]\n\nHistory:\n${historyContext}\n\nCurrent Message: ${userMessage}${directive ? `\n\nDIRECTIVE: ${directive}` : ""}` }
+      { role: "user", content: `History:\n${history}\n\nUser Message: ${userMessage}` }
     ];
 
-    const getCompletion = async (modelName, temp) => {
-      let attempts = 0;
-      while (attempts < 2) {
+    const getCompletion = async (modelName) => {
         try {
           return await groq.chat.completions.create({
             messages,
             model: modelName,
-            temperature: temp,
+            temperature: 0.0,
           });
-        } catch (e) {
-          attempts++;
-          if (attempts >= 2) throw e;
-          await new Promise(r => setTimeout(r, 1500));
-        }
-      }
-    };
-
-    try {
-      const completion = await getCompletion("llama-3.3-70b-versatile", 0.5);
-      return completion.choices[0]?.message?.content;
-    } catch (primaryError) {
-      console.warn("⚠️ Primary AI Model Busy/Failed, switching to Fallback...");
-      const fallbackCompletion = await getCompletion("llama-3.1-8b-instant", 0.6);
-      return fallbackCompletion.choices[0]?.message?.content;
+        } catch (e) { return null; }
     }
+
+    let completion = await getCompletion("llama-3.3-70b-versatile");
+    if (!completion) completion = await getCompletion("llama-3.1-8b-instant");
+
+    return completion ? completion.choices[0].message.content : "Please provide your 6-digit Pincode.";
   } catch (error) {
-    console.error("❌ Critical AI Failure:", error.message);
-    return "I'm having a bit of trouble thinking right now. Please try again.";
+    console.error("❌ AI Logic Error:", error.message);
+    return "Please provide your 6-digit Pincode.";
   }
-};
+}

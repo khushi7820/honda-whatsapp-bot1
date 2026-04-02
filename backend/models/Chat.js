@@ -12,7 +12,7 @@ const chatSchema = new mongoose.Schema({
     },
     content: {
         type: String,
-        required: true
+        required: false
     },
     reply: { // Adding reply field for history tracking
         type: String,
