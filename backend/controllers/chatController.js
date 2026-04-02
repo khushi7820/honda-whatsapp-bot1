@@ -1,4 +1,4 @@
-// Build Force: 2026-04-01T11:43:00Z - Fixed Export Issue
+// Build Force: 2026-04-02T06:05:00Z - Integrated Master Rules & Audio Optimizations
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
 import Car from "../models/Car.js";
@@ -9,8 +9,6 @@ import axios from "axios";
 export async function handleWebhook(req, res) {
     try {
         console.log("📥 WEBHOOK RECEIVED...");
-        
-        // 🛠️ SERVERLESS DB HYDRATION: Ensure connection is alive before any Mongoose calls
         const { connectDB } = await import("../config/db.js");
         await connectDB();
 
@@ -19,77 +17,41 @@ export async function handleWebhook(req, res) {
 
         let sender, type, textRaw = "";
 
-        // 1️⃣ Custom 11za format
+        // Format normalization
         if (body.from && body.content) {
             sender = body.from;
             type = body.content.contentType || "text";
-            if (type === "text") {
-                textRaw = body.content.text || "";
-            } else if (type === "audio") {
-                // If it's a media pointer in 11za's format
-                const mediaId = body.content.mediaId || body.messageId; 
-                // We'll handle this media below using the universal downloader
-            }
-        }
-        // 2️⃣ Standard Meta Cloud API format
-        else if (body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
+            if (type === "text") textRaw = body.content.text || "";
+        } else if (body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
             const msgObj = body.entry[0].changes[0].value.messages[0];
             sender = msgObj.from;
             type = msgObj.type;
             if (type === "text") textRaw = msgObj.text.body;
-            else if (type === "audio") textRaw = ""; // Will be processed below
-        }
-        // 3️⃣ Direct body.messages format (legacy)
-        else if (body.messages && body.messages[0]) {
+        } else if (body.messages && body.messages[0]) {
             sender = body.messages[0].from;
-            type = body.messages[0].type;
+            type = body.messages[0].isAudio ? "audio" : (body.messages[0].type || "text");
             textRaw = type === "text" ? body.messages[0].text.body : "";
         }
 
-        if (!sender) {
-            console.log("⚠️ No sender or message content found in any supported format.");
-            return res.status(200).send("OK");
-        }
-
-        console.log(`📨 Message from ${sender} (Type: ${type}) | Text: ${textRaw}`);
+        if (!sender) return res.status(200).send("OK");
 
         // 🎤 Audio Processing
         if (type === "audio") {
             try {
-                let mediaId = "";
-                if (body.content && body.content.mediaId) mediaId = body.content.mediaId;
-                else if (body.messages && body.messages[0].audio) mediaId = body.messages[0].audio.id;
-                else if (body.entry && body.entry[0].changes[0].value.messages[0].audio) mediaId = body.entry[0].changes[0].value.messages[0].audio.id;
-
+                let mediaId = body.content?.mediaId || body.messages?.[0]?.audio?.id || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.audio?.id;
                 if (mediaId) {
                     const mediaUrl = `https://v1.11za.com/v1/media/${mediaId}`;
-                    console.log(`🎤 Downloading audio from ${mediaUrl}...`);
                     const response = await axios.get(mediaUrl, {
                         headers: { 'Authorization': `Bearer ${process.env.ZA_TOKEN}` },
                         responseType: 'arraybuffer'
                     });
-
-                    const contentType = response.headers['content-type'];
-                    console.log(`🎤 Media Type: ${contentType} | Size: ${response.data.byteLength} bytes`);
-
-                    if (contentType && contentType.includes("json")) {
-                        const errorJson = JSON.parse(Buffer.from(response.data).toString());
-                        console.error("❌ 11za Media Error:", errorJson);
-                        textRaw = "(User sent an audio message, but server error occurred)";
-                    } else {
-                        const transcribedText = await transcribeAudio(Buffer.from(response.data));
-                        if (transcribedText) {
-                            textRaw = transcribedText;
-                            console.log("🎤 Audio Transcribed:", textRaw);
-                        } else {
-                            textRaw = "(User sent an audio message, but transcription was empty)";
-                            console.error("❌ Transcription returned empty/null");
-                        }
-                    }
+                    const transcribedText = await transcribeAudio(Buffer.from(response.data));
+                    textRaw = transcribedText || "(User sent audio, but it was not heard clearly. Reply asking them to type.)";
+                    console.log("🎤 Audio Transcribed:", textRaw);
                 }
             } catch (err) {
-                console.error("❌ Audio Processing Failed:", err.message);
-                textRaw = "(User sent an audio message, but download failed)";
+                console.error("❌ Audio Failure:", err.message);
+                textRaw = "(Transcription error occurred. Reply asking user to type.)";
             }
         }
 
@@ -100,111 +62,11 @@ export async function handleWebhook(req, res) {
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
-        const containsDevanagari = /[\u0900-\u097F]/.test(textRaw);
-        
-        // 🔄 SESSION RESET
-        if (["reset", "restart", "start over", "cancel"].includes(lowerMsg)) {
-            session.state = "IDLE";
-            session.data = {};
-            await session.save();
-            await sendMessage(sender, "✅ Session Reset! How can I assist you today?");
-            return res.status(200).send("OK");
-        }
-
         const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-        // 🧠 AI CONTEXT (Moving up for global use)
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
 
-        // 🔗 WEB-TO-WHATSAPP FINALIZATION
-        if (textRaw && textRaw.startsWith("CONFIRM_BOOKING:")) {
-            const dataParts = textRaw.replace("CONFIRM_BOOKING:", "").split("|");
-            const dateStr = dataParts[0] || "Upcoming";
-            const timeStr = dataParts[1] || "Flexible";
-            
-            const confirmedReply = `✅ **Mahindra Booking Finalized!** \n\n🏁 **Status**: Confirmed on Web \n🚙 **Car**: Mahindra ${session.data.carModel || "SUV"}\n📅 **Date**: ${dateStr}\n⏰ **Time**: ${timeStr}\n📍 **Location**: Mahindra Authorized Dealer\n\nThank you for choosing Mahindra! Our sales advisor will reach out shortly to finalize the paperwork. 🙏🏁`;
-            
-            session.state = "IDLE";
-            session.data = {};
-            await session.save();
-            await sendMessage(sender, confirmedReply);
-            return res.status(200).send("OK");
-        }
-
-        // 🚀 INITIAL GREETING - Fall through to AI for Mirroring
-        const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii", "hy"];
-        if (greetings.includes(lowerMsg)) {
-            console.log("👋 Greeting detected. Resetting to Fresh Welcome.");
-            session.state = "IDLE";
-            session.data = {};
-            await session.save();
-            
-            // Fixed GREETING as per user request
-            await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?");
-            return res.status(200).send("OK");
-        } 
-        
-        // 📍 PINCODE STEP (Realistic Dealer Lookup)
-        else if (session.state === "PINCODE") {
-            const pincodeVal = textRaw.match(/\d{6}/);
-            if (pincodeVal) {
-                const pc = pincodeVal[0];
-                session.data.pincode = pc;
-                
-                // Demo Database
-                const DEALERS = {
-                    "400001": "Mahindra Sterling, South Mumbai",
-                    "395007": "Mahindra NBS International, Surat",
-                    "110001": "Mahindra Koncept Motors, Delhi",
-                    "411001": "Sahyadri Mahindra, Pune",
-                    "400064": "Mahindra Provincial-Liberty, Malad"
-                };
-                
-                const areaName = DEALERS[pc] || "Our nearest Authorized Dealership in your region"; 
-                session.data.area = areaName;
-                session.state = "COLOR_SELECTION";
-                await session.save();
-                
-                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Pincode ${pc} verified. Dealership: ${areaName}. Ask for Color for Mahindra ${session.data.carModel}. NO FILLER.`);
-                await sendMessage(sender, aiResponse);
-                return res.status(200).send("OK");
-            }
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a valid 6-digit Pincode.");
-            await sendMessage(sender, aiResponse);
-            return res.status(200).send("OK");
-        }
-
-        else if (session.state === "COLOR_SELECTION") {
-            session.data.color = textRaw;
-            session.state = "DATE_SELECTION";
-            await session.save();
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Color ${textRaw} noted. Ask for a Date for Test Drive.`);
-            await sendMessage(sender, aiResponse);
-            return res.status(200).send("OK");
-        }
-
-        else if (session.state === "DATE_SELECTION") {
-            session.data.date = textRaw;
-            session.state = "TIME_SELECTION";
-            await session.save();
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Date ${textRaw} noted. Ask for a specific Time.`);
-            await sendMessage(sender, aiResponse);
-            return res.status(200).send("OK");
-        }
-
-        else if (session.state === "TIME_SELECTION") {
-            const summaryData = `📦 **BOOKING CONFIRMED** 🏁\n\n🚙 **Car Name**: ${session.data.carModel}\n📅 **Date & Time**: ${session.data.date} at ${textRaw}\n📍 **Location**: ${session.data.area}\n📮 **Pincode**: ${session.data.pincode}\n🎨 **Color**: ${session.data.color}\n\nThank you! Visit again.`;
-            
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `FINAL CONFIRMATION. Present this EXACT summary: ${summaryData}`);
-            
-            session.state = "IDLE";
-            await session.save();
-            await sendMessage(sender, aiResponse);
-            return res.status(200).send("OK");
-        }
-
-        // 🚀 GLOBAL REDIRECTION & AI
+        // 🚀 GLOBAL CHECKS
         const cars = await Car.find({});
         let detectedCarName = null;
         for (const car of cars) {
@@ -214,57 +76,95 @@ export async function handleWebhook(req, res) {
             }
         }
 
-        const isBookingGoal = /(book|test drive|pincode|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
+        const isBookingGoal = /(book|test drive|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
+        const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii", "hy"];
+
+        // State Escape
+        if (greetings.includes(lowerMsg) || (detectedCarName && !isBookingGoal && session.state !== "IDLE")) {
+            session.state = "IDLE";
+            if (detectedCarName) session.data.carModel = detectedCarName;
+            await session.save();
+            if (greetings.includes(lowerMsg)) {
+                await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?");
+                return res.status(200).send("OK");
+            }
+        }
+
+        // 🎯 STATE MACHINE
+        if (session.state === "PINCODE") {
+            const pincodeVal = textRaw.match(/\d{6}/);
+            if (pincodeVal) {
+                session.data.pincode = pincodeVal[0];
+                session.data.area = "Mahindra Authorized Dealership";
+                session.state = "COLOR_SELECTION";
+                await session.save();
+                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Pincode verified. Ask for preferred color.");
+                await sendMessage(sender, aiResponse);
+                return res.status(200).send("OK");
+            }
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a valid 6-digit Pincode.");
+            await sendMessage(sender, aiResponse);
+            return res.status(200).send("OK");
+        }
+
+        if (session.state === "COLOR_SELECTION") {
+            session.data.color = textRaw;
+            session.state = "DATE_SELECTION";
+            await session.save();
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a Date for visit.");
+            await sendMessage(sender, aiResponse);
+            return res.status(200).send("OK");
+        }
+
+        if (session.state === "DATE_SELECTION") {
+            session.data.date = textRaw;
+            session.state = "TIME_SELECTION";
+            await session.save();
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a specific Time.");
+            await sendMessage(sender, aiResponse);
+            return res.status(200).send("OK");
+        }
+
+        if (session.state === "TIME_SELECTION") {
+            const summary = `📦 **BOOKING CONFIRMED** 🏁\n\n🚙 **Car Name**: ${session.data.carModel}\n📅 **Date & Time**: ${session.data.date} at ${textRaw}\n📍 **Location**: ${session.data.area}\n\nThank you! Visit again.`;
+            session.state = "IDLE";
+            await session.save();
+            await sendMessage(sender, summary);
+            return res.status(200).send("OK");
+        }
+
+        // Booking Intent
         if (isBookingGoal && (detectedCarName || session.data.carModel)) {
             session.state = "PINCODE";
             if (detectedCarName) session.data.carModel = detectedCarName;
             await session.save();
-            const aiResponse = await getAIResponse(textRaw || "I'm interested", historyContextForAi, baseUrl, session, `User is interested in booking/test drive for Mahindra ${session.data.carModel || "SUV"}. Enthusiastically accept and ask for their 6-digit Pincode to locate the nearest dealership. STRICTLY no links.`);
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "User wants to book. ASK FOR PINCODE ONLY.");
             await sendMessage(sender, aiResponse);
-            
-            // Save Chat History
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: aiResponse }).save();
             return res.status(200).send("OK");
         }
 
-        // 🧠 AI CONGENIAL ADVISOR
+        // Final Fallback
         const aiResponse = await getAIResponse(textRaw || "Hello", historyContextForAi, baseUrl, session);
         await sendMessage(sender, aiResponse);
+        
+        await new Chat({ sender, role: "user", content: textRaw }).save();
+        await new Chat({ sender, role: "assistant", reply: aiResponse }).save();
 
-        // Save Chat History
-        const newChat = new Chat({ sender, role: "user", content: textRaw });
-        await newChat.save();
-        const aiChat = new Chat({ sender, role: "assistant", reply: aiResponse });
-        await aiChat.save();
-
-        // 📸 IMAGE DELIVERY SYSTEM
         if (detectedCarName) {
             const carObj = await Car.findOne({ name: detectedCarName });
-            if (carObj) {
-                const imageToSend = carObj.imageUrl || (carObj.images && carObj.images.length > 0 ? carObj.images[0] : null);
-                if (imageToSend) {
-                    const caption = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Generate a short (5-10 words), exciting caption for an image of the Mahindra ${detectedCarName}. MUST BE in the user's language/script.`);
-                    await sendImage(sender, imageToSend, caption);
-                }
-            }
+            if (carObj?.imageUrl) await sendImage(sender, carObj.imageUrl, `Mahindra ${detectedCarName}`);
         }
 
         return res.status(200).send("OK");
     } catch (error) {
-        console.error("❌ Webhook Error:", error.message);
+        console.error("❌ Fatal Webhook Error:", error.message);
         return res.status(200).send("OK");
     }
 }
 
 export function verifyWebhook(req, res) {
-    console.log("🔍 Verifying Webhook...");
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-
-    if (mode && token === process.env.VERIFY_TOKEN) {
-        return res.status(200).send(challenge);
+    if (req.query["hub.mode"] && req.query["hub.verify_token"] === process.env.VERIFY_TOKEN) {
+        return res.status(200).send(req.query["hub.challenge"]);
     }
     return res.status(403).send("Forbidden");
 }
