@@ -59,6 +59,27 @@ export async function handleWebhook(req, res) {
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
+        // 0. BOOKING CONFIRMATION (ADMIN ALERT INCLUDED)
+        if (lowerMsg.startsWith("confirm_booking:")) {
+            const parts = textRaw.split(":")[1].split("|");
+            const date = parts[0] || "Select Date";
+            const time = parts[1] || "Select Time";
+            let session = await Session.findOne({ sender });
+            const carName = session?.data?.carModel || "Mahindra SUV";
+            const pc = session?.data?.pincode || "Not provided";
+            const city = session?.data?.area || "Showroom Area";
+
+            const successMsg = `*Booking Confirmed* ✅\n\n• Car: ${carName}\n• Pincode: ${pc}\n• Location: ${city}\n• Date: ${date}\n• Time: ${time}\n\nThank you for choosing Mahindra! ✨`;
+            await sendMessage(sender, successMsg);
+
+            // 👑 Notify Admin (+15558689519)
+            const adminMsg = `*New Mahindra Lead* 🚨\n\n• Customer: ${sender}\n• Car: ${carName}\n• Pincode: ${pc}\n• Location: ${city}\n• Date: ${date}\n• Time: ${time}`;
+            await sendMessage("15558689519", adminMsg);
+
+            if (session) { session.state = "IDLE"; await session.save(); }
+            return res.status(200).send("OK");
+        }
+
         // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
         const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars/i.test(lowerMsg);
         if (isListQuery) {
