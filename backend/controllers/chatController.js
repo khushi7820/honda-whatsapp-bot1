@@ -179,7 +179,7 @@ export async function handleWebhook(req, res) {
             }
         }
 
-        if (isImageQuery) {
+        if (isDetailQuery) {
             const carName = detectedCar || session.data.carModel || "XUV700";
             const carObj = await Car.findOne({ name: carName });
             const galleryLink = `https://honda-whatsapp-bot1-paje.vercel.app/gallery/${carName.toLowerCase().replace(/\s+/g, "-")}`;
