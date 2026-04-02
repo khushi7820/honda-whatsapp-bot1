@@ -149,7 +149,7 @@ export async function handleWebhook(req, res) {
         let detectedCar = null;
         for (const car of carsList) {
             const shortName = car.name.replace(/Mahindra\s+/i, "").toLowerCase().trim();
-            if (lowerMsg.includes(shortName)) {
+            if (shortName.includes(lowerMsg) || lowerMsg.includes(shortName)) {
                 detectedCar = car.name;
                 break;
             }
