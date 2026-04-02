@@ -18,7 +18,7 @@ export async function handleWebhook(req, res) {
     try {
         await ensureDB();
         const body = req.body;
-        
+
         const msgId = body.messageId || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id || body.id;
         if (msgId && processedMessages.has(msgId)) return res.status(200).send("OK");
         if (msgId) {
@@ -83,7 +83,7 @@ export async function handleWebhook(req, res) {
         // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
         const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars/i.test(lowerMsg);
         if (isListQuery) {
-            const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N 🚙\n• Thar 🚙\n• XUV700 🌟\n• Bolero Neo 🚙\n• XUV 3XO 🎨\n• Bolero ⛽\n• XUV400 EV 📊\n• Marazzo 🚗\n\n👉 Which one are you interested in?`;
+            const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N \n• Thar \n• XUV700 \n• Bolero Neo \n• XUV 3XO \n• Bolero \n• XUV400 EV \n• Marazzo \n\n👉 Which one are you interested in?`;
             console.log("-----------------------------------------");
             console.log("[STRICT BYPASS] Car List Requested. Sending NAMES ONLY.");
             console.log("-----------------------------------------");
@@ -108,7 +108,7 @@ export async function handleWebhook(req, res) {
                 try {
                     const pcRes = await axios.get(`https://api.postalpincode.in/pincode/${pc}`);
                     if (pcRes.data[0]?.Status === "Success") city = `${pcRes.data[0].PostOffice[0].District}, ${pcRes.data[0].PostOffice[0].State}`;
-                } catch (e) {}
+                } catch (e) { }
                 session.data.pincode = pc;
                 session.data.area = city;
                 const carSlug = (session.data.carModel || "suv").toLowerCase().replace(/mahindra\s+/g, "").replace(/\s+/g, "-");
@@ -125,9 +125,9 @@ export async function handleWebhook(req, res) {
         let detectedCar = null;
         for (const car of carsList) {
             const shortName = car.name.replace(/Mahindra\s+/i, "").toLowerCase().trim();
-            if (lowerMsg.includes(shortName)) { 
-                detectedCar = car.name; 
-                break; 
+            if (lowerMsg.includes(shortName)) {
+                detectedCar = car.name;
+                break;
             }
         }
 
@@ -139,14 +139,22 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
-        // 4. BOOKING & IMAGE BYPASS
+        // 4. BOOKING BYPASS: (Ensures Pincode-Only Response)
         if (isBooking && (detectedCar || session.data.carModel)) {
             session.state = "PINCODE";
+            if (detectedCar) session.data.carModel = detectedCar;
             await session.save();
-            const prompt = "Please share your 6-digit Pincode.";
+
+            const prompt = /hindi|kya|bhai/i.test(lowerMsg)
+                ? "🚀 *Mahindra Test Drive*\n\nKripaya apna 6-digit Pincode share karein."
+                : "🚀 *Mahindra Test Drive*\n\nPlease share your 6-digit Pincode.";
+
             const carObj = await Car.findOne({ name: session.data.carModel });
             if (carObj?.imageUrl) await sendImage(sender, carObj.imageUrl, prompt);
             else await sendMessage(sender, prompt);
+
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: prompt, content: prompt }).save();
             return res.status(200).send("OK");
         }
 
@@ -168,7 +176,7 @@ export async function handleWebhook(req, res) {
         await sendMessage(sender, aiFinal);
         await new Chat({ sender, role: "user", content: textRaw }).save();
         await new Chat({ sender, role: "assistant", reply: aiFinal, content: aiFinal }).save();
-        
+
         return res.status(200).send("OK");
     } catch (error) {
         console.error("❌ Fatal Webhook Error:", error.message);
