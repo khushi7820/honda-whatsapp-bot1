@@ -26,30 +26,44 @@ export async function handleWebhook(req, res) {
             setTimeout(() => processedMessages.delete(msgId), 300000);
         }
 
-        let sender, type, textRaw = "";
+        let sender, type = "text", textRaw = "";
+        let mId = null;
+
         if (body.from && body.content) {
             sender = body.from;
-            type = body.content.contentType || "text";
+            type = body.content.contentType?.toLowerCase() || "text";
+            if (body.content.mediaId) {
+                type = "audio";
+                mId = body.content.mediaId;
+            }
             if (type === "text") textRaw = body.content.text || "";
         } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             const msgObj = body.entry[0].changes[0].value.messages[0];
             sender = msgObj.from;
-            type = msgObj.type;
+            type = msgObj.type?.toLowerCase();
+            if (type === "voice") type = "audio";
+            if (type === "audio") mId = msgObj.audio?.id || msgObj.voice?.id;
             if (type === "text") textRaw = msgObj.text.body;
         } else if (body.messages?.[0]) {
             sender = body.messages[0].from;
-            type = body.messages[0].isAudio ? "audio" : (body.messages[0].type || "text");
+            type = body.messages[0].type?.toLowerCase() || (body.messages[0].isAudio ? "audio" : "text");
+            if (type === "voice") type = "audio";
+            if (type === "audio") mId = body.messages[0].audio?.id || body.messages[0].voice?.id;
             textRaw = type === "text" ? body.messages[0].text.body : "";
         }
 
         if (!sender) return res.status(200).send("OK");
 
-        if (type === "audio") {
+        if (type === "audio" || type === "voice") {
             try {
-                let mId = body.content?.mediaId || body.messages?.[0]?.audio?.id || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.audio?.id || msgId;
+                if (!mId) mId = msgId;
                 const buffer = await downloadMedia(`https://v1.11za.com/v1/media/${mId}`);
-                textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
-            } catch (err) { textRaw = `(Transcription Error)`; }
+                if (buffer) {
+                    textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
+                } else {
+                    textRaw = "(Transcription Fail - Media Blocked)";
+                }
+            } catch (err) { textRaw = `(Transcription Error: ${err.message})`; }
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
@@ -145,7 +159,7 @@ export async function handleWebhook(req, res) {
 
         // Final Fallback
         const aiFinal = await getAIResponse(textRaw || "Hello", historyContext, `${req.protocol}://${req.get('host')}`, session);
-        let finalOutput = (type === "audio") ? `[Debug heard: ${textRaw}]\n\n` + aiFinal : aiFinal;
+        let finalOutput = (type === "audio" || type === "voice") ? `[Debug heard: ${textRaw}]\n\n` + aiFinal : aiFinal;
         await sendMessage(sender, finalOutput);
         await new Chat({ sender, role: "user", content: textRaw }).save();
         await new Chat({ sender, role: "assistant", reply: aiFinal, content: aiFinal }).save();
