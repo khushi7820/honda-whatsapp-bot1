@@ -164,7 +164,7 @@ export async function handleWebhook(req, res) {
                     `💰 *Price:* ${carObj.price || "Contact Dealership"}\n` +
                     `🎨 *Colors:* ${carObj.colors ? carObj.colors.join(", ") : "Premium Colors"}\n` +
                     `⛽ *Fuel:* ${carObj.fuelType || "Petrol/Diesel"}\n` +
-                    `🛣️ *Mileage:* ${carObj.mileage || "Standard"}\n\n` +
+                    `📊 *Mileage:* ${carObj.mileage || "Standard"}\n\n` +
                     `👉 *Please share your 6-digit Pincode to book a test drive.*`;
 
                 if (carObj.imageUrl) {
