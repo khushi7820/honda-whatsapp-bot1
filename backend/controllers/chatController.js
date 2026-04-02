@@ -123,11 +123,8 @@ export async function handleWebhook(req, res) {
             session.data = {};
             await session.save();
             
-            const greetingDirective = containsDevanagari 
-                ? "महिंद्रा में आपका स्वागत है। आज हम आपकी सहायता कैसे कर सकते हैं?" 
-                : "Welcome to Mahindra. How can I assist you with our powerful SUV lineup today?";
-            
-            await sendMessage(sender, greetingDirective);
+            // Fixed GREETING as per user request
+            await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?");
             return res.status(200).send("OK");
         } 
         
@@ -152,11 +149,11 @@ export async function handleWebhook(req, res) {
                 session.state = "COLOR_SELECTION";
                 await session.save();
                 
-                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Pincode ${pc} verified. Dealership: ${areaName}. Appreciate and ask for their preferred Color for Mahindra ${session.data.carModel}. BE BRIEF AND DIRECT.`);
+                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Pincode ${pc} verified. Dealership: ${areaName}. Ask for Color for Mahindra ${session.data.carModel}. NO FILLER.`);
                 await sendMessage(sender, aiResponse);
                 return res.status(200).send("OK");
             }
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "The user provided an invalid pincode. Politely ask for a valid 6-digit Pincode to verify dealership availability.");
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a valid 6-digit Pincode.");
             await sendMessage(sender, aiResponse);
             return res.status(200).send("OK");
         }
@@ -165,7 +162,7 @@ export async function handleWebhook(req, res) {
             session.data.color = textRaw;
             session.state = "DATE_SELECTION";
             await session.save();
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `The user selected ${textRaw} color. Appreciate the choice and ask for a Date for the Test Drive visit.`);
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Color ${textRaw} noted. Ask for a Date for Test Drive.`);
             await sendMessage(sender, aiResponse);
             return res.status(200).send("OK");
         }
@@ -174,18 +171,17 @@ export async function handleWebhook(req, res) {
             session.data.date = textRaw;
             session.state = "TIME_SELECTION";
             await session.save();
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Date ${textRaw} noted. Now ask for a specific Time for the appointment.`);
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Date ${textRaw} noted. Ask for a specific Time.`);
             await sendMessage(sender, aiResponse);
             return res.status(200).send("OK");
         }
 
         else if (session.state === "TIME_SELECTION") {
-            const summaryData = `✅ **MAHINDRA BOOKING SUMMARY** ✅\n\n🚙 **Car**: ${session.data.carModel}\n📍 **Dealer**: ${session.data.area}\n📮 **Pincode**: ${session.data.pincode}\n🎨 **Color**: ${session.data.color}\n📅 **Date**: ${session.data.date}\n⏰ **Time**: ${textRaw}\n\n*Thank you for choosing Mahindra! Our advisor will contact you shortly to finalize the paperwork. 🙏🏁*`;
+            const summaryData = `📦 **BOOKING CONFIRMED** 🏁\n\n🚙 **Car Name**: ${session.data.carModel}\n📅 **Date & Time**: ${session.data.date} at ${textRaw}\n📍 **Location**: ${session.data.area}\n📮 **Pincode**: ${session.data.pincode}\n🎨 **Color**: ${session.data.color}\n\nThank you! Visit again.`;
             
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `FINAL CONFIRMATION. Greet the user, confirm their booking is now officially recorded, and present this exact summary: ${summaryData}. Stay premium and polite.`);
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `FINAL CONFIRMATION. Present this EXACT summary: ${summaryData}`);
             
             session.state = "IDLE";
-            // session.data = {}; // 🛑 Removed memory-clear to keep history
             await session.save();
             await sendMessage(sender, aiResponse);
             return res.status(200).send("OK");
