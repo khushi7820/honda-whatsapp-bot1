@@ -68,11 +68,24 @@ export async function handleWebhook(req, res) {
                         headers: { 'Authorization': `Bearer ${process.env.ZA_TOKEN}` },
                         responseType: 'arraybuffer'
                     });
-                    textRaw = await transcribeAudio(Buffer.from(response.data));
-                    console.log("🎤 Audio Transcribed:", textRaw);
+
+                    const contentType = response.headers['content-type'];
+                    console.log(`🎤 Media Type: ${contentType} | Size: ${response.data.byteLength} bytes`);
+
+                    if (contentType && contentType.includes("json")) {
+                        const errorJson = JSON.parse(Buffer.from(response.data).toString());
+                        console.error("❌ 11za Media Error:", errorJson);
+                    } else {
+                        textRaw = await transcribeAudio(Buffer.from(response.data));
+                        console.log("🎤 Audio Transcribed:", textRaw);
+                    }
                 }
             } catch (err) {
-                console.error("❌ Audio Transcription Failed:", err.message);
+                console.error("❌ Audio Processing Failed:", err.message);
+                if (err.response && err.response.data) {
+                    const errorMsg = Buffer.from(err.response.data).toString();
+                    console.error("❌ Error Payload:", errorMsg);
+                }
             }
         }
 
