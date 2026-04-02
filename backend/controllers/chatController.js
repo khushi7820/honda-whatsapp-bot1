@@ -132,7 +132,13 @@ export async function handleWebhook(req, res) {
             }
         }
 
-        // 3. CAR DETECTION
+        // 3. CAR DETECTION & SESSION CLEARING
+        const isRecommendationQuery = /looking|suggest|recommend|best|for\s\d+/i.test(lowerMsg);
+        if (isRecommendationQuery) {
+            session.data.carModel = null;
+            await session.save();
+        }
+
         const carsList = await Car.find({});
         let detectedCar = null;
         for (const car of carsList) {
