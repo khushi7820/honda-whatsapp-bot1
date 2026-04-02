@@ -88,14 +88,14 @@ Concise, Premium, Fast, and Sales-Driven. Avoid "I am an AI," "As a specialist,"
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3-70b-8192", // High speed + Intelligence
-      temperature: 0.2,
-      max_tokens: 400
+      model: "llama3-8b-8192", // Faster, more stable
+      temperature: 0.1,
+      max_tokens: 512
     });
 
     return completion.choices[0].message.content;
   } catch (error) {
     console.error("AI Error:", error.message);
-    return "I'm a bit busy right now. Please try again or ask for car details.";
+    return "Mahindra specialized support: Humari SUVs mein best-in-class safety aur tech milta hai. Aap aur kya jaanna chahte hain?";
   }
 }

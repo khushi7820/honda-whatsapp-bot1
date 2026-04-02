@@ -161,7 +161,7 @@ export async function handleWebhook(req, res) {
         }
 
         const isBooking = /(book|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
-        const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic/i.test(lowerMsg);
+        const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic|safety|feature|tech|emi|loan/i.test(lowerMsg);
 
         // 4. DETAIL & BOOKING BYPASS (IMAG + 4-LINE FORMAT)
         if ((isBooking || isDetailQuery || (detectedCar && lowerMsg.length < 20)) && (detectedCar || session.data.carModel)) {
