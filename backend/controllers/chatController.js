@@ -75,17 +75,21 @@ export async function handleWebhook(req, res) {
                     if (contentType && contentType.includes("json")) {
                         const errorJson = JSON.parse(Buffer.from(response.data).toString());
                         console.error("❌ 11za Media Error:", errorJson);
+                        textRaw = "(User sent an audio message, but server error occurred)";
                     } else {
-                        textRaw = await transcribeAudio(Buffer.from(response.data));
-                        console.log("🎤 Audio Transcribed:", textRaw);
+                        const transcribedText = await transcribeAudio(Buffer.from(response.data));
+                        if (transcribedText) {
+                            textRaw = transcribedText;
+                            console.log("🎤 Audio Transcribed:", textRaw);
+                        } else {
+                            textRaw = "(User sent an audio message, but transcription was empty)";
+                            console.error("❌ Transcription returned empty/null");
+                        }
                     }
                 }
             } catch (err) {
                 console.error("❌ Audio Processing Failed:", err.message);
-                if (err.response && err.response.data) {
-                    const errorMsg = Buffer.from(err.response.data).toString();
-                    console.error("❌ Error Payload:", errorMsg);
-                }
+                textRaw = "(User sent an audio message, but download failed)";
             }
         }
 

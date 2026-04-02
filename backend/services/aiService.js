@@ -11,7 +11,7 @@ const groq = new Groq({
 export const transcribeAudio = async (buffer) => {
   try {
     const transcription = await groq.audio.transcriptions.create({
-      file: await Groq.toFile(buffer, "audio.ogg"),
+      file: await Groq.toFile(buffer, "audio.mp3"),
       model: "whisper-large-v3",
     });
     return transcription.text;
@@ -42,8 +42,10 @@ Your tone: Professional, Sophisticated, Exclusive.
 1. **BREVITY**: Keep answers short, clear, and informative. No long sentences.
 2. **CAR DETAILS**: If asked about any car, provide details using the Emoji Template (💰 🎨 ⛽ 📊) and add exactly one line asking for their 6-digit Pincode to check availability.
 3. **BOOKING**: If they say "book", "book karo", etc., ONLY ask for their 6-digit Pincode. No other info.
-4. **CONTINUITY**: Maintain history and continuity in chat.
-5. **KNOWLEDGE**: ${carInventory}
+**AUDIO FAILURE RULE:**
+1. If the message says "User sent an audio message but error occurred...", politely ask the user to type their message. DO NOT repeat old car lists. 
+
+**KNOWLEDGE**: ${carInventory}
 `;
 
     const messages = [
