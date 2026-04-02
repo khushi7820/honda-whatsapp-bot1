@@ -56,7 +56,6 @@ export async function handleWebhook(req, res) {
         // 🎤 Audio Processing
         if (type === "audio") {
             try {
-                // Determine mediaId based on format
                 let mediaId = "";
                 if (body.content && body.content.mediaId) mediaId = body.content.mediaId;
                 else if (body.messages && body.messages[0].audio) mediaId = body.messages[0].audio.id;
@@ -83,7 +82,7 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
-        const lowerMsg = textRaw ? textRaw.toLowerCase() : "";
+        const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         const containsDevanagari = /[\u0900-\u097F]/.test(textRaw);
         
         // 🔄 SESSION RESET
