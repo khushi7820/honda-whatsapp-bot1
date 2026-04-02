@@ -33,7 +33,7 @@ export const sendImage = async (to, imageUrl, caption) => {
         const payload = {
             authToken: process.env.ZA_TOKEN,
             sendto: to,
-            text: caption || "Image from Mahindra",
+            text: caption || "Image from Honda",
             originWebsite: process.env.ZA_ORIGIN,
             contentType: "Image", // Capitalised might be required
             mediaUrl: imageUrl

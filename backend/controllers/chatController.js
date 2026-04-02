@@ -1,4 +1,4 @@
-// Version 1.1.46 - Hardcoded Pincode Request (For 100% No-Fluff Booking)
+// Version 1.1.63 - Ultimate Names Only & Absolute Bypass
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
 import Car from "../models/Car.js";
@@ -27,59 +27,48 @@ export async function handleWebhook(req, res) {
         }
 
         let sender, type = "text", textRaw = "";
-        let mId = null;
+        let mId = msgId;
 
         if (body.from && body.content) {
             sender = body.from;
             type = body.content.contentType?.toLowerCase() || "text";
-            if (body.content.mediaId) {
-                type = "audio";
-                mId = body.content.mediaId;
-            }
-            if (type === "text") textRaw = body.content.text || "";
+            if (body.content.mediaId) mId = body.content.mediaId;
+            textRaw = body.content.text || "";
         } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             const msgObj = body.entry[0].changes[0].value.messages[0];
             sender = msgObj.from;
-            type = msgObj.type?.toLowerCase();
-            if (type === "voice") type = "audio";
-            if (type === "audio") mId = msgObj.audio?.id || msgObj.voice?.id;
-            if (type === "text") textRaw = msgObj.text.body;
+            type = msgObj.type?.toLowerCase() || "text";
+            mId = msgObj.audio?.id || msgObj.voice?.id || msgId;
+            if (type === "text") textRaw = msgObj.text.body || "";
         } else if (body.messages?.[0]) {
             sender = body.messages[0].from;
             type = body.messages[0].type?.toLowerCase() || (body.messages[0].isAudio ? "audio" : "text");
-            if (type === "voice") type = "audio";
-            if (type === "audio") mId = body.messages[0].audio?.id || body.messages[0].voice?.id;
-            textRaw = type === "text" ? body.messages[0].text.body : "";
+            mId = body.messages[0].audio?.id || body.messages[0].voice?.id || msgId;
+            textRaw = type === "text" ? (body.messages[0].text?.body || "") : "";
         }
 
         if (!sender) return res.status(200).send("OK");
 
-        if (type === "audio" || type === "voice") {
+        if (type !== "text") {
             try {
-                if (!mId) mId = msgId;
                 const buffer = await downloadMedia(`https://v1.11za.com/v1/media/${mId}`);
-                if (buffer) {
-                    textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
-                } else {
-                    textRaw = "(Transcription Fail - Media Blocked)";
-                }
-            } catch (err) { textRaw = `(Transcription Error: ${err.message})`; }
+                if (buffer) textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
+            } catch (err) { textRaw = "(Transcription Error)"; }
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
+        console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
-        // 1. FINAL BOOKING CONFIRMATION
-        if (lowerMsg.startsWith("confirm_booking:")) {
-            const parts = textRaw.split(":")[1].split("|");
-            const date = parts[0] || "Select Date";
-            const time = parts[1] || "Select Time";
-            let session = await Session.findOne({ sender });
-            const carName = session?.data?.carModel || "Mahindra SUV";
-            const city = session?.data?.area || "Showroom Area";
-            const successMsg = `✅ **Booking Confirmed!**\n\n**Car**: Mahindra ${carName}\n**Date**: ${date}\n**Time**: ${time}\n**Location**: ${city}\n\nOur team from **Mahindra Authorized Showroom** will call you shortly to confirm! 🚗💨✨`;
-            await sendMessage(sender, successMsg);
-            if (session) { session.state = "IDLE"; await session.save(); }
-            await new Chat({ sender, role: "assistant", reply: successMsg, content: successMsg }).save();
+        // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
+        const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars/i.test(lowerMsg);
+        if (isListQuery) {
+            const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N 🚙\n• Thar 🚙\n• XUV700 🌟\n• Bolero Neo 🚙\n• XUV 3XO 🎨\n• Bolero ⛽\n• XUV400 EV 📊\n• Marazzo 🚗\n\n👉 Which one are you interested in?`;
+            console.log("-----------------------------------------");
+            console.log("[STRICT BYPASS] Car List Requested. Sending NAMES ONLY.");
+            console.log("-----------------------------------------");
+            await sendMessage(sender, namesOnlyList);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: namesOnlyList, content: namesOnlyList }).save();
             return res.status(200).send("OK");
         }
 
@@ -89,18 +78,7 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
-        // Language Persistence
-        const containsGujarati = /[\u0A80-\u0AFF]/.test(textRaw);
-        const containsHindi = /[\u0900-\u097F]/.test(textRaw);
-        if (containsGujarati) session.data.language = "gujarati";
-        else if (containsHindi) session.data.language = "hinglish";
-        else if (lowerMsg.includes("english")) session.data.language = "english";
-        await session.save();
-
-        const historyContext = (await Chat.find({ sender }).sort({ timestamp: -1 }).limit(3)).reverse()
-            .map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
-
-        // 2. UNIVERSAL PINCODE LOOKUP STATE (Foolproof Global Trigger)
+        // 2. PINCODE BYPASS
         const pincodeMatch = textRaw.match(/\b\d{6}\b/);
         if (session.state === "PINCODE" || pincodeMatch) {
             if (pincodeMatch) {
@@ -112,63 +90,64 @@ export async function handleWebhook(req, res) {
                 } catch (e) {}
                 session.data.pincode = pc;
                 session.data.area = city;
-                const carSlug = (session.data.carModel || "suv").toLowerCase().replace(/ /g, "-");
+                const carSlug = (session.data.carModel || "suv").toLowerCase().replace(/mahindra\s+/g, "").replace(/\s+/g, "-");
                 const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}`;
-                const pincodeMsg = `📍 **Pincode Verified**: ${pc}\n🏢 **Location**: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n🔗 **Book Calendar**: ${calLink}`;
-                session.state = "IDLE";
-                await session.save();
+                const pincodeMsg = `📍 *Pincode Verified*: ${pc}\n🏢 *Location*: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n🔗 *Book Calendar*: ${calLink}`;
+                session.state = "IDLE"; await session.save();
                 await sendMessage(sender, pincodeMsg);
-                await new Chat({ sender, role: "user", content: textRaw }).save();
-                await new Chat({ sender, role: "assistant", reply: pincodeMsg, content: pincodeMsg }).save();
                 return res.status(200).send("OK");
             }
         }
 
-        // Global Detection
+        // 3. CAR DETECTION
         const carsList = await Car.find({});
         let detectedCar = null;
         for (const car of carsList) {
-            if (new RegExp(car.name, "i").test(textRaw)) { detectedCar = car.name; break; }
-        }
-
-        const isBooking = /(book|buy|interested|appointment|booking|chalana|dekhna|drive)/i.test(lowerMsg);
-        const greetings = ["hi", "hello", "namaste", "hey", "hii", "hy"];
-
-        // State Escape
-        if (greetings.includes(lowerMsg) || (detectedCar && !isBooking)) {
-            session.state = "IDLE";
-            if (detectedCar) session.data.carModel = detectedCar;
-            await session.save();
-            if (greetings.includes(lowerMsg)) {
-                await sendMessage(sender, "Hi. Welcome to Mahindra. How can I assist you today?");
-                return res.status(200).send("OK");
+            const shortName = car.name.replace(/Mahindra\s+/i, "").toLowerCase().trim();
+            if (lowerMsg.includes(shortName)) { 
+                detectedCar = car.name; 
+                break; 
             }
         }
 
-        // 3. HARDCODED BOOKING TRIGGER (Guarantees One-Line Pincode Request)
+        const isBooking = /(book|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
+        const isImageQuery = /image|photo|pic|gallery|showroom|dekhna/i.test(lowerMsg);
+
+        if (detectedCar) {
+            session.data.carModel = detectedCar;
+            await session.save();
+        }
+
+        // 4. BOOKING & IMAGE BYPASS
         if (isBooking && (detectedCar || session.data.carModel)) {
             session.state = "PINCODE";
-            if (detectedCar) session.data.carModel = detectedCar;
             await session.save();
-            const bookingPrompt = "Excellent! Please provide your 6-digit Pincode to continue with your request.";
-            await sendMessage(sender, bookingPrompt);
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: bookingPrompt, content: bookingPrompt }).save();
+            const prompt = "Please share your 6-digit Pincode.";
+            const carObj = await Car.findOne({ name: session.data.carModel });
+            if (carObj?.imageUrl) await sendImage(sender, carObj.imageUrl, prompt);
+            else await sendMessage(sender, prompt);
             return res.status(200).send("OK");
         }
 
-        // Final Fallback
-        const aiFinal = await getAIResponse(textRaw || "Hello", historyContext, `${req.protocol}://${req.get('host')}`, session);
-        let finalOutput = (type === "audio" || type === "voice") ? `[Debug heard: ${textRaw}]\n\n` + aiFinal : aiFinal;
-        await sendMessage(sender, finalOutput);
-        await new Chat({ sender, role: "user", content: textRaw }).save();
-        await new Chat({ sender, role: "assistant", reply: aiFinal, content: aiFinal }).save();
-
-        if (detectedCar && session.state === "IDLE" && !isBooking) {
-            const carObj = await Car.findOne({ name: detectedCar });
-            if (carObj?.imageUrl) await sendImage(sender, carObj.imageUrl, `Mahindra ${detectedCar}`);
+        if (isImageQuery) {
+            const carName = detectedCar || session.data.carModel || "XUV700";
+            const carObj = await Car.findOne({ name: carName });
+            const galleryLink = `https://honda-whatsapp-bot1-paje.vercel.app/gallery/${carName.toLowerCase().replace(/\s+/g, "-")}`;
+            const imgMsg = `*Virtual Showroom* ✨🚗\n\nExplore all images of the *${carName}* here:\n🔗 ${galleryLink}`;
+            if (carObj?.imageUrl) await sendImage(sender, carObj.imageUrl, imgMsg);
+            else await sendMessage(sender, imgMsg);
+            return res.status(200).send("OK");
         }
 
+        // 5. AI FALLBACK
+        const historyContext = (await Chat.find({ sender }).sort({ timestamp: -1 }).limit(3)).reverse()
+            .map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
+
+        const aiFinal = await getAIResponse(textRaw || "Hi", historyContext, `${req.protocol}://${req.get('host')}`, session, type);
+        await sendMessage(sender, aiFinal);
+        await new Chat({ sender, role: "user", content: textRaw }).save();
+        await new Chat({ sender, role: "assistant", reply: aiFinal, content: aiFinal }).save();
+        
         return res.status(200).send("OK");
     } catch (error) {
         console.error("❌ Fatal Webhook Error:", error.message);

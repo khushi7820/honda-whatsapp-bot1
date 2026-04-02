@@ -12,13 +12,12 @@ router.get("/", async (req, res) => {
         
         const catalogCards = cars.map(car => {
             const img = (car.images && car.images.length > 0) ? car.images[0] : (car.imageUrl || "");
-            const proxiedUrl = img; // Use direct or DB-proxied URL
             
             return `
             <a href="/gallery/${car.name.toLowerCase().replace(/\s+/g, '-')}" class="card-link">
                 <div class="card">
                     <div class="img-container">
-                        <img src="${proxiedUrl}" alt="${car.name}" referrerpolicy="no-referrer">
+                        <img src="${img}" alt="${car.name}" referrerpolicy="no-referrer">
                     </div>
                     <div class="card-info">
                         <h3>${car.name}</h3>
@@ -83,12 +82,11 @@ router.get("/:carName", async (req, res) => {
             return res.status(404).send(`Car "${carNameParam}" details coming soon!`);
         }
 
-        const imagesHtml = car.images.map(img => {
+        const imagesHtml = (car.images || []).map(img => {
             return `<div class="card"><img src="${img}" alt="${car.name}" referrerpolicy="no-referrer"></div>`;
         }).join("");
 
-        const mainImg = car.images?.[0] || car.imageUrl;
-        const metaImg = mainImg;
+        const metaImg = car.images?.[0] || car.imageUrl;
 
         const html = `
 <!DOCTYPE html>
@@ -96,7 +94,6 @@ router.get("/:carName", async (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- WhatsApp Preview Tags -->
     <meta property="og:title" content="Mahindra ${car.name} - Gallery">
     <meta property="og:description" content="${car.type} | ${car.price}">
     <meta property="og:image" content="${metaImg}">
@@ -123,7 +120,7 @@ router.get("/:carName", async (req, res) => {
     <div class="gallery">
         ${imagesHtml}
     </div>
-    <a href="https://wa.me/15558689519" class="btn">Back to Advisor</a>
+    <a href="https://wa.me/message/YOUR_LINK" class="btn">Back to Advisor</a>
     <p style="color: #444; font-size: 0.8rem; margin-bottom: 40px;">*T&C Apply. Prices are ex-showroom.</p>
 </body>
 </html>

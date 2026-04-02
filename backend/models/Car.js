@@ -19,6 +19,11 @@ const carSchema = new mongoose.Schema({
         required: true
     },
 
+    seatingCapacity: {
+        type: String,
+        required: false
+    },
+
     features: [String],
 
     description: {

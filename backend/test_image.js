@@ -7,12 +7,12 @@ const API_URL = "https://api.11za.in/apis/sendMessage/sendMessages";
 
 async function testImage() {
   const to = "917820870519"; 
-  const imageUrl = "https://images.livemint.com/img/2021/08/15/600x338/Mahindra_XUV700_1629007328906_1629007335198.jpg";
+  const imageUrl = "https://imgd.aeplcdn.com/664x374/n/cw/ec/42355/xuv700-exterior-right-front-three-quarter-3.jpeg";
   
   const payload = {
     authToken: process.env.ZA_TOKEN,
     sendto: to,
-    text: "Here is your Mahindra SUV!",
+    text: "Here is your Mahindra XUV700!",
     originWebsite: process.env.ZA_ORIGIN,
     contentType: "image",
     mediaUrl: imageUrl
