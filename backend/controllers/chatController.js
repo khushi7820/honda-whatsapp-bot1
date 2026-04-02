@@ -84,6 +84,7 @@ export async function handleWebhook(req, res) {
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase() : "";
+        const containsDevanagari = /[\u0900-\u097F]/.test(textRaw);
         
         // 🔄 SESSION RESET
         if (["reset", "restart", "start over", "cancel"].includes(lowerMsg)) {
