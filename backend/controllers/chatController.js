@@ -153,7 +153,7 @@ export async function handleWebhook(req, res) {
                 session.state = "COLOR_SELECTION";
                 await session.save();
                 
-                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Pincode ${pc} verified. Dealership: ${areaName}. Appreciate and ask for their preferred Color for Mahindra ${session.data.carModel}. EXTREMELY BRIEF.`);
+                const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `Pincode ${pc} verified. Dealership: ${areaName}. Appreciate and ask for their preferred Color for Mahindra ${session.data.carModel}. BE BRIEF AND DIRECT.`);
                 await sendMessage(sender, aiResponse);
                 return res.status(200).send("OK");
             }
@@ -181,8 +181,9 @@ export async function handleWebhook(req, res) {
         }
 
         else if (session.state === "TIME_SELECTION") {
-            const summaryData = `*Car*: ${session.data.carModel}\n*Color*: ${session.data.color}\n*Date*: ${session.data.date}\n*Time*: ${textRaw}\n*Location*: ${session.data.area}`;
-            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `FINAL SUMMARY. Provide a VERY BRIEF confirmation (max 2 sentences) in user's language and show this summary: ${summaryData}`);
+            const summaryData = `✅ **MAHINDRA BOOKING SUMMARY** ✅\n\n🚙 **Car**: ${session.data.carModel}\n📍 **Dealer**: ${session.data.area}\n📮 **Pincode**: ${session.data.pincode}\n🎨 **Color**: ${session.data.color}\n📅 **Date**: ${session.data.date}\n⏰ **Time**: ${textRaw}\n\n*Thank you for choosing Mahindra! Our advisor will contact you shortly to finalize the paperwork. 🙏🏁*`;
+            
+            const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `FINAL CONFIRMATION. Greet the user, confirm their booking is now officially recorded, and present this exact summary: ${summaryData}. Stay premium and polite.`);
             
             session.state = "IDLE";
             session.data = {}; 
