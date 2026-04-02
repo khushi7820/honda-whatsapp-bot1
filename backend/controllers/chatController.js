@@ -143,31 +143,40 @@ export async function handleWebhook(req, res) {
             }
         }
 
-        const isBooking = /(book|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
-        const isImageQuery = /image|photo|pic|gallery|showroom|dekhna/i.test(lowerMsg);
-
         if (detectedCar) {
             session.data.carModel = detectedCar;
             await session.save();
         }
 
-        // 4. BOOKING BYPASS: (Ensures Pincode-Only Response)
-        if (isBooking && (detectedCar || session.data.carModel)) {
-            session.state = "PINCODE";
-            if (detectedCar) session.data.carModel = detectedCar;
-            await session.save();
+        const isBooking = /(book|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
+        const isDetailQuery = /detail|show|info|specs|features|price|mileage|image|photo|pic/i.test(lowerMsg);
 
-            const prompt = /hindi|kya|bhai|ka|hai|kaisa|ans/i.test(lowerMsg)
-                ? "🚀 *Mahindra Test Drive*\n\nKripaya apna 6-digit Pincode share karein."
-                : "🚀 *Mahindra Test Drive*\n\nPlease share your 6-digit Pincode.";
+        // 4. DETAIL & BOOKING BYPASS (IMAG + 4-LINE FORMAT)
+        if ((isBooking || isDetailQuery || (detectedCar && lowerMsg.length < 20)) && (detectedCar || session.data.carModel)) {
+            const carName = detectedCar || session.data.carModel;
+            const carObj = await Car.findOne({ name: carName });
+            
+            if (carObj) {
+                session.state = "PINCODE";
+                await session.save();
 
-            const carObj = await Car.findOne({ name: session.data.carModel });
-            if (carObj?.imageUrl) await sendImage(sender, carObj.imageUrl, prompt);
-            else await sendMessage(sender, prompt);
+                const detailText = `*${carObj.name}* 🚗\n\n` +
+                    `💰 *Price:* ${carObj.price || "Contact Dealership"}\n` +
+                    `🎨 *Colors:* ${carObj.colors ? carObj.colors.join(", ") : "Premium Colors"}\n` +
+                    `⛽ *Fuel:* ${carObj.fuelType || "Petrol/Diesel"}\n` +
+                    `🛣️ *Mileage:* ${carObj.mileage || "Standard"}\n\n` +
+                    `👉 *Please share your 6-digit Pincode to book a test drive.*`;
 
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: prompt, content: prompt }).save();
-            return res.status(200).send("OK");
+                if (carObj.imageUrl) {
+                    await sendImage(sender, carObj.imageUrl, detailText);
+                } else {
+                    await sendMessage(sender, detailText);
+                }
+
+                await new Chat({ sender, role: "user", content: textRaw }).save();
+                await new Chat({ sender, role: "assistant", reply: detailText, content: detailText }).save();
+                return res.status(200).send("OK");
+            }
         }
 
         if (isImageQuery) {
