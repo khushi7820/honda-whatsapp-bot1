@@ -66,6 +66,16 @@ export async function handleWebhook(req, res) {
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
+        const containsGujarati = /[\u0A80-\u0AFF]/.test(textRaw);
+        const containsHindi = /[\u0900-\u097F]/.test(textRaw);
+
+        // Language Persistence
+        if (containsGujarati) session.data.language = "gujarati";
+        else if (containsHindi) session.data.language = "hinglish";
+        else if (lowerMsg.includes("english")) session.data.language = "english";
+        
+        await session.save();
+
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
