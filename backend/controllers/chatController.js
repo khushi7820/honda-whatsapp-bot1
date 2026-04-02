@@ -77,10 +77,10 @@ export async function handleWebhook(req, res) {
         }
 
         const isBookingGoal = /(book|test drive|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
-        const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii", "hy"];
+        const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii", "hy", "heyy", "heyya", "hola", "hlo"];
 
-        // State Escape
-        if (greetings.includes(lowerMsg) || (detectedCarName && !isBookingGoal && session.state !== "IDLE")) {
+        // State Escape (Allow greetings and car questions to break the flow)
+        if (greetings.includes(lowerMsg) || (detectedCarName && !isBookingGoal)) {
             session.state = "IDLE";
             if (detectedCarName) session.data.carModel = detectedCarName;
             await session.save();
