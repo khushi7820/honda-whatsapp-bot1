@@ -1,4 +1,4 @@
-// Build Force: 2026-04-02T06:05:00Z - Integrated Master Rules & Audio Optimizations
+// Build Force: 2026-04-02T06:18:00Z - Refined History & State Logic
 import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
 import Car from "../models/Car.js";
@@ -41,21 +41,16 @@ export async function handleWebhook(req, res) {
                 let mId = body.content?.mediaId || body.messages?.[0]?.audio?.id || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.audio?.id || body.messageId;
                 if (mId) {
                     const mUrl = `https://v1.11za.com/v1/media/${mId}`;
-                    console.log(`🎤 Fetching: ${mUrl}`);
                     const resMedia = await axios.get(mUrl, {
                         headers: { 'Authorization': `Bearer ${process.env.ZA_TOKEN}` },
                         responseType: 'arraybuffer'
                     });
                     const buffer = Buffer.from(resMedia.data);
-                    console.log(`🎤 Downloaded ${buffer.length} bytes`);
                     textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
-                    console.log("🎤 Final Transcript:", textRaw);
-                } else {
-                    textRaw = "(No Media ID found in audio message)";
                 }
             } catch (err) {
                 console.error("❌ Audio Error:", err.message);
-                textRaw = `(Transcription Error: ${err.message})`;
+                textRaw = `(Transcription Error)`;
             }
         }
 
@@ -73,7 +68,6 @@ export async function handleWebhook(req, res) {
         if (containsGujarati) session.data.language = "gujarati";
         else if (containsHindi) session.data.language = "hinglish";
         else if (lowerMsg.includes("english")) session.data.language = "english";
-        
         await session.save();
 
         const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -85,15 +79,14 @@ export async function handleWebhook(req, res) {
         let detectedCarName = null;
         for (const car of cars) {
             if (new RegExp(car.name, "i").test(textRaw)) {
-                detectedCarName = car.name;
-                break;
+                detectedCarName = car.name; break;
             }
         }
 
         const isBookingGoal = /(book|test drive|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
         const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii", "hy", "heyy", "heyya", "hola", "hlo"];
 
-        // State Escape (Allow greetings and car questions to break the flow)
+        // State Escape
         if (greetings.includes(lowerMsg) || (detectedCarName && !isBookingGoal)) {
             session.state = "IDLE";
             if (detectedCarName) session.data.carModel = detectedCarName;
@@ -114,6 +107,8 @@ export async function handleWebhook(req, res) {
                 await session.save();
                 const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Pincode verified. Ask for preferred color.");
                 await sendMessage(sender, aiResponse);
+                await new Chat({ sender, role: "user", content: textRaw }).save();
+                await new Chat({ sender, role: "assistant", reply: aiResponse }).save();
                 return res.status(200).send("OK");
             }
             const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a valid 6-digit Pincode.");
@@ -127,6 +122,8 @@ export async function handleWebhook(req, res) {
             await session.save();
             const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a Date for visit.");
             await sendMessage(sender, aiResponse);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: aiResponse }).save();
             return res.status(200).send("OK");
         }
 
@@ -136,6 +133,8 @@ export async function handleWebhook(req, res) {
             await session.save();
             const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "Ask for a specific Time.");
             await sendMessage(sender, aiResponse);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: aiResponse }).save();
             return res.status(200).send("OK");
         }
 
@@ -144,6 +143,8 @@ export async function handleWebhook(req, res) {
             session.state = "IDLE";
             await session.save();
             await sendMessage(sender, summary);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: summary }).save();
             return res.status(200).send("OK");
         }
 
@@ -154,13 +155,14 @@ export async function handleWebhook(req, res) {
             await session.save();
             const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, "User wants to book. ASK FOR PINCODE ONLY.");
             await sendMessage(sender, aiResponse);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: aiResponse }).save();
             return res.status(200).send("OK");
         }
 
         // Final Fallback
         const aiResponse = await getAIResponse(textRaw || "Hello", historyContextForAi, baseUrl, session);
         await sendMessage(sender, aiResponse);
-        
         await new Chat({ sender, role: "user", content: textRaw }).save();
         await new Chat({ sender, role: "assistant", reply: aiResponse }).save();
 
