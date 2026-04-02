@@ -33,15 +33,17 @@ export const sendImage = async (to, imageUrl, caption) => {
         const payload = {
             authToken: process.env.ZA_TOKEN,
             sendto: to,
-            text: caption || "Image from Honda",
+            text: caption || "Image from Mahindra",
             originWebsite: process.env.ZA_ORIGIN,
-            contentType: "Image", // Capitalised might be required
+            contentType: "image", // Fix for Invalid contentType error
             mediaUrl: imageUrl
         };
         const response = await axios.post(API_URL, payload);
         return response.data;
     } catch (error) {
         console.error("❌ 11za API (Image) Error:", error.response?.status, error.response?.data || error.message);
+        // Fallback to text
+        if (caption) await sendMessage(to, caption);
         return null;
     }
 };
