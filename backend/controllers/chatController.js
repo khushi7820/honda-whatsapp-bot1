@@ -77,7 +77,7 @@ export async function handleWebhook(req, res) {
         await session.save();
 
         const baseUrl = `${req.protocol}://${req.get('host')}`;
-        const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(5);
+        const historyForAi = await Chat.find({ sender }).sort({ timestamp: -1 }).limit(3);
         const historyContextForAi = historyForAi.reverse().map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
 
         // 🚀 GLOBAL CHECKS
