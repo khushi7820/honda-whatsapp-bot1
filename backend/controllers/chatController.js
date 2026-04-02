@@ -62,9 +62,9 @@ export async function handleWebhook(req, res) {
         // 0. GREETINGS BYPASS
         const greetings = ["hi", "hello", "namaste", "hey", "hii", "hy", "naam"];
         if (greetings.some(g => lowerMsg.includes(g))) {
-            const welcomeMsg = /hindi|bhai|kya|batao|ka|se|hai|hu|ans|kaisa|aayega|apna|swagat/i.test(lowerMsg)
-                ? "*Namaste, Mahindra Virtual Showroom mein aapka swagat hai!* 🚗✨\n\nMein aapka Mahindra assistant hoon. Aaj mein aapki kaise madad kar sakta hoon?\n\n👉 *Aap pooch sakte hain*: \"Cars ki list\", \"Test drive book karein\", ya \"Scorpio-N ki specifications\"."
-                : "Hi, how can I help you with our Mahindra SUVs today? 🚗✨\n\n👉 *You can ask for*: \"List of cars\", \"Book a test drive\", or \"Specifications of Scorpio-N\".";
+            const welcomeMsg = /hindi|bhai|kya|batao|ka|se|hai|hu|ans|kaisa|aayega|swagat|apna/i.test(lowerMsg)
+                ? "*Namaste, Mahindra Virtual Showroom mein aapka swagat hai!* 🚗✨"
+                : "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
             await sendMessage(sender, welcomeMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: welcomeMsg, content: welcomeMsg }).save();
