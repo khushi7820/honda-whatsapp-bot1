@@ -1,4 +1,4 @@
-// Version 1.1.66 - Final Mahindra Specialist
+// Version 1.1.68 - Vercel Optimized (Corrected Audio)
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -26,7 +26,9 @@ async function getInventory() {
 }
 
 export async function transcribeAudio(buffer) {
-  const tempPath = path.join(process.cwd(), `audio_${Date.now()}.ogg`);
+  // ⚡ CRITICAL: Use /tmp for Vercel write access 
+  const tDir = process.env.VERCEL ? "/tmp" : process.cwd();
+  const tempPath = path.join(tDir, `audio_${Date.now()}.ogg`);
   try {
     fs.writeFileSync(tempPath, buffer);
     const transcription = await groq.audio.transcriptions.create({
@@ -35,10 +37,12 @@ export async function transcribeAudio(buffer) {
       response_format: "text",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    return transcription;
+    // ⚡ Return text property of the response
+    return transcription.text || transcription;
   } catch (error) {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    return null;
+    console.error("Transcription Error:", error.message);
+    return "(Audio Error)";
   }
 }
 
@@ -47,49 +51,38 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const systemPrompt = `
-You are a PROFESSIONAL MAHINDRA SPECIALIST. You know every screw, bolt, and safety feature of Mahindra SUVs.
+You are a PROFESSIONAL MAHINDRA SPECIALIST. 
 
-**MISSION**: Answer user questions like an expert (technical, features, safety) but keep every response **SHORT & BULLETED**.
+**MISSION**: Help with Mahindra SUVs briefly and expertly.
 
-**RULE 1: BREVITY (MAX 5-6 LINES)**
-- No long paragraphs. Use bullets (•) and emojis.
-- Never repeat the same car details twice in a row.
+**FIXED GREETING**: 
+If they say Hi/Hello: "Hi, Welcome to Mahindra Virtual Showroom! 🚗✨ I am your Mahindra Assistant. How can I help you today?"
 
-**RULE 2: GREETING (IDLE)**
-- If the user says "Hi/Hello," keep it professional: "Hi! Welcome to Mahindra. How can I help you? I can show lists, specifications, or book a test drive."
-- DON'T ask for a pincode in the first greeting.
+**FIXED PINCODE LINE**:
+Once they pick a car, say: "Your selection of *[Car Name]* is confirmed! 🚙 Please share your 6-digit Pincode to continue."
 
-**RULE 3: BOOKING BYPASS (AFTER SELECTION)**
-- Once a car is selected, use the format:
-You're interested in booking the *[Car Name]* 🚗
-• 💰 *Price:* [Price]
-• 🎨 *Colors:* [Colors]
-• ⛽ *Fuel:* [Fuel]
-• 📊 *Mileage:* [Mileage]
-👉 Please share your 6-digit pincode.
+**TECHNICAL INFO**:
+Always provide Price, Fuel, and Safety in bullet points if asked.
 
-**INVENTORY DATABASE (USE THIS):**
+**INVENTORY:**
 ${carInventory}
 `;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: "hi" },
-      { role: "assistant", content: "Hi! Welcome to Mahindra. 🚗✨ I am your Mahindra Assistant. How can I help you today? I can show lists, specifications, or book a test drive." },
-      { role: "user", content: "list of cars" },
-      { role: "assistant", content: "*Mahindra SUV Models* 🚗✨\n\n• Scorpio N 🚙\n• Thar 🚙\n• XUV700 🌟\n• Bolero Neo 🚙\n• XUV 3XO 🎨\n• Bolero ⛽\n• XUV400 EV 📊\n• Marazzo 🚗\n\n👉 Which one are you interested in?" },
       { role: "user", content: userMessage }
     ];
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.3-70b-versatile", 
+      model: "llama-3.1-8b-instant", // Stable and fast for production
       temperature: 0.1,
-      max_tokens: 400
+      max_tokens: 350
     });
 
     return completion.choices[0].message.content;
   } catch (error) {
-    return "Hi, how can I help you with our Mahindra SUVs today?";
+    console.error("AI Error:", error.message);
+    return "Your selection is confirmed! Please share your 6-digit pincode to continue.";
   }
 }
