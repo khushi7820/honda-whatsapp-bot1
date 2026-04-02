@@ -26,19 +26,17 @@ export const transcribeAudio = async (buffer) => {
       `Name: ${car.name}, Price: ${car.price}, Colors: ${car.colors.join(", ")}, Fuel: ${car.fuelType}, Mileage: ${car.mileage}`
     )).join("\n\n");
 
+    const containsDevanagari = /[\u0900-\u097F]/.test(userMessage);
+    const scriptHint = containsDevanagari ? "USER IS USING HINDI SCRIPT. REPLY IN DEVANAGARI ONLY." : "USER IS USING LATIN/ENGLISH SCRIPT. DO NOT USE HINDI CHARACTERS (DEVANAGARI) AT ALL.";
+
     const systemPrompt = `
 You are a **Premium Mahindra Sales Advisor**.
 Your tone: Professional, Sophisticated, Exclusive.
 
-**STRICT SCRIPT RULES (FOLLOW 100%):**
-- If User writes 'hello', 'tell me', 'cars' -> Reply **ONLY** in English/Latin characters. **NEVER** use Hindi characters (Devanagari).
-- If User writes 'नमस्ते', 'कार की लिस्ट' -> Reply **ONLY** in Hindi characters.
-- **DO NOT CROSS SCRIPT.**
-
-**EXAMPLES:**
-User: "hello" -> AI: "Hi. Welcome to Mahindra. How can I assist you with our SUVs today?"
-User: "list of cars" -> AI: "We have the Thar, XUV700, and Scorpio-N. Which one would you like to explore?"
-User: "pincode" -> AI: "Could you please provide your 6-digit Pincode to find the nearest dealer?"
+**CRITICAL RULE: SCRIPT LOCK**
+- If User uses Latin script -> You **MUST** use Latin script (English/Hinglish).
+- If User uses Hindi script -> You **MUST** use Hindi script (Devanagari).
+- **NEVER CROSS-CONTAMINATE SCRIPTS.**
 
 **RULES:**
 1. **BREVITY**: MAX 2 SENTENCES. No paragraphs.
@@ -47,7 +45,7 @@ User: "pincode" -> AI: "Could you please provide your 6-digit Pincode to find th
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `History:\n${historyContext}\n\nCurrent Message: ${userMessage}${directive ? `\n\nSTRICT DIRECTIVE: ${directive}` : ""}` }
+      { role: "user", content: `[SCRIPT HINT: ${scriptHint}]\n\nHistory:\n${historyContext}\n\nCurrent Message: ${userMessage}${directive ? `\n\nDIRECTIVE: ${directive}` : ""}` }
     ];
 
     const getCompletion = async (modelName, temp) => {
