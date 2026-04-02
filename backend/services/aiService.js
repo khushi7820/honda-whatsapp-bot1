@@ -83,13 +83,12 @@ Concise, Premium, Fast, and Sales-Driven. Avoid "I am an AI," "As a specialist,"
 
     const messages = [
       { role: "system", content: systemPrompt },
-      ...history.map(h => ({ role: h.role, content: h.content })),
-      { role: "user", content: userMessage }
+      { role: "user", content: `Here is the context of our chat:\n${history}\n\nNow answer this new question: ${userMessage}` }
     ];
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3-70b-8192", // Using a larger model for better precision and language mirroring
+      model: "llama-3-70b-8192", // High speed + Intelligence
       temperature: 0.2,
       max_tokens: 400
     });
@@ -97,6 +96,6 @@ Concise, Premium, Fast, and Sales-Driven. Avoid "I am an AI," "As a specialist,"
     return completion.choices[0].message.content;
   } catch (error) {
     console.error("AI Error:", error.message);
-    return "Your selection is confirmed! Please share your 6-digit pincode to continue.";
+    return "I'm a bit busy right now. Please try again or ask for car details.";
   }
 }
