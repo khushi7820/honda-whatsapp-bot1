@@ -127,6 +127,12 @@ export async function handleWebhook(req, res) {
                 const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}`;
                 const pincodeMsg = `📍 *Pincode Verified*: ${pc}\n🏢 *Location*: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n🔗 *Book Calendar*: ${calLink}`;
                 session.state = "IDLE"; await session.save();
+                
+                // Lead Alert to Admin
+                const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${session.data.carModel || "Mahindra SUV"}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
+                await sendMessage("15558689519", leadAlert);
+
+                // Booking Link to User
                 await sendMessage(sender, pincodeMsg);
                 return res.status(200).send("OK");
             }
