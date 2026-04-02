@@ -60,9 +60,11 @@ export async function handleWebhook(req, res) {
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
         // 0. GREETINGS BYPASS
-        const greetings = ["hi", "hello", "namaste", "hey", "hii", "hy", "who are you"];
-        if (greetings.includes(lowerMsg)) {
-            const welcomeMsg = `*Hi, Welcome to Mahindra Virtual Showroom!* 🚗✨\n\nI am your Mahindra assistant. How can I help you today?\n\n👉 *You can ask for*: "List of cars", "Book a test drive", or "Specifications of Scorpio-N".`;
+        const greetings = ["hi", "hello", "namaste", "hey", "hii", "hy", "naam"];
+        if (greetings.some(g => lowerMsg.includes(g))) {
+            const welcomeMsg = /hindi|bhai|kya|batao|kaun/i.test(lowerMsg)
+                ? "*नमस्ते, महिंद्रा वर्चुअल शोरूम में आपका स्वागत है!* 🚗✨\n\nमैं आपका महिंद्रा सहायक हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?\n\n👉 *आप पूछ सकते हैं*: \"कारों की सूची\", \"टेस्ट ड्राइव बुक करें\", या \"Scorpio-N की विशेषताएं\"."
+                : "*Hi, Welcome to Mahindra Virtual Showroom!* 🚗✨\n\nI am your Mahindra assistant. How can I help you today?\n\n👉 *You can ask for*: \"List of cars\", \"Book a test drive\", or \"Specifications of Scorpio-N\".";
             await sendMessage(sender, welcomeMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: welcomeMsg, content: welcomeMsg }).save();
@@ -91,7 +93,7 @@ export async function handleWebhook(req, res) {
         }
 
         // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
-        const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars/i.test(lowerMsg);
+        const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars|cars/i.test(lowerMsg);
         if (isListQuery) {
             const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N \n• Thar \n• XUV700 \n• Bolero Neo \n• XUV 3XO \n• Bolero \n• XUV400 EV \n• Marazzo \n\n👉 Which one are you interested in?`;
             console.log("-----------------------------------------");

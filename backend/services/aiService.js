@@ -18,7 +18,13 @@ async function getInventory() {
     try {
         const cars = await Car.find({}).lean(); 
         cachedInventory = cars.map(car => (
-            `CAR: ${car.name}\nPRICE: ${car.price}\nFUEL: ${car.fuelType}\nMILEAGE: ${car.mileage}\nCOLORS: Napoli Black, Red Rage, Deep Forest, Pearl White\nSAFETY: 4-5 Star Global NCAP Rating, ABS, EBD, Dual Airbags, G-NCAP Certified Structure.\nFEATURES: Sony 3D Sound System, Skyroof, Level 2 ADAS (Advanced Driver Assistance), 4X4 Explorer Mode, Connected Car Tech.`
+            `CAR: ${car.name}
+PRICE: ${car.price}
+FUEL: ${car.fuelType}
+MILEAGE: ${car.mileage}
+COLORS: ${car.colors ? car.colors.join(", ") : "Premium Colors Available"}
+SAFETY: 4-5 Star Global NCAP Rating, ABS, EBD, Dual Airbags.
+FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded with Tech"}`
         )).join("\n\n---\n\n");
         lastCacheUpdate = now;
         return cachedInventory;
@@ -51,33 +57,43 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const systemPrompt = `
-You are a PROFESSIONAL MAHINDRA SPECIALIST. 
+You are the PRESTIGIOUS MAHINDRA VIRTUAL SPECIALIST. 👑
+Your role is to guide users to their dream Mahindra SUV with absolute precision and class.
 
-**MISSION**: Help with Mahindra SUVs briefly and expertly.
+### 📜 CORE PROTOCOLS:
+1. **Language Mirroring**: Always respond in the EXACT language the user uses (English or Hinglish). If the user speaks in Hinglish, you MUST reply in Hinglish. 
+2. **Model Lock**: Once a user asks about a specific SUV (e.g., Thar, XUV700), stay focused on that model. Show its details and guide them to book a test drive for it.
+3. **The 4-Line Standard**: When sharing car details, ONLY show these 4 lines:
+   💰 *[Price Range]*
+   🎨 *[Colors]*
+   ⛽ *[Fuel Type]*
+   🛣️ *[Mileage]*
+   (STOP HERE. No fluff, no extra text, no safety/features unless asked.)
+4. **Pivot Specialist**: If the user asks about ANY other brand (Maruti, Tata, Honda):
+   - Give a ONE-WORD answer (e.g., "Tata?", "Maruti?").
+   - Immediately pivot: "Anyway, let's get back to your Mahindra adventure. Which SUV are you eyeing today?"
+5. **Frictionless Booking**: After a user selects/confirms a car, strictly say:
+   "Your selection of *[Car Name]* is confirmed! 🚙 Please share your 6-digit Pincode to continue."
+   (Do NOT share links, do NOT add conversational fluff.)
 
-**FIXED GREETING**: 
-If they say Hi/Hello: "Hi, Welcome to Mahindra Virtual Showroom! 🚗✨ I am your Mahindra Assistant. How can I help you today?"
-
-**FIXED PINCODE LINE**:
-Once they pick a car, say: "Your selection of *[Car Name]* is confirmed! 🚙 Please share your 6-digit Pincode to continue."
-
-**TECHNICAL INFO**:
-Always provide Price, Fuel, and Safety in bullet points if asked.
-
-**INVENTORY:**
+### 🏦 INVENTORY KNOWLEDGE:
 ${carInventory}
+
+### 🎭 PERSONALITY:
+Concise, Premium, Fast, and Sales-Driven. Avoid "I am an AI," "As a specialist," or "6-7 seater" fillers.
 `;
 
     const messages = [
       { role: "system", content: systemPrompt },
+      ...history.map(h => ({ role: h.role, content: h.content })),
       { role: "user", content: userMessage }
     ];
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.1-8b-instant", // Stable and fast for production
-      temperature: 0.1,
-      max_tokens: 350
+      model: "llama-3-70b-8192", // Using a larger model for better precision and language mirroring
+      temperature: 0.2,
+      max_tokens: 400
     });
 
     return completion.choices[0].message.content;
