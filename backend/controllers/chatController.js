@@ -116,12 +116,19 @@ export async function handleWebhook(req, res) {
         }
 
         // 🚀 INITIAL GREETING - Fall through to AI for Mirroring
-        const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii"];
+        const greetings = ["hi", "hello", "hyy", "helo", "yo", "namaste", "hey", "hii", "hy"];
         if (greetings.includes(lowerMsg)) {
-            console.log("👋 Greeting detected. Resetting session for fresh interaction.");
+            console.log("👋 Greeting detected. Resetting to Fresh Welcome.");
             session.state = "IDLE";
             session.data = {};
             await session.save();
+            
+            const greetingDirective = containsDevanagari 
+                ? "महिंद्रा में आपका स्वागत है। आज हम आपकी सहायता कैसे कर सकते हैं?" 
+                : "Welcome to Mahindra. How can I assist you with our powerful SUV lineup today?";
+            
+            await sendMessage(sender, greetingDirective);
+            return res.status(200).send("OK");
         } 
         
         // 📍 PINCODE STEP (Realistic Dealer Lookup)
