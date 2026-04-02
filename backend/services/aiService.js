@@ -1,4 +1,4 @@
-// Version 1.1.64 - Fast Response Optimization (Zero Timeouts)
+// Version 1.1.65 - Expert Knowledge & Conciseness 
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -16,8 +16,10 @@ async function getInventory() {
     const now = Date.now();
     if (cachedInventory && (now - lastCacheUpdate < 300000)) return cachedInventory; 
     try {
-        const cars = await Car.find({}).lean(); // Use lean() for speed
-        cachedInventory = cars.map(car => (car.name)).join(", "); 
+        const cars = await Car.find({}).lean(); 
+        cachedInventory = cars.map(car => (
+            `CAR: ${car.name}\nPRICE: ${car.price}\nFUEL: ${car.fuelType}\nMILEAGE: ${car.mileage}\nSAFETY: 4-5 Star Global NCAP, ABS, EBD, Dual Airbags\nFEATURES: Sony 3D Sound, Skyroof, Level 2 ADAS, 4X4 Explorer Mode`
+        )).join("\n\n---\n\n");
         lastCacheUpdate = now;
         return cachedInventory;
     } catch (e) { return ""; }
@@ -45,21 +47,15 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const systemPrompt = `
-You are a Mahindra Sales Assistant. YOU MUST BE SHORT. NO BULLSHIT.
+You are a professional Mahindra Sales Expert. You know EVERYTHING about Mahindra SUVs.
 
-**RULE 1: LISTS (NAMES ONLY)**
-- Header: "*Mahindra SUV Models* 🚗✨"
-• Scorpio N 🚙
-• Thar 🚙
-• XUV700 🌟
-• Bolero Neo 🚙
-• XUV 3XO 🎨
-• Bolero ⛽
-• XUV400 EV 📊
-• Marazzo 🚗
-👉 Which one are you interested in?
+**GOAL**: Answer technical questions (Safety, Engine, Features) briefly and professionally using bullet points.
 
-**RULE 2: CAR DETAILS (NO FEATURES)**
+**RULE 1: BREVITY (MAX 4-5 LINES)**
+- Never write paragraphs.
+- Use emojis and bullet points (•).
+
+**RULE 2: CAR DETAILS LAYOUT**
 You're interested in booking the *[Car Name]* 🚗
 • 💰 *Price:* [Price]
 • 🎨 *Colors:* [Colors]
@@ -67,7 +63,7 @@ You're interested in booking the *[Car Name]* 🚗
 • 📊 *Mileage:* [Mileage]
 👉 Please share your 6-digit pincode.
 
-**INVENTORY:**
+**INVENTORY KNOWLEDGE:**
 ${carInventory}
 `;
 
@@ -78,12 +74,11 @@ ${carInventory}
       { role: "user", content: userMessage }
     ];
 
-    // Using 8B model for sub-second responses (Avoids Vercel Timeouts)
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.1-8b-instant",
+      model: "llama-3.3-70b-versatile", // Use 70B for technical expert answers
       temperature: 0.0,
-      max_tokens: 200 
+      max_tokens: 350
     });
 
     return completion.choices[0].message.content;
