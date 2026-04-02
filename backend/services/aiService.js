@@ -1,4 +1,4 @@
-// Version 1.1.65 - Expert Knowledge & Conciseness 
+// Version 1.1.66 - Final Mahindra Specialist
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -18,7 +18,7 @@ async function getInventory() {
     try {
         const cars = await Car.find({}).lean(); 
         cachedInventory = cars.map(car => (
-            `CAR: ${car.name}\nPRICE: ${car.price}\nFUEL: ${car.fuelType}\nMILEAGE: ${car.mileage}\nSAFETY: 4-5 Star Global NCAP, ABS, EBD, Dual Airbags\nFEATURES: Sony 3D Sound, Skyroof, Level 2 ADAS, 4X4 Explorer Mode`
+            `CAR: ${car.name}\nPRICE: ${car.price}\nFUEL: ${car.fuelType}\nMILEAGE: ${car.mileage}\nCOLORS: Napoli Black, Red Rage, Deep Forest, Pearl White\nSAFETY: 4-5 Star Global NCAP Rating, ABS, EBD, Dual Airbags, G-NCAP Certified Structure.\nFEATURES: Sony 3D Sound System, Skyroof, Level 2 ADAS (Advanced Driver Assistance), 4X4 Explorer Mode, Connected Car Tech.`
         )).join("\n\n---\n\n");
         lastCacheUpdate = now;
         return cachedInventory;
@@ -47,15 +47,20 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const systemPrompt = `
-You are a professional Mahindra Sales Expert. You know EVERYTHING about Mahindra SUVs.
+You are a PROFESSIONAL MAHINDRA SPECIALIST. You know every screw, bolt, and safety feature of Mahindra SUVs.
 
-**GOAL**: Answer technical questions (Safety, Engine, Features) briefly and professionally using bullet points.
+**MISSION**: Answer user questions like an expert (technical, features, safety) but keep every response **SHORT & BULLETED**.
 
-**RULE 1: BREVITY (MAX 4-5 LINES)**
-- Never write paragraphs.
-- Use emojis and bullet points (•).
+**RULE 1: BREVITY (MAX 5-6 LINES)**
+- No long paragraphs. Use bullets (•) and emojis.
+- Never repeat the same car details twice in a row.
 
-**RULE 2: CAR DETAILS LAYOUT**
+**RULE 2: GREETING (IDLE)**
+- If the user says "Hi/Hello," keep it professional: "Hi! Welcome to Mahindra. How can I help you? I can show lists, specifications, or book a test drive."
+- DON'T ask for a pincode in the first greeting.
+
+**RULE 3: BOOKING BYPASS (AFTER SELECTION)**
+- Once a car is selected, use the format:
 You're interested in booking the *[Car Name]* 🚗
 • 💰 *Price:* [Price]
 • 🎨 *Colors:* [Colors]
@@ -63,12 +68,14 @@ You're interested in booking the *[Car Name]* 🚗
 • 📊 *Mileage:* [Mileage]
 👉 Please share your 6-digit pincode.
 
-**INVENTORY KNOWLEDGE:**
+**INVENTORY DATABASE (USE THIS):**
 ${carInventory}
 `;
 
     const messages = [
       { role: "system", content: systemPrompt },
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "Hi! Welcome to Mahindra. 🚗✨ I am your Mahindra Assistant. How can I help you today? I can show lists, specifications, or book a test drive." },
       { role: "user", content: "list of cars" },
       { role: "assistant", content: "*Mahindra SUV Models* 🚗✨\n\n• Scorpio N 🚙\n• Thar 🚙\n• XUV700 🌟\n• Bolero Neo 🚙\n• XUV 3XO 🎨\n• Bolero ⛽\n• XUV400 EV 📊\n• Marazzo 🚗\n\n👉 Which one are you interested in?" },
       { role: "user", content: userMessage }
@@ -76,13 +83,13 @@ ${carInventory}
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.3-70b-versatile", // Use 70B for technical expert answers
-      temperature: 0.0,
-      max_tokens: 350
+      model: "llama-3.3-70b-versatile", 
+      temperature: 0.1,
+      max_tokens: 400
     });
 
     return completion.choices[0].message.content;
   } catch (error) {
-    return "Please share your 6-digit pincode.";
+    return "Hi, how can I help you with our Mahindra SUVs today?";
   }
 }

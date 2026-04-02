@@ -59,7 +59,17 @@ export async function handleWebhook(req, res) {
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
-        // 0. BOOKING CONFIRMATION (ADMIN ALERT INCLUDED)
+        // 0. GREETINGS BYPASS
+        const greetings = ["hi", "hello", "namaste", "hey", "hii", "hy", "who are you"];
+        if (greetings.includes(lowerMsg)) {
+            const welcomeMsg = `*Hi, Welcome to Mahindra Virtual Showroom!* 🚗✨\n\nI am your Mahindra assistant. How can I help you today?\n\n👉 *You can ask for*: "List of cars", "Book a test drive", or "Specifications of Scorpio-N".`;
+            await sendMessage(sender, welcomeMsg);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: welcomeMsg, content: welcomeMsg }).save();
+            return res.status(200).send("OK");
+        }
+
+        // 1. BOOKING CONFIRMATION BYPASS
         if (lowerMsg.startsWith("confirm_booking:")) {
             const parts = textRaw.split(":")[1].split("|");
             const date = parts[0] || "Select Date";
