@@ -38,20 +38,24 @@ export async function handleWebhook(req, res) {
         // 🎤 Audio Processing
         if (type === "audio") {
             try {
-                let mediaId = body.content?.mediaId || body.messages?.[0]?.audio?.id || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.audio?.id;
-                if (mediaId) {
-                    const mediaUrl = `https://v1.11za.com/v1/media/${mediaId}`;
-                    const response = await axios.get(mediaUrl, {
+                let mId = body.content?.mediaId || body.messages?.[0]?.audio?.id || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.audio?.id || body.messageId;
+                if (mId) {
+                    const mUrl = `https://v1.11za.com/v1/media/${mId}`;
+                    console.log(`🎤 Fetching: ${mUrl}`);
+                    const resMedia = await axios.get(mUrl, {
                         headers: { 'Authorization': `Bearer ${process.env.ZA_TOKEN}` },
                         responseType: 'arraybuffer'
                     });
-                    const transcribedText = await transcribeAudio(Buffer.from(response.data));
-                    textRaw = transcribedText || "(User sent audio, but it was not heard clearly. Reply asking them to type.)";
-                    console.log("🎤 Audio Transcribed:", textRaw);
+                    const buffer = Buffer.from(resMedia.data);
+                    console.log(`🎤 Downloaded ${buffer.length} bytes`);
+                    textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
+                    console.log("🎤 Final Transcript:", textRaw);
+                } else {
+                    textRaw = "(No Media ID found in audio message)";
                 }
             } catch (err) {
-                console.error("❌ Audio Failure:", err.message);
-                textRaw = "(Transcription error occurred. Reply asking user to type.)";
+                console.error("❌ Audio Error:", err.message);
+                textRaw = `(Transcription Error: ${err.message})`;
             }
         }
 
