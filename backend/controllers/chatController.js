@@ -186,7 +186,7 @@ export async function handleWebhook(req, res) {
             const aiResponse = await getAIResponse(textRaw, historyContextForAi, baseUrl, session, `FINAL CONFIRMATION. Greet the user, confirm their booking is now officially recorded, and present this exact summary: ${summaryData}. Stay premium and polite.`);
             
             session.state = "IDLE";
-            session.data = {}; 
+            // session.data = {}; // 🛑 Removed memory-clear to keep history
             await session.save();
             await sendMessage(sender, aiResponse);
             return res.status(200).send("OK");
