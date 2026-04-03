@@ -61,11 +61,12 @@ export async function handleWebhook(req, res) {
                 let ext = "ogg";
                 
                 if (mediaUrlToDownload && mediaUrlToDownload.startsWith("http")) {
-                    let fetchUrl = mediaUrlToDownload;
-                    if (fetchUrl.includes("11za.in") && !fetchUrl.includes("authToken=")) {
-                         fetchUrl += (fetchUrl.includes("?") ? "&" : "?") + `authToken=${process.env.ZA_TOKEN}`;
-                    }
-                    const mediaRes = await axios.get(fetchUrl, { responseType: "arraybuffer", timeout: 8000 });
+                    const fetchUrl = mediaUrlToDownload;
+                    const mediaRes = await axios.get(fetchUrl, { 
+                        responseType: "arraybuffer", 
+                        timeout: 8000,
+                        headers: { "Authorization": process.env.ZA_TOKEN }
+                    });
                     buffer = Buffer.from(mediaRes.data);
                     const cType = mediaRes.headers['content-type'] || "";
                     if (cType.includes("mp4")) ext = "mp4";
