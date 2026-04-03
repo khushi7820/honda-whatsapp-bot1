@@ -74,16 +74,20 @@ export const sendInteractiveMessage = async (to, templateData) => {
 
 export const downloadMedia = async (url) => {
     try {
-        // Fix: Use correct 11za API path for downloading media (apis/sendMessage/downloadMedia)
-        let fullUrl = url.startsWith("http") ? url : `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${url.replace("/v1/media/", "").replace("/", "")}`;
+        // Correct 11za API path for media download
+        let mId = url.replace("/v1/media/", "").replace("/", "");
+        if (mId.includes("mediaId=")) mId = mId.split("mediaId=")[1]?.split("&")[0] || mId;
         
-        console.log(`[Media Debug] Downloading from: ${fullUrl}`);
+        // 11za download requires authToken in query string
+        let fullUrl = `https://api.11za.in/apis/media/download/${mId}?authToken=${process.env.ZA_TOKEN}`;
+        
+        console.log(`[Media Debug] Downloading from: https://api.11za.in/apis/media/download/${mId}... [TOKEN HIDDEN]`);
 
         const response = await axios.get(fullUrl, { 
             responseType: "arraybuffer",
             timeout: 12000,
             headers: {
-                "Authorization": process.env.ZA_TOKEN
+                "Authorization": process.env.ZA_TOKEN // Dual-auth for safety
             }
         });
 
