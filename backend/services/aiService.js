@@ -86,7 +86,7 @@ ${carInventory}
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `Here is the context of our chat:\n${history}\n\nNow answer this new question: ${userMessage}` }
+      { role: "user", content: `STRICT ORDER: Listen ONLY to the latest question. Ignore previous car models if the new question is about a DIFFERENT car.\n\nHistory:\n${history}\n\nLATEST QUESTION: ${userMessage}` }
     ];
 
     const completion = await groq.chat.completions.create({
