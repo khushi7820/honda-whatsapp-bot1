@@ -110,20 +110,24 @@ export async function handleWebhook(req, res) {
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
-        // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
-        const isListQuery = /\b(list|models|options|available|lineup|all suv|show cars|tell me cars|cars|gaadi|gaadiyan|all cars|inventory|list of cars|batao|kaunse|konse|dekhni|dekh|seater|6-7)\b/i.test(lowerMsg);
-        if (isListQuery || lowerMsg.includes("list of cars") || lowerMsg === "list") {
-            const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N \n• Thar \n• XUV700 \n• Bolero Neo \n• XUV 3XO \n• Bolero \n• XUV400 EV \n• Marazzo \n\n👉 Which one are you interested in?`;
-            await sendMessage(sender, namesOnlyList);
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: namesOnlyList, content: namesOnlyList }).save();
-            return res.status(200).send("OK");
+        // 0. LANGUAGE PERSISTENCE & DETECTION
+        if (!session.data.detectedLanguage) {
+            if (/[\u0a80-\u0aff]/.test(textRaw)) session.data.detectedLanguage = "GUJARATI";
+            else if (/hindi|bhai|kya|batao|ka|se|hai|hu|kaisa|apna|bolero|scorpio|xuv/i.test(lowerMsg)) session.data.detectedLanguage = "HINGLISH";
+            else session.data.detectedLanguage = "ENGLISH";
+            await session.save();
+        } else if (/[\u0a80-\u0aff]/.test(textRaw)) {
+            session.data.detectedLanguage = "GUJARATI"; // Update if changed
+            await session.save();
         }
 
         // 0. ABSOLUTE TOP BYPASS: BUDGET + SEATING COMBO (TO ENSURE ACCURACY)
         const isBudgetSeatingQuery = /(8|9|10)\s*lakh/i.test(lowerMsg) && /(6|7|seater|people|person)/i.test(lowerMsg);
         if (isBudgetSeatingQuery) {
-            const budgetCars = `Yeh rahi 10 Lakh ke budget mein 6-7 seater cars:
+            let intro = "Yeh rahi 10 Lakh ke budget mein 6-7 seater cars:";
+            if (session.data.detectedLanguage === "GUJARATI") intro = "આ રહી 10 લાખના બજેટમાં 6-7 સીટર કાર:";
+
+            const budgetCars = `${intro}
 
 *Mahindra Bolero Neo* 🚗
 💰 *Price*: 9.90 - 12.15 Lakh
@@ -137,7 +141,7 @@ export async function handleWebhook(req, res) {
 ⛽ *Fuel*: Diesel
 📊 *Mileage*: 16.0 kmpl
 
-👉 Shared your Pincode to book a test drive!`;
+👉 ${session.data.detectedLanguage === "GUJARATI" ? "ટેસ્ટ ડ્રાઈવ માટે તમારો પિનકોડ શેર કરો!" : "Shared your Pincode to book a test drive!"}`;
             await sendMessage(sender, budgetCars);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: budgetCars, content: budgetCars }).save();
