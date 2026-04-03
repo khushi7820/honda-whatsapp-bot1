@@ -31,10 +31,10 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded with Tech"}`
   } catch (e) { return ""; }
 }
 
-export async function transcribeAudio(buffer) {
+export async function transcribeAudio(buffer, ext = "ogg") {
   // ⚡ CRITICAL: Use /tmp for Vercel write access 
   const tDir = process.env.VERCEL ? "/tmp" : process.cwd();
-  const tempPath = path.join(tDir, `audio_${Date.now()}.ogg`);
+  const tempPath = path.join(tDir, `audio_${Date.now()}.${ext}`);
   try {
     fs.writeFileSync(tempPath, buffer);
     const transcription = await groq.audio.transcriptions.create({
@@ -43,11 +43,13 @@ export async function transcribeAudio(buffer) {
       response_format: "verbose_json",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    // ⚡ Return text property of the response
-    return transcription.text || "(Audio Empty)";
+    
+    const resultText = transcription.text || "(Audio Empty)";
+    console.log(`[AudioTranscription] Decoded (${ext}): "${resultText.trim()}"`);
+    return resultText;
   } catch (error) {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    console.error("Transcription Error:", error.message);
+    console.error(`[AudioTranscription] Error (${ext}):`, error.message);
     return "(Audio Error)";
   }
 }

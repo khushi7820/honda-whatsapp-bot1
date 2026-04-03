@@ -58,6 +58,8 @@ export async function handleWebhook(req, res) {
         if (type !== "text") {
             try {
                 let buffer = null;
+                let ext = "ogg";
+                
                 if (mediaUrlToDownload && mediaUrlToDownload.startsWith("http")) {
                     let fetchUrl = mediaUrlToDownload;
                     if (fetchUrl.includes("11za.in") && !fetchUrl.includes("authToken=")) {
@@ -65,12 +67,17 @@ export async function handleWebhook(req, res) {
                     }
                     const mediaRes = await axios.get(fetchUrl, { responseType: "arraybuffer", timeout: 8000 });
                     buffer = Buffer.from(mediaRes.data);
+                    const cType = mediaRes.headers['content-type'] || "";
+                    if (cType.includes("mp4")) ext = "mp4";
+                    else if (cType.includes("aac")) ext = "aac";
+                    else if (cType.includes("mpeg")) ext = "mp3";
                 } else {
                     buffer = await downloadMedia(`/v1/media/${mId}`);
+                    // Fallback default to ogg for standard whatsapp Graph API
                 }
                 
-                if (buffer && buffer.length > 500) { // Ensure valid audio buffer size
-                    textRaw = await transcribeAudio(buffer);
+                if (buffer && buffer.length > 200) { // WhatsApp audio is min a few kb
+                    textRaw = await transcribeAudio(buffer, ext);
                     if (!textRaw?.trim()) textRaw = "(Audio Empty)";
                 } else {
                     textRaw = "(Audio Download Error)";
