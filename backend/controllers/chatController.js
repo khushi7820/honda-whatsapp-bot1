@@ -176,7 +176,7 @@ export async function handleWebhook(req, res) {
             session.state = "PINCODE";
             await session.save();
 
-            const confirmMsg = `Your selection of *${carName}* is confirmed! 🚙 Please share your 6-digit Pincode to continue.`;
+            const confirmMsg = `*Mahindra ${carName} is confirmed!* ✅ 🚙\n\nPlease share your 6-digit Pincode to continue with the booking process.`;
             await sendMessage(sender, confirmMsg);
             
             await new Chat({ sender, role: "user", content: textRaw }).save();
