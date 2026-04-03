@@ -66,6 +66,13 @@ export async function handleWebhook(req, res) {
 
         if (type !== "text") {
             try {
+                // Clear session car model for audio to force fresh detection from the voice note
+                let sessionToReset = await Session.findOne({ sender });
+                if (sessionToReset) {
+                    sessionToReset.data.carModel = null;
+                    await sessionToReset.save();
+                }
+
                 let buffer = null;
                 let ext = "ogg";
                 
