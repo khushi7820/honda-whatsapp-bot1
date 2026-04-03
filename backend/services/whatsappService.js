@@ -119,25 +119,37 @@ export const downloadMedia = async (urlOrId) => {
         let finalUrl = urlOrId;
         const authToken = process.env.ZA_TOKEN;
 
+        // If it looks like an ID, construct the URL
         if (!finalUrl.startsWith("http")) {
-            const mId = urlOrId.includes("mediaId=") ? urlOrId.split("mediaId=")[1]?.split("&")[0] : urlOrId;
+            const mId = finalUrl.includes("mediaId=") ? finalUrl.split("mediaId=")[1]?.split("&")[0] : finalUrl;
             finalUrl = `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${mId}&authToken=${authToken}`;
-        } else if (!finalUrl.includes("authToken=")) {
-            finalUrl += (finalUrl.includes("?") ? "&" : "?") + `authToken=${authToken}`;
         }
 
-        console.log(`[Media Debug] Final Download URL: ${finalUrl}`);
+        console.log(`[Media Debug] Attempting download: ${finalUrl}`);
 
-        const response = await axios.get(finalUrl, { 
-            responseType: "arraybuffer",
-            timeout: 25000,
-            headers: {
-                "Accept": "*/*"
+        let response;
+        try {
+            response = await axios.get(finalUrl, { 
+                responseType: "arraybuffer",
+                timeout: 25000,
+                headers: { "Accept": "*/*" }
+            });
+        } catch (err) {
+            // If direct link fails, try appending token if not there
+            if (!finalUrl.includes("authToken=")) {
+                finalUrl += (finalUrl.includes("?") ? "&" : "?") + `authToken=${authToken}`;
+                console.log(`[Media Debug] Retrying with token: ${finalUrl}`);
+                response = await axios.get(finalUrl, { 
+                    responseType: "arraybuffer",
+                    timeout: 25000,
+                    headers: { "Accept": "*/*" }
+                });
+            } else {
+                throw err;
             }
-        });
+        }
 
         const responseString = Buffer.from(response.data).toString('utf-8');
-        // Handle JSON wrapped Base64
         if (responseString.trim().startsWith("{") && responseString.includes("base64")) {
             try {
                 const jsonData = JSON.parse(responseString);
