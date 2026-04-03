@@ -95,7 +95,7 @@ export async function handleWebhook(req, res) {
                     buffer = await downloadMedia(mediaIdToDownload);
                 }
 
-                if (buffer && buffer.length > 1) {
+                if (buffer && buffer.length > 100) {
                     textRaw = await transcribeAudio(buffer, "ogg");
                     console.log(`[BOT] Transcription Success: "${textRaw}"`);
                 } else {
@@ -142,32 +142,37 @@ export async function handleWebhook(req, res) {
         }
         */
 
-        // 1. BOOKING CONFIRMATION BYPASS
-        // 2. PINCODE BYPASS
+        // 1. PINCODE BYPASS (Auto-detect in Audio/Text)
         const pincodeMatch = textRaw.match(/\b\d{6}\b/);
-        if (session.state === "PINCODE" || pincodeMatch) {
-            if (pincodeMatch) {
-                const pc = pincodeMatch[0];
-                let city = "Verified Area";
-                try {
-                    const pcRes = await axios.get(`https://api.postalpincode.in/pincode/${pc}`);
-                    if (pcRes.data[0]?.Status === "Success") city = `${pcRes.data[0].PostOffice[0].District}, ${pcRes.data[0].PostOffice[0].State}`;
-                } catch (e) { }
-                session.data.pincode = pc;
-                session.data.area = city;
-                const carSlug = (session.data.carModel || "suv").toLowerCase().replace(/mahindra\s+/g, "").replace(/\s+/g, "-");
-                const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}&botPhone=15558689519`;
-                const pincodeMsg = `📍 *Pincode Verified*: ${pc}\n🏢 *Location*: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n🔗 *Book Calendar*: ${calLink}`;
-                session.state = "IDLE"; await session.save();
-
-                // Lead Alert to Admin
-                const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${session.data.carModel || "Mahindra SUV"}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
-                await sendMessage("15558689519", leadAlert);
-
-                // Booking Link to User
-                await sendMessage(sender, pincodeMsg);
-                return res.status(200).send("OK");
-            }
+        if (pincodeMatch) {
+            const pc = pincodeMatch[0];
+            let city = "Verified Area";
+            try {
+                const pcRes = await axios.get(`https://api.postalpincode.in/pincode/${pc}`);
+                if (pcRes.data[0]?.Status === "Success") {
+                    const po = pcRes.data[0].PostOffice[0];
+                    city = `${po.District}, ${po.State}`;
+                }
+            } catch (e) { }
+            
+            session.data.pincode = pc;
+            session.data.area = city;
+            const carSlug = (session.data.carModel || "suv").toLowerCase().replace(/mahindra\s+/g, "").replace(/\s+/g, "-");
+            const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}&botPhone=15558689519`;
+            
+            const pincodeMsg = `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n🔗 *Book Calendar*: ${calLink}`;
+            
+            // Lead Alert to Admin
+            const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${session.data.carModel || "Mahindra SUV"}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
+            await sendMessage("15558689519", leadAlert);
+            
+            session.state = "IDLE"; await session.save();
+            await sendMessage(sender, pincodeMsg);
+            
+            // Save to chat history
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: pincodeMsg, content: pincodeMsg }).save();
+            return res.status(200).send("OK");
         }
 
         // 3. CAR DETECTION & SESSION CLEARING
