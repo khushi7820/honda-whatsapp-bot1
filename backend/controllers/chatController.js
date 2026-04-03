@@ -33,9 +33,17 @@ export async function handleWebhook(req, res) {
         if (body.from && body.content) {
             sender = body.from;
             type = body.content.contentType?.toLowerCase() || "text";
+            
+            if (type === "text") {
+                textRaw = body.content.text || "";
+            } else if (type === "media") {
+                mediaUrlToDownload = body.content.media?.url || null;
+                const mediaType = body.content.media?.type;
+                if (mediaType === "voice" || mediaType === "audio") {
+                    type = "audio";
+                }
+            }
             if (body.content.mediaId) mId = body.content.mediaId;
-            if (body.content.mediaUrl) mediaUrlToDownload = body.content.mediaUrl;
-            textRaw = body.content.text || "";
         } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             const msgObj = body.entry[0].changes[0].value.messages[0];
             sender = msgObj.from;
