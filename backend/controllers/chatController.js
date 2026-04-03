@@ -166,15 +166,26 @@ export async function handleWebhook(req, res) {
         const isBooking = /(book|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
         const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic/i.test(lowerMsg);
 
-        // 4. DETAIL & BOOKING BYPASS (IMAG + 4-LINE FORMAT)
-        if ((isBooking || isDetailQuery || (detectedCar && lowerMsg.length < 25)) && (detectedCar || session.data.carModel)) {
+        // 4. BOOKING BYPASS (CONFIRMATION ONLY)
+        if (isBooking && (detectedCar || session.data.carModel)) {
+            const carName = detectedCar || session.data.carModel;
+            session.state = "PINCODE";
+            await session.save();
+
+            const confirmMsg = `Your selection of *${carName}* is confirmed! 🚙 Please share your 6-digit Pincode to continue.`;
+            await sendMessage(sender, confirmMsg);
+            
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: confirmMsg, content: confirmMsg }).save();
+            return res.status(200).send("OK");
+        }
+
+        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT)
+        if ((isDetailQuery || (detectedCar && lowerMsg.length < 25)) && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             const carObj = await Car.findOne({ name: carName });
             
             if (carObj) {
-                session.state = "PINCODE";
-                await session.save();
-
                 const detailText = `*${carObj.name}* 🚗\n\n` +
                     `💰 *Price:* ${carObj.price || "Contact Dealership"}\n` +
                     `🎨 *Colors:* ${carObj.colors ? carObj.colors.join(", ") : "Premium Colors"}\n` +
