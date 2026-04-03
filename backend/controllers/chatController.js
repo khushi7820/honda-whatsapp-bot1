@@ -111,8 +111,8 @@ export async function handleWebhook(req, res) {
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
         // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
-        const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars|cars|gaadi|gaadiyan|batao|kaunse|konse|dekhni|dekh/i.test(lowerMsg);
-        if (isListQuery) {
+        const isListQuery = /\b(list|models|options|available|lineup|all suv|show cars|tell me cars|cars|gaadi|gaadiyan|batao|kaunse|konse|dekhni|dekh|seater|6-7)\b/i.test(lowerMsg);
+        if (isListQuery || lowerMsg === "list") {
             const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N \n• Thar \n• XUV700 \n• Bolero Neo \n• XUV 3XO \n• Bolero \n• XUV400 EV \n• Marazzo \n\n👉 Which one are you interested in?`;
             await sendMessage(sender, namesOnlyList);
             await new Chat({ sender, role: "user", content: textRaw }).save();
