@@ -74,7 +74,7 @@ export const sendInteractiveMessage = async (to, templateData) => {
 
 export const downloadMedia = async (url) => {
     try {
-        // Fix: Use 11za API base URL for downloading media, not the originWebsite (which is just a domain like suratagro.com)
+        // Fix: Use 11za API base URL for downloading media, not the originWebsite
         let fullUrl = url.startsWith("http") ? url : `https://api.11za.in${url}`;
         
         // Ensure authToken is present if not in URL
@@ -87,9 +87,32 @@ export const downloadMedia = async (url) => {
 
         const response = await axios.get(fullUrl, { 
             responseType: "arraybuffer",
-            timeout: 8000 // 8 second timeout
+            timeout: 10000 
         });
-        return Buffer.from(response.data);
+
+        let buffer;
+        const contentType = response.headers['content-type'] || "";
+
+        // Check if the response is actually JSON (base64 delivery like in RAG bot)
+        if (contentType.includes("application/json")) {
+            const jsonText = Buffer.from(response.data).toString('utf-8');
+            try {
+                const jsonData = JSON.parse(jsonText);
+                if (jsonData.success && jsonData.data?.base64) {
+                    console.log("[Media Debug] Detected Base64 JSON response, decoding...");
+                    buffer = Buffer.from(jsonData.data.base64, 'base64');
+                } else {
+                    console.log("[Media Debug] JSON response received but missing base64 data.");
+                    buffer = Buffer.from(response.data);
+                }
+            } catch (e) {
+                buffer = Buffer.from(response.data);
+            }
+        } else {
+            buffer = Buffer.from(response.data);
+        }
+
+        return buffer;
     } catch (error) {
         console.error("❌ 11za Media Download Error:", error.message);
         return null;
