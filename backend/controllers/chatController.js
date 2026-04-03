@@ -151,8 +151,11 @@ export async function handleWebhook(req, res) {
         let detectedCar = null;
         for (const car of carsList) {
             const shortName = car.name.replace(/Mahindra\s+/i, "").toLowerCase().trim();
+            const noSpaceName = shortName.replace(/\s+/g, "");
             const carRegex = new RegExp(`\\b${shortName}\\b`, 'i');
-            if (carRegex.test(lowerMsg) || shortName.includes(lowerMsg)) {
+            const noSpaceMsg = lowerMsg.replace(/\s+/g, "");
+            
+            if (carRegex.test(lowerMsg) || shortName.includes(lowerMsg) || noSpaceName === noSpaceMsg || noSpaceMsg.includes(noSpaceName)) {
                 detectedCar = car.name;
                 break;
             }
