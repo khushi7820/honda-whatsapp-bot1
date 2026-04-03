@@ -92,7 +92,7 @@ Concise, Premium, Fast, and Sales-Driven. Avoid "I am an AI," "As a specialist,"
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama3-8b-8192", // Faster, more stable
+      model: "llama-3.1-8b-instant", // Ultra-stable and fast
       temperature: 0.1,
       max_tokens: 512
     });
@@ -100,6 +100,6 @@ Concise, Premium, Fast, and Sales-Driven. Avoid "I am an AI," "As a specialist,"
     return completion.choices[0].message.content;
   } catch (error) {
     console.error("AI Error:", error.message);
-    return "Mahindra specialized support: Humari SUVs mein best-in-class safety aur tech milta hai. Aap aur kya jaanna chahte hain?";
+    return `[AI Error Debug]: ${error.message}. Please check GROQ_API_KEY.`;
   }
 }
