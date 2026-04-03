@@ -1,0 +1,92 @@
+﻿diff --git a/backend/controllers/chatController.js b/backend/controllers/chatController.js
+index 1d7bb8c..5252e9c 100644
+--- a/backend/controllers/chatController.js
++++ b/backend/controllers/chatController.js
+@@ -73,6 +73,30 @@ export async function handleWebhook(req, res) {
+             return res.status(200).send("OK");
+         }
+ 
++        // 0.5 ACKNOWLEDGEMENT BYPASS (Nudge user to next step with Language Mirroring)
++        const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you)\b/i;
++        if (ackWords.test(lowerMsg) && lowerMsg.length < 20) {
++            const isHindi = /bhai|kya|batao|apne|aap|ka|se|hai|hu|kaisa|shukriya|shukran|nahi|nahi/i.test(lowerMsg);
++            let session = await Session.findOne({ sender });
++            const carName = session?.data?.carModel;
++            
++            let ackMsg = "";
++            if (isHindi) {
++                ackMsg = carName 
++                    ? `Great! Kya aap *${carName}* ki booking process ke liye aage badhna chahte hain? Ya kuch aur jaanna chahte hain? ≡ƒÜùΓ£¿`
++                    : "Ji bilkul! Kya aap kisi Mahindra SUV ke baare mein jaanna chahte hain ya booking process shuru karein? ≡ƒÜùΓ£¿";
++            } else {
++                ackMsg = carName 
++                    ? `Great! Would you like to proceed with booking the *${carName}*? Or is there anything else you'd like to know? ≡ƒÜùΓ£¿`
++                    : "No problem! Would you like to explore our other SUVs, or is there anything else I can help with? ≡ƒÜùΓ£¿";
++            }
++            
++            await sendMessage(sender, ackMsg);
++            await new Chat({ sender, role: "user", content: textRaw }).save();
++            await new Chat({ sender, role: "assistant", reply: ackMsg, content: ackMsg }).save();
++            return res.status(200).send("OK");
++        }
++
+         // 1. BOOKING CONFIRMATION BYPASS
+         if (lowerMsg.startsWith("confirm_booking:")) {
+             const parts = textRaw.split(":")[1].split("|");
+@@ -83,7 +107,7 @@ export async function handleWebhook(req, res) {
+             const pc = session?.data?.pincode || "Not provided";
+             const city = session?.data?.area || "Showroom Area";
+ 
+-            const successMsg = `*Booking Confirmed* Γ£à\n\nΓÇó Car: ${carName}\nΓÇó Pincode: ${pc}\nΓÇó Location: ${city}\nΓÇó Date: ${date}\nΓÇó Time: ${time}\n\nThank you for choosing Mahindra! Γ£¿`;
++            const successMsg = `*Booking Confirmed* Γ£à\n\nΓÇó Car: ${carName}\nΓÇó Pincode: ${pc}\nΓÇó Location: ${city}\nΓÇó Date: ${date}\nΓÇó Time: ${time}\n\nOur expert will call you shortly to confirm the appointment. ≡ƒô₧\n\nThank you for choosing Mahindra! Γ£¿`;
+             await sendMessage(sender, successMsg);
+ 
+             // ≡ƒææ Notify Admin (+15558689519)
+@@ -126,7 +150,7 @@ export async function handleWebhook(req, res) {
+                 session.data.pincode = pc;
+                 session.data.area = city;
+                 const carSlug = (session.data.carModel || "suv").toLowerCase().replace(/mahindra\s+/g, "").replace(/\s+/g, "-");
+-                const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}`;
++                const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}&botPhone=15558689519`;
+                 const pincodeMsg = `≡ƒôì *Pincode Verified*: ${pc}\n≡ƒÅó *Location*: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n≡ƒöù *Book Calendar*: ${calLink}`;
+                 session.state = "IDLE"; await session.save();
+                 
+@@ -176,7 +200,7 @@ export async function handleWebhook(req, res) {
+             session.state = "PINCODE";
+             await session.save();
+ 
+-            const confirmMsg = `Your selection of *${carName}* is confirmed! ≡ƒÜÖ Please share your 6-digit Pincode to continue.`;
++            const confirmMsg = `*Mahindra ${carName} is confirmed!* Γ£à ≡ƒÜÖ\n\nPlease share your 6-digit Pincode to continue with the booking process.`;
+             await sendMessage(sender, confirmMsg);
+             
+             await new Chat({ sender, role: "user", content: textRaw }).save();
+diff --git a/backend/services/aiService.js b/backend/services/aiService.js
+index b303a4d..6e68fda 100644
+--- a/backend/services/aiService.js
++++ b/backend/services/aiService.js
+@@ -60,14 +60,18 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
+ ### ≡ƒñû AI IDENTITY:
+ You are the **Mahindra Product Expert**, representing Mahindra's full lineup of **8 premium SUV models** (Scorpio N, Thar, XUV700, Bolero Neo, XUV 3XO, Bolero, XUV400 EV, Marazzo). You have deep knowledge of every Mahindra model's safety (NCAP ratings), features (Sony sound systems, Skyroof), variants, and EMI processes. Your goal is to guide users with expert advice while keeping the conversation fast, visual, and premium.
+ 
+-### ≡ƒô£ CORE PROTOCOLS:
+-0. **Header First**: EVERY SINGLE RESPONSE about a car or its details MUST start with `*Mahindra [Car Name]* ≡ƒÜù` as the very first line. Never skip this.
++0. **Header First**: EVERY SINGLE RESPONSE about a car or its details MUST start with *Mahindra [Car Name]* ≡ƒÜù as the very first line. Never skip this. (If suggesting multiple cars, start with a General Header like *Mahindra SUV Recommendations* ≡ƒÜù).
++0.5 **Comprehensive Nudge**: When a user asks for cars based on capacity (e.g., "7 people"), you **MUST** mention ALL available models that fit that criteria in a **CLEAN POINT-WISE LIST** (e.g., ΓÇó **7-Seater**: Scorpio N, XUV700, Marazzo). NEVER use paragraphs for lists.
+ 1. **Language Mirroring**: Always respond in the EXACT language the user uses (English or Hinglish). If the user speaks in Hinglish, you MUST reply in Hinglish. 
+-2. **Product Expertise**: Answer technical questions using your deep knowledge. Strictly provide info in **3-4 short bullet points** with premium icons:
+-   - For Safety, use ≡ƒ¢í∩╕Å (e.g., ≡ƒ¢í∩╕Å *5-Star NCAP Rating*)
+-   - For Features, use ≡ƒÜÇ (e.g., ≡ƒÜÇ *Skyroof & Sony Audio*)
+-   - For EMI, use ≡ƒÅª (Give a **REALISTIC** starting range based on the car's Price. Standard: **Calculate approx. Γé╣2,000 per month for every Γé╣1 Lakh of the car's price**. e.g., for 15 Lakhs: Γé╣28k-32k/mo; for 20 Lakhs: Γé╣38k-44k/mo. DON'T GIVE FAKE NUMBERS).
+-   - Keep it FAST and point-wise. No paragraphs.
++2. **Selective Expert**: Use your knowledge to answer technical questions **ONLY** about the specific topic asked. 
++   - If the user asks for Safety, provide ONLY Safety details. 
++   - If the user asks for EMI, provide ONLY EMI details.
++   - **ALWAYS** include explicit labels and icons:
++   - ≡ƒ¢í∩╕Å **Safety**: [NCAP rating, airbags, etc.]
++   - ≡ƒÜÇ **Features**: [High-tech highlights only]
++   - ≡ƒÅª **EMI**: [Monthly calculation range based on price]
++   - ≡ƒÆ░ **Price**: [Exact price range]
++   - Keep it short and relevant. No extra info unless asked.
+ 3. **Model Lock**: Once a user asks about a specific SUV, stay focused on that model. Show its details and guide them to book a test drive for it.
+ 4. **The 4-Line Standard**: When sharing a car overview, ONLY show these 4 lines:
+    ≡ƒÆ░ *[Price Range]*

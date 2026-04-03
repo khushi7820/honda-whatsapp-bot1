@@ -58,10 +58,18 @@ export async function handleWebhook(req, res) {
         if (type !== "text") {
             try {
                 let buffer = null;
-                const mediaUrl = mediaUrlToDownload || `/v1/media/${mId}`;
-                buffer = await downloadMedia(mediaUrl);
+                if (mediaUrlToDownload && mediaUrlToDownload.startsWith("http")) {
+                    let fetchUrl = mediaUrlToDownload;
+                    if (fetchUrl.includes("11za.in") && !fetchUrl.includes("authToken=")) {
+                         fetchUrl += (fetchUrl.includes("?") ? "&" : "?") + `authToken=${process.env.ZA_TOKEN}`;
+                    }
+                    const mediaRes = await axios.get(fetchUrl, { responseType: "arraybuffer", timeout: 8000 });
+                    buffer = Buffer.from(mediaRes.data);
+                } else {
+                    buffer = await downloadMedia(`/v1/media/${mId}`);
+                }
                 
-                if (buffer) {
+                if (buffer && buffer.length > 500) { // Ensure valid audio buffer size
                     textRaw = await transcribeAudio(buffer);
                     if (!textRaw?.trim()) textRaw = "(Audio Empty)";
                 } else {

@@ -1,23 +1,32 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
-import Car from "./models/Car.js";
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-import dns from "dns";
-dns.setServers(['8.8.8.8', '1.1.1.1']);
 dotenv.config();
 
-const checkDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
-        const cars = await Car.find({});
-        console.log("Cars in DB:");
-        cars.forEach(c => console.log(`- ${c.name}`));
-        console.log(`Total: ${cars.length}`);
-        process.exit(0);
-    } catch (error) {
-        console.error("Error:", error);
-        process.exit(1);
-    }
-};
-
-checkDB();
+// Connect using DB URI from .env
+mongoose.connect(process.env.MONGODB_URI)
+  .then(async () => {
+    console.log("Connected to MongoDB.");
+    
+    // We can define the schema inline
+    const chatSchema = new mongoose.Schema({
+      sender: String,
+      role: String,
+      content: String,
+      reply: String,
+      timestamp: { type: Date, default: Date.now }
+    });
+    const Chat = mongoose.model('Chat', chatSchema);
+    
+    const chats = await Chat.find().sort({ timestamp: -1 }).limit(10);
+    console.log("LAST 10 CHATS:");
+    chats.forEach(c => {
+      console.log(`[${c.timestamp.toISOString()}] ${c.role}: ${c.content.substring(0, 50)}`);
+    });
+    
+    process.exit(0);
+  })
+  .catch(err => {
+    console.error("DB Error:", err);
+    process.exit(1);
+  });

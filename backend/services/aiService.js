@@ -40,7 +40,6 @@ export async function transcribeAudio(buffer) {
     const transcription = await groq.audio.transcriptions.create({
       file: fs.createReadStream(tempPath),
       model: "whisper-large-v3",
-      prompt: "Mahindra cars, SUV, Scorpio N, Thar, XUV700, Bolero Neo, XUV 3XO, XUV400 EV, Marazzo, price, mileage, features, safety, book test drive.",
       response_format: "verbose_json",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
