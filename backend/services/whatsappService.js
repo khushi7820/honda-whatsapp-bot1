@@ -116,20 +116,19 @@ export const sendTemplate = async (to, templateName, language, mediaUrl = "", na
 
 export const downloadMedia = async (url) => {
     try {
-        // Correct 11za API path for media download
+        // RAG Bot's working endpoint structure
         let mId = url.replace("/v1/media/", "").replace("/", "");
         if (mId.includes("mediaId=")) mId = mId.split("mediaId=")[1]?.split("&")[0] || mId;
         
-        // 11za download requires authToken in query string and correct v1 path
-        let fullUrl = `https://api.11za.in/apis/media/v1/download/${mId}?authToken=${process.env.ZA_TOKEN}`;
+        let fullUrl = `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${mId}`;
         
-        console.log(`[Media Debug] Downloading from: https://api.11za.in/apis/media/download/${mId}... [TOKEN HIDDEN]`);
+        console.log(`[Media Debug] Downloading from: ${fullUrl} [TOKEN HIDDEN]`);
 
         const response = await axios.get(fullUrl, { 
             responseType: "arraybuffer",
             timeout: 12000,
             headers: {
-                "Authorization": process.env.ZA_TOKEN // Dual-auth for safety
+                "Authorization": process.env.ZA_TOKEN // Header-based Auth like RAG bot
             }
         });
 
