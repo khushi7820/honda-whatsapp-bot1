@@ -78,11 +78,11 @@ export async function handleWebhook(req, res) {
                 
                 if (buffer && buffer.length > 200) { // WhatsApp audio is min a few kb
                     textRaw = await transcribeAudio(buffer, ext);
-                    if (!textRaw?.trim()) textRaw = "(Audio Empty)";
+                    if (!textRaw?.trim()) textRaw = `(Audio Empty) [Ext: ${ext}, Size: ${buffer.length}]`;
                 } else {
-                    textRaw = "(Audio Download Error)";
+                    textRaw = `(Audio Download Error) [Buffer size: ${buffer ? buffer.length : 'null'}]`;
                 }
-            } catch (err) { textRaw = "(Transcription Error)"; }
+            } catch (err) { textRaw = `(Transcription Error) ${err.message}`; }
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";

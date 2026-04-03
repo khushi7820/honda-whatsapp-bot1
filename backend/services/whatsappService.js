@@ -74,7 +74,8 @@ export const sendInteractiveMessage = async (to, templateData) => {
 
 export const downloadMedia = async (url) => {
     try {
-        let fullUrl = url.startsWith("http") ? url : `${process.env.ZA_ORIGIN}${url}`;
+        // Fix: Use 11za API base URL for downloading media, not the originWebsite (which is just a domain like suratagro.com)
+        let fullUrl = url.startsWith("http") ? url : `https://api.11za.in${url}`;
         
         // Ensure authToken is present if not in URL
         if (!fullUrl.includes("authToken=")) {
