@@ -134,13 +134,18 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 0.5 ACKNOWLEDGEMENT BYPASS - DISABLED TO LET AI HANDLE CONTEXT
-        /*
-        const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you|no|nahi|nhi)\b/i;
-        if (ackWords.test(lowerMsg) && lowerMsg.length < 20) {
-            // ...
+        // 0.5 ACKNOWLEDGEMENT BYPASS
+        const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you|no|nahi|nhi|fine|achha|theek)\b/i;
+        if (ackWords.test(lowerMsg) && lowerMsg.length < 12) {
+            let ackReply = "Great! Do you want to know anything else about our Mahindra SUVs? 🚗✨";
+            if (/hindi|achha|theek|shukriya|nhi|nahi/i.test(lowerMsg)) ackReply = "Shukriya! Kya aap kisi aur Mahindra SUV ke baare mein jaan-na chahte hain? 🚗✨";
+            if (/guj|saras|theek/i.test(lowerMsg)) ackReply = "ધન્યવાદ! શું તમે બીજી કોઈ મહિન્દ્રા SUV વિશે જાણવા માંગો છો? 🚗✨";
+            
+            await sendMessage(sender, ackReply);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: ackReply, content: ackReply }).save();
+            return res.status(200).send("OK");
         }
-        */
 
         // 0. FINAL BOOKING SUMMARY BYPASS
         if (lowerMsg.startsWith("confirm_booking:")) {
