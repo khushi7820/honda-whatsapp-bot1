@@ -166,11 +166,12 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
-        const isBooking = /(book|buy|interested|appointment|booking|chalana|dekhna)/i.test(lowerMsg);
+        const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book)\b/i.test(lowerMsg);
+        const isBookingInfo = /\b(how to book|process|book kaise kare)\b/i.test(lowerMsg);
         const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic/i.test(lowerMsg);
 
-        // 4. BOOKING BYPASS (CONFIRMATION ONLY)
-        if (isBooking && (detectedCar || session.data.carModel)) {
+        // 4. BOOKING BYPASS (CONFIRMATION ONLY - ACTION DRIVEN)
+        if (isBookingAction && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             session.state = "PINCODE";
             await session.save();
