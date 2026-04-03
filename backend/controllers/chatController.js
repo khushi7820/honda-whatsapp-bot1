@@ -151,7 +151,8 @@ export async function handleWebhook(req, res) {
         let detectedCar = null;
         for (const car of carsList) {
             const shortName = car.name.replace(/Mahindra\s+/i, "").toLowerCase().trim();
-            if (shortName.includes(lowerMsg) || lowerMsg.includes(shortName)) {
+            const carRegex = new RegExp(`\\b${shortName}\\b`, 'i');
+            if (carRegex.test(lowerMsg) || shortName.includes(lowerMsg)) {
                 detectedCar = car.name;
                 break;
             }
@@ -166,7 +167,7 @@ export async function handleWebhook(req, res) {
         const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic|safety|feature|tech|emi|loan/i.test(lowerMsg);
 
         // 4. DETAIL & BOOKING BYPASS (IMAG + 4-LINE FORMAT)
-        if ((isBooking || isDetailQuery || (detectedCar && lowerMsg.length < 20)) && (detectedCar || session.data.carModel)) {
+        if ((isBooking || isDetailQuery || (detectedCar && lowerMsg.length < 25)) && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             const carObj = await Car.findOne({ name: carName });
             
@@ -193,15 +194,6 @@ export async function handleWebhook(req, res) {
             }
         }
 
-        if (isDetailQuery) {
-            const carName = detectedCar || session.data.carModel || "XUV700";
-            const carObj = await Car.findOne({ name: carName });
-            const galleryLink = `https://honda-whatsapp-bot1-paje.vercel.app/gallery/${carName.toLowerCase().replace(/\s+/g, "-")}`;
-            const imgMsg = `*Virtual Showroom* ✨🚗\n\nExplore all images of the *${carName}* here:\n🔗 ${galleryLink}`;
-            if (carObj?.imageUrl) await sendImage(sender, carObj.imageUrl, imgMsg);
-            else await sendMessage(sender, imgMsg);
-            return res.status(200).send("OK");
-        }
 
         // 5. AI FALLBACK
         const historyContext = (await Chat.find({ sender }).sort({ timestamp: -1 }).limit(3)).reverse()
