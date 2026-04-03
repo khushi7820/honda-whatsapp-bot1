@@ -135,30 +135,13 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 0.5 ACKNOWLEDGEMENT BYPASS (Nudge user to next step with Language Mirroring)
+        // 0.5 ACKNOWLEDGEMENT BYPASS - DISABLED TO LET AI HANDLE CONTEXT
+        /*
         const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you|no|nahi|nhi)\b/i;
         if (ackWords.test(lowerMsg) && lowerMsg.length < 20) {
-            const isHindi = /bhai|kya|batao|apne|aap|ka|se|hai|hu|kaisa|shukriya|shukran|nahi|nhi|no/i.test(lowerMsg);
-            const carName = session?.data?.carModel;
-
-            let ackMsg = "";
-            if (lowerMsg.match(/\b(no|no thanks|nahi|nhi)\b/i)) {
-                ackMsg = isHindi ? "Theek hai, koi baat nahi. Agar aapko kuch aur poochna ho toh zaroor bataiye! 😊" : "No problem! Let me know if you need any more help. 😊";
-            } else if (isHindi) {
-                ackMsg = carName
-                    ? `Great! Kya aap *${carName}* ki booking process ke liye aage badhna chahte hain? Ya kuch aur jaanna chahte hain? 🚗✨`
-                    : "Ji bilkul! Kya aap kisi Mahindra SUV ke baare mein jaanna chahte hain ya booking process shuru karein? 🚗✨";
-            } else {
-                ackMsg = carName
-                    ? `Great! Would you like to proceed with booking the *${carName}*? Or is there anything else you'd like to know? 🚗✨`
-                    : "No problem! Would you like to explore our other SUVs, or is there anything else I can help with? 🚗✨";
-            }
-
-            await sendMessage(sender, ackMsg);
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: ackMsg, content: ackMsg }).save();
-            return res.status(200).send("OK");
+            // ...
         }
+        */
 
         // 1. BOOKING CONFIRMATION BYPASS
         // 2. PINCODE BYPASS
