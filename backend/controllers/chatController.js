@@ -73,6 +73,21 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
+        // 0.5 ACKNOWLEDGEMENT BYPASS (Nudge user to next step)
+        const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great)\b/i;
+        if (ackWords.test(lowerMsg) && lowerMsg.length < 10) {
+            let session = await Session.findOne({ sender });
+            const carName = session?.data?.carModel;
+            const ackMsg = carName 
+                ? `Great! Kya aap *${carName}* ki booking process ke liye aage badhna chahte hain? Ya kuch aur jaanna chahte hain? 🚗✨`
+                : "Ji bilkul! Kya aap kisi Mahindra SUV ke baare mein jaanna chahte hain ya booking process shuru karein? 🚗✨";
+            
+            await sendMessage(sender, ackMsg);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: ackMsg, content: ackMsg }).save();
+            return res.status(200).send("OK");
+        }
+
         // 1. BOOKING CONFIRMATION BYPASS
         if (lowerMsg.startsWith("confirm_booking:")) {
             const parts = textRaw.split(":")[1].split("|");
