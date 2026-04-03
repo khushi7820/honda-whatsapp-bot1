@@ -19,11 +19,15 @@ export async function handleWebhook(req, res) {
     try {
         await ensureDB();
         const body = req.body;
-
+        let sender, type = "text", textRaw = "";
         const msgId = body.messageId || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id || body.id;
-        let textRaw = ""; // Define upfront
         
-        // Use msgId + text preview for better deduplication
+        // Extract sender early for msgKey
+        if (body.from) sender = body.from;
+        else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) sender = body.entry[0].changes[0].value.messages[0].from;
+        else if (body.messages?.[0]) sender = body.messages[0].from;
+
+        // Use msgId + sender for better deduplication
         const msgKey = `${msgId}_${sender || 'unknown'}`;
         if (msgId && processedMessages.has(msgKey)) return res.status(200).send("OK");
         if (msgId) {
@@ -31,12 +35,10 @@ export async function handleWebhook(req, res) {
             setTimeout(() => processedMessages.delete(msgKey), 10000); // Shorter lock
         }
 
-        let sender, type = "text", textRaw = "";
         let mId = msgId;
         let mediaUrlToDownload = null;
 
         if (body.from && body.content) {
-            sender = body.from;
             type = body.content.contentType?.toLowerCase() || "text";
             
             if (type === "text") {
@@ -68,11 +70,14 @@ export async function handleWebhook(req, res) {
 
         if (!sender) return res.status(200).send("OK");
 
-        // FORCE RESET: Always start with fresh car detection to break loops
-        let sessionToReset = await Session.findOne({ sender });
-        if (sessionToReset) {
-            sessionToReset.data.carModel = null;
-            await sessionToReset.save();
+        // STEP 1: FORCE RESET CAR CONTEXT ON EVERY REQUEST TO BREAK LOOPS
+        let session = await Session.findOne({ sender });
+        if (session) {
+            session.data.carModel = null;
+            await session.save();
+        } else {
+            session = new Session({ sender, state: "IDLE", data: { history: [], carModel: null } });
+            await session.save();
         }
 
         if (type !== "text") {
@@ -134,7 +139,6 @@ export async function handleWebhook(req, res) {
         const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you)\b/i;
         if (ackWords.test(lowerMsg) && lowerMsg.length < 20) {
             const isHindi = /bhai|kya|batao|apne|aap|ka|se|hai|hu|kaisa|shukriya|shukran|nahi|nahi/i.test(lowerMsg);
-            let session = await Session.findOne({ sender });
             const carName = session?.data?.carModel;
 
             let ackMsg = "";
@@ -155,32 +159,6 @@ export async function handleWebhook(req, res) {
         }
 
         // 1. BOOKING CONFIRMATION BYPASS
-        if (lowerMsg.startsWith("confirm_booking:")) {
-            const parts = textRaw.split(":")[1].split("|");
-            const date = parts[0] || "Select Date";
-            const time = parts[1] || "Select Time";
-            let session = await Session.findOne({ sender });
-            const carName = session?.data?.carModel || "Mahindra SUV";
-            const pc = session?.data?.pincode || "Not provided";
-            const city = session?.data?.area || "Showroom Area";
-
-            const successMsg = `*Booking Confirmed* ✅\n\n• Car: ${carName}\n• Pincode: ${pc}\n• Location: ${city}\n• Date: ${date}\n• Time: ${time}\n\nOur expert will call you shortly to confirm the appointment. 📞\n\nThank you for choosing Mahindra! ✨`;
-            await sendMessage(sender, successMsg);
-
-            // 👑 Notify Admin (+15558689519)
-            const adminMsg = `*New Mahindra Lead* 🚨\n\n• Customer: ${sender}\n• Car: ${carName}\n• Pincode: ${pc}\n• Location: ${city}\n• Date: ${date}\n• Time: ${time}`;
-            await sendMessage("15558689519", adminMsg);
-
-            if (session) { session.state = "IDLE"; await session.save(); }
-            return res.status(200).send("OK");
-        }
-
-        let session = await Session.findOne({ sender });
-        if (!session) {
-            session = new Session({ sender, state: "IDLE", data: { history: [], language: "hinglish" } });
-            await session.save();
-        }
-
         // 2. PINCODE BYPASS
         const pincodeMatch = textRaw.match(/\b\d{6}\b/);
         if (session.state === "PINCODE" || pincodeMatch) {
