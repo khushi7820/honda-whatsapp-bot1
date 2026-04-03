@@ -73,14 +73,23 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 0.5 ACKNOWLEDGEMENT BYPASS (Nudge user to next step)
-        const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great)\b/i;
-        if (ackWords.test(lowerMsg) && lowerMsg.length < 10) {
+        // 0.5 ACKNOWLEDGEMENT BYPASS (Nudge user to next step with Language Mirroring)
+        const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you)\b/i;
+        if (ackWords.test(lowerMsg) && lowerMsg.length < 20) {
+            const isHindi = /bhai|kya|batao|apne|aap|ka|se|hai|hu|kaisa|shukriya|shukran|nahi|nahi/i.test(lowerMsg);
             let session = await Session.findOne({ sender });
             const carName = session?.data?.carModel;
-            const ackMsg = carName 
-                ? `Great! Kya aap *${carName}* ki booking process ke liye aage badhna chahte hain? Ya kuch aur jaanna chahte hain? 🚗✨`
-                : "Ji bilkul! Kya aap kisi Mahindra SUV ke baare mein jaanna chahte hain ya booking process shuru karein? 🚗✨";
+            
+            let ackMsg = "";
+            if (isHindi) {
+                ackMsg = carName 
+                    ? `Great! Kya aap *${carName}* ki booking process ke liye aage badhna chahte hain? Ya kuch aur jaanna chahte hain? 🚗✨`
+                    : "Ji bilkul! Kya aap kisi Mahindra SUV ke baare mein jaanna chahte hain ya booking process shuru karein? 🚗✨";
+            } else {
+                ackMsg = carName 
+                    ? `Great! Would you like to proceed with booking the *${carName}*? Or is there anything else you'd like to know? 🚗✨`
+                    : "No problem! Would you like to explore our other SUVs, or is there anything else I can help with? 🚗✨";
+            }
             
             await sendMessage(sender, ackMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
