@@ -80,32 +80,31 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
+        // STEP 1.5: ROBUST MEDIA EXTRACTION
+        let mediaIdToDownload = mId;
+        
         if (type !== "text") {
             try {
                 let buffer = null;
-                let ext = "ogg";
+                console.log(`[Media Debug] Attempting download for type: ${type}, URL: ${mediaUrlToDownload}, ID: ${mediaIdToDownload}`);
                 
+                // Prioritize direct downloadMedia tool which handles token and format detection
                 if (mediaUrlToDownload) {
-                    try {
-                        const mediaRes = await axios.get(mediaUrlToDownload, { 
-                            responseType: "arraybuffer", 
-                            timeout: 12000,
-                            headers: { "Authorization": process.env.ZA_TOKEN }
-                        });
-                        buffer = Buffer.from(mediaRes.data);
-                    } catch (directErr) {
-                        buffer = await downloadMedia(mediaUrlToDownload);
-                    }
-                } else if (mId) {
-                    buffer = await downloadMedia(mId);
+                    buffer = await downloadMedia(mediaUrlToDownload);
+                } else if (mediaIdToDownload) {
+                    buffer = await downloadMedia(mediaIdToDownload);
                 }
                 
-                if (buffer && buffer.length > 200) { 
-                    textRaw = await transcribeAudio(buffer, ext);
+                if (buffer && buffer.length > 100) { 
+                    textRaw = await transcribeAudio(buffer, "ogg");
+                    console.log(`[BOT] Transcription Success: "${textRaw}"`);
                 } else {
-                    console.error("[BOT] Audio Fail - Empty Buffer");
+                    console.error("[BOT] Audio Fail - Buffer too small or empty");
                 }
-            } catch (err) { console.error("[BOT] STT Fail:", err.message); }
+            } catch (err) { 
+                console.error("[BOT] Audio/STT Fatal Fail:", err.message);
+                textRaw = ""; 
+            }
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
