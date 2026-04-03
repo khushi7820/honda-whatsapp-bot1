@@ -99,6 +99,15 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
+        // 1.5 AI ERROR FALLBACK (Catch errors BEFORE Greetings or detecting cars)
+        const lowerText = (textRaw || "").toLowerCase();
+        if (lowerText.includes("audio empty") || lowerText.includes("audio download error") || lowerText.includes("transcription error")) {
+            const errorMsg = "Maaf kijiyega, main aapki aawaz theek se nahi sun paaya. 🎙️\nKripaya apna sawal likh kar bhejein ya dobara voice note bhejein! 🙏";
+            await sendMessage(sender, errorMsg);
+            // DO NOT SAVE THIS TO CHAT HISTORY
+            return res.status(200).send("OK");
+        }
+
         // 0. GREETINGS BYPASS (Word boundaries to avoid "book tHIss" issues)
         const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|naam)\b/i;
         const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
@@ -262,14 +271,6 @@ export async function handleWebhook(req, res) {
             }
         }
 
-
-        // 5. AI FALLBACK
-        const lowerText = (textRaw || "").toLowerCase();
-        if (lowerText.includes("audio empty") || lowerText.includes("audio download error") || lowerText.includes("transcription error")) {
-            const errorMsg = "Maaf kijiyega, main aapki aawaz theek se nahi sun paaya. 🎙️\nKripaya apna sawal likh kar bhejein ya dobara voice note bhejein! 🙏";
-            await sendMessage(sender, errorMsg);
-            return res.status(200).send("OK");
-        }
 
         const historyContext = (await Chat.find({ sender }).sort({ timestamp: -1 }).limit(3)).reverse()
             .map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
