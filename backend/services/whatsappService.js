@@ -75,19 +75,16 @@ export const sendInteractiveMessage = async (to, templateData) => {
 export const downloadMedia = async (url) => {
     try {
         // Fix: Use correct 11za API path for downloading media (apis/media/download)
-        let fullUrl = url.startsWith("http") ? url : `https://api.11za.in/apis/media/download${url.startsWith("/") ? "" : "/"}${url.replace("/v1/media/", "")}`;
+        let fullUrl = url.startsWith("http") ? url : `https://api.11za.in/apis/media/download/${url.replace("/v1/media/", "").replace("/", "")}`;
         
-        // Ensure authToken is present if not in URL
-        if (!fullUrl.includes("authToken=")) {
-            const separator = fullUrl.includes("?") ? "&" : "?";
-            fullUrl += `${separator}authToken=${process.env.ZA_TOKEN}`;
-        }
-
-        console.log(`[Media Debug] Downloading from: ${fullUrl.split('authToken=')[0]}... [TOKEN HIDDEN]`);
+        console.log(`[Media Debug] Downloading from: ${fullUrl}`);
 
         const response = await axios.get(fullUrl, { 
             responseType: "arraybuffer",
-            timeout: 10000 
+            timeout: 12000,
+            headers: {
+                "Authorization": process.env.ZA_TOKEN
+            }
         });
 
         let buffer;
@@ -114,7 +111,7 @@ export const downloadMedia = async (url) => {
 
         return buffer;
     } catch (error) {
-        console.error("❌ 11za Media Download Error:", error.message);
+        console.error("❌ 11za Media Download Error:", error.response?.status, error.message);
         return null;
     }
 };
