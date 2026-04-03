@@ -240,8 +240,9 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT) - Enabled for Audio too!
-        if ((isDetailQuery || (detectedCar && lowerMsg.length < 35)) && (detectedCar || session.data.carModel)) {
+        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT) - More specific to avoid blocking AI
+        const isExplicitDetail = /detail|show|info|specs|price|mileage|image|photo|pic|batao|kya hai/i.test(lowerMsg);
+        if (detectedCar && (isExplicitDetail || lowerMsg.length < 15)) {
             const carName = detectedCar || session.data.carModel;
             const carObj = await Car.findOne({ name: carName });
 
@@ -259,10 +260,8 @@ export async function handleWebhook(req, res) {
                     await sendMessage(sender, detailText);
                 }
 
-                if (!lowerText.includes("audio empty") && !lowerText.includes("error")) {
-                    await new Chat({ sender, role: "user", content: textRaw }).save();
-                    await new Chat({ sender, role: "assistant", reply: detailText, content: detailText }).save();
-                }
+                await new Chat({ sender, role: "user", content: textRaw }).save();
+                await new Chat({ sender, role: "assistant", reply: detailText, content: detailText }).save();
                 return res.status(200).send("OK");
             }
         }
