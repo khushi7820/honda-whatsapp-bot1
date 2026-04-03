@@ -241,31 +241,13 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT) - More specific to avoid blocking AI
+        // 5. DETAIL BYPASS (REMOVED AS PER USER REQUEST - ALWAYS USE AI)
+        /*
         const isExplicitDetail = /detail|show|info|specs|price|mileage|image|photo|pic|batao|kya hai/i.test(lowerMsg);
         if (detectedCar && (isExplicitDetail || lowerMsg.length < 15)) {
-            const carName = detectedCar || session.data.carModel;
-            const carObj = await Car.findOne({ name: carName });
-
-            if (carObj) {
-                const detailText = `*${carObj.name}* 🚗\n\n` +
-                    `💰 *Price:* ${carObj.price || "Contact Dealership"}\n` +
-                    `🎨 *Colors:* ${carObj.colors ? carObj.colors.join(", ") : "Premium Colors"}\n` +
-                    `⛽ *Fuel:* ${carObj.fuelType || "Petrol/Diesel"}\n` +
-                    `📊 *Mileage:* ${carObj.mileage || "Standard"}\n\n` +
-                    `👉 *Please share your 6-digit Pincode to book a test drive.*`;
-
-                if (carObj.imageUrl) {
-                    await sendImage(sender, carObj.imageUrl, detailText);
-                } else {
-                    await sendMessage(sender, detailText);
-                }
-
-                await new Chat({ sender, role: "user", content: textRaw }).save();
-                await new Chat({ sender, role: "assistant", reply: detailText, content: detailText }).save();
-                return res.status(200).send("OK");
-            }
+            // ... (Bypass disabled)
         }
+        */
 
 
         const historyContext = (await Chat.find({ sender }).sort({ timestamp: -1 }).limit(3)).reverse()
@@ -273,12 +255,6 @@ export async function handleWebhook(req, res) {
 
         const aiFinal = await getAIResponse(textRaw || "Hi", historyContext, `${req.protocol}://${req.get('host')}`, session, type);
         await sendMessage(sender, aiFinal);
-
-        // EXTRA: Send Audio Response if user sent audio
-        if (type === "audio") {
-            const audioUrl = await generateTTS(aiFinal, /hindi|kya|hai|batao/i.test(aiFinal) ? "hi" : "en");
-            if (audioUrl) await sendAudio(sender, audioUrl);
-        }
 
         await new Chat({ sender, role: "user", content: textRaw }).save();
         await new Chat({ sender, role: "assistant", reply: aiFinal, content: aiFinal }).save();
