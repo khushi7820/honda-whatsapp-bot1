@@ -151,9 +151,6 @@ export async function handleWebhook(req, res) {
         const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars|cars/i.test(lowerMsg);
         if (isListQuery) {
             const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N \n• Thar \n• XUV700 \n• Bolero Neo \n• XUV 3XO \n• Bolero \n• XUV400 EV \n• Marazzo \n\n👉 Which one are you interested in?`;
-            console.log("-----------------------------------------");
-            console.log("[STRICT BYPASS] Car List Requested. Sending NAMES ONLY.");
-            console.log("-----------------------------------------");
             await sendMessage(sender, namesOnlyList);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: namesOnlyList, content: namesOnlyList }).save();
