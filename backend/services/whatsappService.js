@@ -72,6 +72,26 @@ export const sendInteractiveMessage = async (to, templateData) => {
     }
 };
 
+export const sendTemplate = async (to, templateName, language, mediaUrl = "", name = "") => {
+    try {
+        const payload = {
+            sendto: to,
+            authToken: process.env.ZA_TOKEN,
+            originWebsite: process.env.ZA_ORIGIN,
+            language: language || "en",
+            templateName: templateName,
+            name: name,
+            myfile: mediaUrl // Video/Image/Document URL
+        };
+
+        const response = await axios.post("https://api.11za.in/apis/template/sendTemplate", payload);
+        return response.data;
+    } catch (error) {
+        console.error("❌ 11za Template API Error:", error.response?.status, error.message);
+        return null;
+    }
+};
+
 export const downloadMedia = async (url) => {
     try {
         // Correct 11za API path for media download
