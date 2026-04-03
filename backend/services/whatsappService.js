@@ -115,8 +115,8 @@ export const downloadMedia = async (url) => {
         let mId = url.replace("/v1/media/", "").replace("/", "");
         if (mId.includes("mediaId=")) mId = mId.split("mediaId=")[1]?.split("&")[0] || mId;
         
-        // 11za download requires authToken in query string
-        let fullUrl = `https://api.11za.in/apis/media/download/${mId}?authToken=${process.env.ZA_TOKEN}`;
+        // 11za download requires authToken in query string and correct v1 path
+        let fullUrl = `https://api.11za.in/apis/media/v1/download/${mId}?authToken=${process.env.ZA_TOKEN}`;
         
         console.log(`[Media Debug] Downloading from: https://api.11za.in/apis/media/download/${mId}... [TOKEN HIDDEN]`);
 
