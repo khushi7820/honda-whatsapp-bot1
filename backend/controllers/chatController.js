@@ -256,8 +256,10 @@ export async function handleWebhook(req, res) {
                     await sendMessage(sender, detailText);
                 }
 
-                await new Chat({ sender, role: "user", content: textRaw }).save();
-                await new Chat({ sender, role: "assistant", reply: detailText, content: detailText }).save();
+                if (!lowerText.includes("audio empty") && !lowerText.includes("error")) {
+                    await new Chat({ sender, role: "user", content: textRaw }).save();
+                    await new Chat({ sender, role: "assistant", reply: detailText, content: detailText }).save();
+                }
                 return res.status(200).send("OK");
             }
         }
