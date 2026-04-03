@@ -3,7 +3,8 @@ import Chat from "../models/Chat.js";
 import Session from "../models/Session.js";
 import Car from "../models/Car.js";
 import { getAIResponse, transcribeAudio } from "../services/aiService.js";
-import { sendMessage, sendImage, downloadMedia } from "../services/whatsappService.js";
+import { sendMessage, sendImage, downloadMedia, sendAudio } from "../services/whatsappService.js";
+import { generateTTS } from "../services/ttsService.js";
 import axios from "axios";
 import { connectDB } from "../config/db.js";
 
@@ -272,6 +273,13 @@ export async function handleWebhook(req, res) {
 
         const aiFinal = await getAIResponse(textRaw || "Hi", historyContext, `${req.protocol}://${req.get('host')}`, session, type);
         await sendMessage(sender, aiFinal);
+
+        // EXTRA: Send Audio Response if user sent audio
+        if (type === "audio") {
+            const audioUrl = await generateTTS(aiFinal, /hindi|kya|hai|batao/i.test(aiFinal) ? "hi" : "en");
+            if (audioUrl) await sendAudio(sender, audioUrl);
+        }
+
         await new Chat({ sender, role: "user", content: textRaw }).save();
         await new Chat({ sender, role: "assistant", reply: aiFinal, content: aiFinal }).save();
 
