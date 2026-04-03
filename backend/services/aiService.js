@@ -41,6 +41,8 @@ export async function transcribeAudio(buffer, ext = "ogg") {
       file: fs.createReadStream(tempPath),
       model: "whisper-large-v3",
       response_format: "verbose_json",
+      language: "hi", // Default to Hindi for Indian users
+      prompt: "Transcribe the audio accurately. The user might speak in Hindi, English, or Hinglish (Hindi mixed with English words like 'mileage', 'price', 'colors', 'specs').",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     
