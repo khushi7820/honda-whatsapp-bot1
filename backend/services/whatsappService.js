@@ -89,16 +89,21 @@ export const sendAudio = async (to, audioUrl) => {
     }
 };
 
-export const sendTemplate = async (to, templateName, language, mediaUrl = "", name = "") => {
+export const sendTemplate = async (to, templateName, language, mediaUrl = "", name = "", buttonValue = "", headerData = "", filename = "", variables = [], tags = "") => {
     try {
         const payload = {
-            sendto: to,
             authToken: process.env.ZA_TOKEN,
-            originWebsite: process.env.ZA_ORIGIN,
-            language: language || "en",
-            templateName: templateName,
             name: name,
-            myfile: mediaUrl // Video/Image/Document URL
+            sendto: to,
+            originWebsite: process.env.ZA_ORIGIN,
+            templateName: templateName,
+            language: language || "en",
+            buttonValue: buttonValue, // e.g., "https://11za.com" or ["url1", "url2"]
+            headerdata: headerData,
+            myfile: mediaUrl,
+            myfilename: filename,
+            data: variables, // dynamic template variables
+            tags: tags
         };
 
         const response = await axios.post("https://api.11za.in/apis/template/sendTemplate", payload);
