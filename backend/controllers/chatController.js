@@ -230,8 +230,8 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT) - Disabled for Audio
-        if (type === "text" && (isDetailQuery || (detectedCar && lowerMsg.length < 25)) && (detectedCar || session.data.carModel)) {
+        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT) - Enabled for Audio too!
+        if ((isDetailQuery || (detectedCar && lowerMsg.length < 35)) && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             const carObj = await Car.findOne({ name: carName });
 
@@ -257,6 +257,12 @@ export async function handleWebhook(req, res) {
 
 
         // 5. AI FALLBACK
+        if (textRaw === "(Audio Empty)" || textRaw === "(Audio Download Error)") {
+            const errorMsg = "Maaf kijiyega, main aapki aawaz theek se nahi sun paaya. 🎙️\nKripaya apna sawal likh kar bhejein ya dobara voice note bhejein! 🙏";
+            await sendMessage(sender, errorMsg);
+            return res.status(200).send("OK");
+        }
+
         const historyContext = (await Chat.find({ sender }).sort({ timestamp: -1 }).limit(3)).reverse()
             .map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
 
