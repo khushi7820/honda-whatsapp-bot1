@@ -114,47 +114,49 @@ export const sendTemplate = async (to, templateName, language, mediaUrl = "", na
     }
 };
 
-export const downloadMedia = async (url) => {
+export const downloadMedia = async (urlOrId) => {
     try {
-        // RAG Bot's working endpoint structure
-        let mId = url.replace("/v1/media/", "").replace("/", "");
-        if (mId.includes("mediaId=")) mId = mId.split("mediaId=")[1]?.split("&")[0] || mId;
-        
-        let fullUrl = `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${mId}`;
-        
-        console.log(`[Media Debug] Downloading from: ${fullUrl} [TOKEN HIDDEN]`);
+        let finalUrl = "";
+        let mId = urlOrId;
 
-        const response = await axios.get(fullUrl, { 
+        // If it's already a full URL, use it directly
+        if (urlOrId.startsWith("http")) {
+            finalUrl = urlOrId;
+            console.log(`[Media Debug] Direct URL detected, downloading from: ${finalUrl}`);
+        } else {
+            // Otherwise, construct the download URL using the ID
+            if (mId.includes("mediaId=")) mId = mId.split("mediaId=")[1]?.split("&")[0] || mId;
+            finalUrl = `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${mId}`;
+            console.log(`[Media Debug] ID detected, downloading from: ${finalUrl}`);
+        }
+
+        const response = await axios.get(finalUrl, { 
             responseType: "arraybuffer",
-            timeout: 12000,
+            timeout: 15000,
             headers: {
-                "Authorization": process.env.ZA_TOKEN // Header-based Auth like RAG bot
+                "Authorization": process.env.ZA_TOKEN,
+                "Content-Type": "application/json"
             }
         });
 
         let buffer;
         const contentType = response.headers['content-type'] || "";
 
-        // Check if the response is actually JSON (base64 delivery like in RAG bot)
-        if (contentType.includes("application/json")) {
-            const jsonText = Buffer.from(response.data).toString('utf-8');
+        // Check if the response is actually JSON (base64 delivery)
+        if (contentType.includes("application/json") || response.data.length < 500) {
+            const potentialJsonText = Buffer.from(response.data).toString('utf-8');
             try {
-                const jsonData = JSON.parse(jsonText);
+                const jsonData = JSON.parse(potentialJsonText);
                 if (jsonData.success && jsonData.data?.base64) {
-                    console.log("[Media Debug] Detected Base64 JSON response, decoding...");
-                    buffer = Buffer.from(jsonData.data.base64, 'base64');
-                } else {
-                    console.log("[Media Debug] JSON response received but missing base64 data.");
-                    buffer = Buffer.from(response.data);
+                    console.log("[Media Debug] Decoding Base64 JSON response...");
+                    return Buffer.from(jsonData.data.base64, 'base64');
                 }
             } catch (e) {
-                buffer = Buffer.from(response.data);
+                // Not valid JSON, continue with raw buffer
             }
-        } else {
-            buffer = Buffer.from(response.data);
         }
-
-        return buffer;
+        
+        return Buffer.from(response.data);
     } catch (error) {
         console.error("❌ 11za Media Download Error:", error.response?.status, error.message);
         return null;
