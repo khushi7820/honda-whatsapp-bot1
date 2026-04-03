@@ -13,22 +13,22 @@ let cachedInventory = "";
 let lastCacheUpdate = 0;
 
 async function getInventory() {
-    const now = Date.now();
-    if (cachedInventory && (now - lastCacheUpdate < 300000)) return cachedInventory; 
-    try {
-        const cars = await Car.find({}).lean(); 
-        cachedInventory = cars.map(car => (
-            `CAR: ${car.name}
+  const now = Date.now();
+  if (cachedInventory && (now - lastCacheUpdate < 300000)) return cachedInventory;
+  try {
+    const cars = await Car.find({}).lean();
+    cachedInventory = cars.map(car => (
+      `CAR: ${car.name}
 PRICE: ${car.price}
 FUEL: ${car.fuelType}
 MILEAGE: ${car.mileage}
 COLORS: ${car.colors ? car.colors.join(", ") : "Premium Colors Available"}
 SAFETY: 4-5 Star Global NCAP Rating, ABS, EBD, Dual Airbags.
 FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded with Tech"}`
-        )).join("\n\n---\n\n");
-        lastCacheUpdate = now;
-        return cachedInventory;
-    } catch (e) { return ""; }
+    )).join("\n\n---\n\n");
+    lastCacheUpdate = now;
+    return cachedInventory;
+  } catch (e) { return ""; }
 }
 
 export async function transcribeAudio(buffer) {
@@ -39,12 +39,13 @@ export async function transcribeAudio(buffer) {
     fs.writeFileSync(tempPath, buffer);
     const transcription = await groq.audio.transcriptions.create({
       file: fs.createReadStream(tempPath),
-      model: "whisper-large-v3-turbo",
-      response_format: "text",
+      model: "whisper-large-v3",
+      prompt: "Mahindra cars, SUV, Scorpio N, Thar, XUV700, Bolero Neo, XUV 3XO, XUV400 EV, Marazzo, price, mileage, features, safety, book test drive.",
+      response_format: "verbose_json",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     // ⚡ Return text property of the response
-    return transcription.text || transcription;
+    return transcription.text || "(Audio Empty)";
   } catch (error) {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     console.error("Transcription Error:", error.message);

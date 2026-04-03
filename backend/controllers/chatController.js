@@ -58,13 +58,15 @@ export async function handleWebhook(req, res) {
         if (type !== "text") {
             try {
                 let buffer = null;
-                if (mediaUrlToDownload && mediaUrlToDownload.startsWith("http")) {
-                    const mediaRes = await axios.get(mediaUrlToDownload, { responseType: "arraybuffer", timeout: 8000 });
-                    buffer = Buffer.from(mediaRes.data);
+                const mediaUrl = mediaUrlToDownload || `/v1/media/${mId}`;
+                buffer = await downloadMedia(mediaUrl);
+                
+                if (buffer) {
+                    textRaw = await transcribeAudio(buffer);
+                    if (!textRaw?.trim()) textRaw = "(Audio Empty)";
                 } else {
-                    buffer = await downloadMedia(`/v1/media/${mId}`);
+                    textRaw = "(Audio Download Error)";
                 }
-                if (buffer) textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
             } catch (err) { textRaw = "(Transcription Error)"; }
         }
 
@@ -74,7 +76,7 @@ export async function handleWebhook(req, res) {
         // 0. GREETINGS BYPASS (Word boundaries to avoid "book tHIss" issues)
         const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|naam)\b/i;
         const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
-        
+
         if (greetingRegex.test(lowerMsg) && !isBookingSearch && lowerMsg.length < 15) {
             const welcomeMsg = /hindi|bhai|kya|batao|ka|se|hai|hu|ans|kaisa|aayega|swagat|apna/i.test(lowerMsg)
                 ? "*Namaste, Mahindra Virtual Showroom mein aapka swagat hai!* 🚗✨"
@@ -91,18 +93,18 @@ export async function handleWebhook(req, res) {
             const isHindi = /bhai|kya|batao|apne|aap|ka|se|hai|hu|kaisa|shukriya|shukran|nahi|nahi/i.test(lowerMsg);
             let session = await Session.findOne({ sender });
             const carName = session?.data?.carModel;
-            
+
             let ackMsg = "";
             if (isHindi) {
-                ackMsg = carName 
+                ackMsg = carName
                     ? `Great! Kya aap *${carName}* ki booking process ke liye aage badhna chahte hain? Ya kuch aur jaanna chahte hain? 🚗✨`
                     : "Ji bilkul! Kya aap kisi Mahindra SUV ke baare mein jaanna chahte hain ya booking process shuru karein? 🚗✨";
             } else {
-                ackMsg = carName 
+                ackMsg = carName
                     ? `Great! Would you like to proceed with booking the *${carName}*? Or is there anything else you'd like to know? 🚗✨`
                     : "No problem! Would you like to explore our other SUVs, or is there anything else I can help with? 🚗✨";
             }
-            
+
             await sendMessage(sender, ackMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: ackMsg, content: ackMsg }).save();
@@ -165,7 +167,7 @@ export async function handleWebhook(req, res) {
                 const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}&botPhone=15558689519`;
                 const pincodeMsg = `📍 *Pincode Verified*: ${pc}\n🏢 *Location*: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n🔗 *Book Calendar*: ${calLink}`;
                 session.state = "IDLE"; await session.save();
-                
+
                 // Lead Alert to Admin
                 const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${session.data.carModel || "Mahindra SUV"}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
                 await sendMessage("15558689519", leadAlert);
@@ -190,7 +192,7 @@ export async function handleWebhook(req, res) {
             const noSpaceName = shortName.replace(/\s+/g, "");
             const carRegex = new RegExp(`\\b${shortName}\\b`, 'i');
             const noSpaceMsg = lowerMsg.replace(/\s+/g, "");
-            
+
             if (carRegex.test(lowerMsg) || shortName.includes(lowerMsg) || noSpaceName === noSpaceMsg || noSpaceMsg.includes(noSpaceName)) {
                 detectedCar = car.name;
                 break;
@@ -214,7 +216,7 @@ export async function handleWebhook(req, res) {
 
             const confirmMsg = `*Mahindra ${carName} is confirmed!* ✅ 🚙\n\nPlease share your 6-digit Pincode to continue with the booking process.`;
             await sendMessage(sender, confirmMsg);
-            
+
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: confirmMsg, content: confirmMsg }).save();
             return res.status(200).send("OK");
@@ -224,7 +226,7 @@ export async function handleWebhook(req, res) {
         if (type === "text" && (isDetailQuery || (detectedCar && lowerMsg.length < 25)) && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             const carObj = await Car.findOne({ name: carName });
-            
+
             if (carObj) {
                 const detailText = `*${carObj.name}* 🚗\n\n` +
                     `💰 *Price:* ${carObj.price || "Contact Dealership"}\n` +
