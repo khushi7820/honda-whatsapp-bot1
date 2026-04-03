@@ -28,11 +28,13 @@ export async function handleWebhook(req, res) {
 
         let sender, type = "text", textRaw = "";
         let mId = msgId;
+        let mediaUrlToDownload = null;
 
         if (body.from && body.content) {
             sender = body.from;
             type = body.content.contentType?.toLowerCase() || "text";
             if (body.content.mediaId) mId = body.content.mediaId;
+            if (body.content.mediaUrl) mediaUrlToDownload = body.content.mediaUrl;
             textRaw = body.content.text || "";
         } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             const msgObj = body.entry[0].changes[0].value.messages[0];
@@ -40,18 +42,28 @@ export async function handleWebhook(req, res) {
             type = msgObj.type?.toLowerCase() || "text";
             mId = msgObj.audio?.id || msgObj.voice?.id || msgId;
             if (type === "text") textRaw = msgObj.text.body || "";
+            if (msgObj.audio?.url) mediaUrlToDownload = msgObj.audio.url;
+            if (msgObj.voice?.url) mediaUrlToDownload = msgObj.voice.url;
         } else if (body.messages?.[0]) {
             sender = body.messages[0].from;
             type = body.messages[0].type?.toLowerCase() || (body.messages[0].isAudio ? "audio" : "text");
             mId = body.messages[0].audio?.id || body.messages[0].voice?.id || msgId;
             textRaw = type === "text" ? (body.messages[0].text?.body || "") : "";
+            if (body.messages[0].audio?.url) mediaUrlToDownload = body.messages[0].audio.url;
+            if (body.messages[0].voice?.url) mediaUrlToDownload = body.messages[0].voice.url;
         }
 
         if (!sender) return res.status(200).send("OK");
 
         if (type !== "text") {
             try {
-                const buffer = await downloadMedia(`/v1/media/${mId}`);
+                let buffer = null;
+                if (mediaUrlToDownload && mediaUrlToDownload.startsWith("http")) {
+                    const mediaRes = await axios.get(mediaUrlToDownload, { responseType: "arraybuffer", timeout: 8000 });
+                    buffer = Buffer.from(mediaRes.data);
+                } else {
+                    buffer = await downloadMedia(`/v1/media/${mId}`);
+                }
                 if (buffer) textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
             } catch (err) { textRaw = "(Transcription Error)"; }
         }
