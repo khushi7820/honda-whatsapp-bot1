@@ -69,7 +69,6 @@ export async function handleWebhook(req, res) {
                 let ext = "ogg";
                 
                 if (mediaUrlToDownload) {
-                    console.log(`[Media Debug] Downloading directly from: ${mediaUrlToDownload}`);
                     try {
                         const mediaRes = await axios.get(mediaUrlToDownload, { 
                             responseType: "arraybuffer", 
@@ -77,9 +76,7 @@ export async function handleWebhook(req, res) {
                             headers: { "Authorization": process.env.ZA_TOKEN }
                         });
                         buffer = Buffer.from(mediaRes.data);
-                        console.log(`[Media Debug] Direct download success, size: ${buffer.length}`);
                     } catch (directErr) {
-                        console.warn(`[Media Debug] Direct download failed, falling back to 11za API: ${directErr.message}`);
                         buffer = await downloadMedia(mediaUrlToDownload);
                     }
                 } else if (mId) {
@@ -88,11 +85,10 @@ export async function handleWebhook(req, res) {
                 
                 if (buffer && buffer.length > 200) { 
                     textRaw = await transcribeAudio(buffer, ext);
-                    if (!textRaw?.trim()) textRaw = `(Audio Empty) [Ext: ${ext}, Size: ${buffer.length}]`;
                 } else {
-                    textRaw = `(Audio Download Error) [Buffer size: ${buffer ? buffer.length : 'null'}]`;
+                    console.error("[BOT] Audio Fail - Empty Buffer");
                 }
-            } catch (err) { textRaw = `(Transcription Error) ${err.message}`; }
+            } catch (err) { console.error("[BOT] STT Fail:", err.message); }
         }
 
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
