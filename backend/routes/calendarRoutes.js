@@ -139,8 +139,8 @@ router.get("/calendar", async (req, res) => {
             const d = new Date(dateVal);
             const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
             
-            // Pre-filled message (REPLACE WITH YOUR BOT NUMBER)
-            const botNumber = "917820870519"; 
+            // Dynamic Bot Number Redirect
+            const botNumber = "${botPhone || "15558689519"}"; 
             const text = encodeURIComponent(\`CONFIRM_BOOKING:\${dateStr}|\${selectedTime}\`);
             window.location.href = \`https://wa.me/\${botNumber}?text=\${text}\`;
         }
