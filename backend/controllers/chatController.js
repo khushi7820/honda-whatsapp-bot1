@@ -88,6 +88,16 @@ export async function handleWebhook(req, res) {
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
+        // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
+        const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars|cars/i.test(lowerMsg);
+        if (isListQuery) {
+            const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N \n• Thar \n• XUV700 \n• Bolero Neo \n• XUV 3XO \n• Bolero \n• XUV400 EV \n• Marazzo \n\n👉 Which one are you interested in?`;
+            await sendMessage(sender, namesOnlyList);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: namesOnlyList, content: namesOnlyList }).save();
+            return res.status(200).send("OK");
+        }
+
         // 0. GREETINGS BYPASS (Word boundaries to avoid "book tHIss" issues)
         const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|naam)\b/i;
         const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
@@ -144,16 +154,6 @@ export async function handleWebhook(req, res) {
             await sendMessage("15558689519", adminMsg);
 
             if (session) { session.state = "IDLE"; await session.save(); }
-            return res.status(200).send("OK");
-        }
-
-        // 1. ABSOLUTE TOP BYPASS: CAR LISTS (NAMES ONLY)
-        const isListQuery = /list|models|options|available|lineup|all suv|show cars|tell me cars|cars/i.test(lowerMsg);
-        if (isListQuery) {
-            const namesOnlyList = `*Mahindra SUV Models* 🚗✨\n\n• Scorpio N \n• Thar \n• XUV700 \n• Bolero Neo \n• XUV 3XO \n• Bolero \n• XUV400 EV \n• Marazzo \n\n👉 Which one are you interested in?`;
-            await sendMessage(sender, namesOnlyList);
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: namesOnlyList, content: namesOnlyList }).save();
             return res.status(200).send("OK");
         }
 
