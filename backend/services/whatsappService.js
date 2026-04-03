@@ -74,8 +74,8 @@ export const sendInteractiveMessage = async (to, templateData) => {
 
 export const downloadMedia = async (url) => {
     try {
-        // Fix: Use correct 11za API path for downloading media (apis/media/download)
-        let fullUrl = url.startsWith("http") ? url : `https://api.11za.in/apis/media/download/${url.replace("/v1/media/", "").replace("/", "")}`;
+        // Fix: Use correct 11za API path for downloading media (apis/sendMessage/downloadMedia)
+        let fullUrl = url.startsWith("http") ? url : `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${url.replace("/v1/media/", "").replace("/", "")}`;
         
         console.log(`[Media Debug] Downloading from: ${fullUrl}`);
 
