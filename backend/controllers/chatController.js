@@ -60,21 +60,11 @@ export async function handleWebhook(req, res) {
                 let buffer = null;
                 let ext = "ogg";
                 
-                if (mediaUrlToDownload && mediaUrlToDownload.startsWith("http")) {
-                    const fetchUrl = mediaUrlToDownload;
-                    const mediaRes = await axios.get(fetchUrl, { 
-                        responseType: "arraybuffer", 
-                        timeout: 8000,
-                        headers: { "Authorization": process.env.ZA_TOKEN }
-                    });
-                    buffer = Buffer.from(mediaRes.data);
-                    const cType = mediaRes.headers['content-type'] || "";
-                    if (cType.includes("mp4")) ext = "mp4";
-                    else if (cType.includes("aac")) ext = "aac";
-                    else if (cType.includes("mpeg")) ext = "mp3";
-                } else {
-                    buffer = await downloadMedia(`${mId}`);
-                    // Fallback default to ogg for standard whatsapp Graph API
+                // Use centralized downloadMedia for ALL cases to ensure Header-based Auth
+                if (mediaUrlToDownload) {
+                    buffer = await downloadMedia(mediaUrlToDownload);
+                } else if (mId) {
+                    buffer = await downloadMedia(mId);
                 }
                 
                 if (buffer && buffer.length > 200) { // WhatsApp audio is min a few kb
