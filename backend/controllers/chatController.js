@@ -122,7 +122,7 @@ export async function handleWebhook(req, res) {
         }
 
         // 0. GREETINGS BYPASS (Word boundaries to avoid "book tHIss" issues)
-        const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|naam)\b/i;
+        const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|naam|heyy|hiii|haa|hal|hoi)\b/i;
         const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
 
         if (greetingRegex.test(lowerMsg) && !isBookingSearch && lowerMsg.length < 15) {
