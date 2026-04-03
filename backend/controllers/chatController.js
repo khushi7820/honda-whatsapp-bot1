@@ -68,14 +68,25 @@ export async function handleWebhook(req, res) {
                 let buffer = null;
                 let ext = "ogg";
                 
-                // Use centralized downloadMedia for ALL cases to ensure Header-based Auth
                 if (mediaUrlToDownload) {
-                    buffer = await downloadMedia(mediaUrlToDownload);
+                    console.log(`[Media Debug] Downloading directly from: ${mediaUrlToDownload}`);
+                    try {
+                        const mediaRes = await axios.get(mediaUrlToDownload, { 
+                            responseType: "arraybuffer", 
+                            timeout: 12000,
+                            headers: { "Authorization": process.env.ZA_TOKEN }
+                        });
+                        buffer = Buffer.from(mediaRes.data);
+                        console.log(`[Media Debug] Direct download success, size: ${buffer.length}`);
+                    } catch (directErr) {
+                        console.warn(`[Media Debug] Direct download failed, falling back to 11za API: ${directErr.message}`);
+                        buffer = await downloadMedia(mediaUrlToDownload);
+                    }
                 } else if (mId) {
                     buffer = await downloadMedia(mId);
                 }
                 
-                if (buffer && buffer.length > 200) { // WhatsApp audio is min a few kb
+                if (buffer && buffer.length > 200) { 
                     textRaw = await transcribeAudio(buffer, ext);
                     if (!textRaw?.trim()) textRaw = `(Audio Empty) [Ext: ${ext}, Size: ${buffer.length}]`;
                 } else {

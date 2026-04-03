@@ -72,6 +72,23 @@ export const sendInteractiveMessage = async (to, templateData) => {
     }
 };
 
+export const sendAudio = async (to, audioUrl) => {
+    try {
+        const payload = {
+            authToken: process.env.ZA_TOKEN,
+            sendto: to,
+            originWebsite: process.env.ZA_ORIGIN,
+            contentType: "audio",
+            mediaUrl: audioUrl
+        };
+        const response = await axios.post(API_URL, payload);
+        return response.data;
+    } catch (error) {
+        console.error("❌ 11za Audio API Error:", error.response?.status, error.message);
+        return null;
+    }
+};
+
 export const sendTemplate = async (to, templateName, language, mediaUrl = "", name = "") => {
     try {
         const payload = {
