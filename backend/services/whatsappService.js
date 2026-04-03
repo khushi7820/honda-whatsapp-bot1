@@ -118,44 +118,50 @@ export const downloadMedia = async (urlOrId) => {
     try {
         let finalUrl = "";
         let mId = urlOrId;
+        const authToken = process.env.ZA_TOKEN;
 
-        // If it's already a full URL, use it directly
+        // 1. Determine the URL
         if (urlOrId.startsWith("http")) {
             finalUrl = urlOrId;
-            console.log(`[Media Debug] Direct URL detected, downloading from: ${finalUrl}`);
+            // 11za URLs usually need the authToken even if direct
+            if (!finalUrl.includes("authToken=")) {
+                finalUrl += (finalUrl.includes("?") ? "&" : "?") + `authToken=${authToken}`;
+            }
+            console.log(`[Media Debug] Direct URL detected: ${finalUrl}`);
         } else {
-            // Otherwise, construct the download URL using the ID
             if (mId.includes("mediaId=")) mId = mId.split("mediaId=")[1]?.split("&")[0] || mId;
-            finalUrl = `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${mId}`;
-            console.log(`[Media Debug] ID detected, downloading from: ${finalUrl}`);
+            finalUrl = `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${mId}&authToken=${authToken}`;
+            console.log(`[Media Debug] Constructing URL from ID: ${finalUrl}`);
         }
 
+        // 2. Fetch with dual-auth (Headers + URL as fallback)
         const response = await axios.get(finalUrl, { 
             responseType: "arraybuffer",
-            timeout: 15000,
+            timeout: 20000,
             headers: {
-                "Authorization": process.env.ZA_TOKEN
+                "Authorization": authToken,
+                "Accept": "*/*"
             }
         });
 
-        let buffer;
         const contentType = response.headers['content-type'] || "";
-
-        // Check if the response is actually JSON (base64 delivery)
         const responseString = Buffer.from(response.data).toString('utf-8');
+
+        // 3. Handle JSON wrapped Base64
         if (contentType.includes("application/json") || (responseString.trim().startsWith("{") && responseString.includes("base64"))) {
             try {
                 const jsonData = JSON.parse(responseString);
-                if (jsonData.data?.base64) {
-                    console.log("[Media Debug] Decoding Base64 JSON response...");
-                    return Buffer.from(jsonData.data.base64, 'base64');
+                const base64Data = jsonData.data?.base64 || jsonData.base64;
+                if (base64Data) {
+                    console.log("[Media Debug] Successfully decoded Base64 audio.");
+                    return Buffer.from(base64Data, 'base64');
                 }
             } catch (e) { }
         }
         
         return Buffer.from(response.data);
     } catch (error) {
-        console.error("❌ 11za Media Download Error:", error.response?.status, error.message);
+        console.error("❌ 11za Media Download Fatal Error:", error.response?.status, error.message);
         return null;
     }
 };
