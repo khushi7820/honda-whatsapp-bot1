@@ -119,37 +119,26 @@ export const downloadMedia = async (urlOrId) => {
         let finalUrl = urlOrId;
         const authToken = process.env.ZA_TOKEN;
 
-        // If it looks like an ID, construct the URL
+        // Ensure we have a proper 11za download URL with token
         if (!finalUrl.startsWith("http")) {
             const mId = finalUrl.includes("mediaId=") ? finalUrl.split("mediaId=")[1]?.split("&")[0] : finalUrl;
             finalUrl = `https://api.11za.in/apis/sendMessage/downloadMedia?mediaId=${mId}&authToken=${authToken}`;
+        } else if (!finalUrl.includes("authToken=")) {
+            finalUrl += (finalUrl.includes("?") ? "&" : "?") + `authToken=${authToken}`;
         }
 
-        console.log(`[Media Debug] Attempting download: ${finalUrl}`);
+        console.log(`[Media Debug] Clean Download Attempt: ${finalUrl}`);
 
-        let response;
-        try {
-            response = await axios.get(finalUrl, { 
-                responseType: "arraybuffer",
-                timeout: 25000,
-                headers: { "Accept": "*/*" }
-            });
-        } catch (err) {
-            // If direct link fails, try appending token if not there
-            if (!finalUrl.includes("authToken=")) {
-                finalUrl += (finalUrl.includes("?") ? "&" : "?") + `authToken=${authToken}`;
-                console.log(`[Media Debug] Retrying with token: ${finalUrl}`);
-                response = await axios.get(finalUrl, { 
-                    responseType: "arraybuffer",
-                    timeout: 25000,
-                    headers: { "Accept": "*/*" }
-                });
-            } else {
-                throw err;
-            }
-        }
+        // Very basic GET - 11za often rejects if headers like 'Accept' or 'Authorization' are present on pre-signed URLs
+        const response = await axios.get(finalUrl, { 
+            responseType: "arraybuffer",
+            timeout: 25000
+        });
 
-        const responseString = Buffer.from(response.data).toString('utf-8');
+        const buffer = Buffer.from(response.data);
+        const responseString = buffer.toString('utf-8');
+
+        // Handle JSON Base64 delivery
         if (responseString.trim().startsWith("{") && responseString.includes("base64")) {
             try {
                 const jsonData = JSON.parse(responseString);
@@ -158,9 +147,9 @@ export const downloadMedia = async (urlOrId) => {
             } catch (e) { }
         }
         
-        return Buffer.from(response.data);
+        return buffer;
     } catch (error) {
-        console.error("❌ 11za Download Error:", error.response?.status || "TIMEOUT", error.message);
+        console.error("❌ 11za Download Fatal Error:", error.response?.status || "TIMEOUT", error.message);
         return null;
     }
 };
