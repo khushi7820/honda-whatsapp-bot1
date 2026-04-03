@@ -134,8 +134,7 @@ export const downloadMedia = async (urlOrId) => {
             responseType: "arraybuffer",
             timeout: 15000,
             headers: {
-                "Authorization": process.env.ZA_TOKEN,
-                "Content-Type": "application/json"
+                "Authorization": process.env.ZA_TOKEN
             }
         });
 
@@ -143,17 +142,15 @@ export const downloadMedia = async (urlOrId) => {
         const contentType = response.headers['content-type'] || "";
 
         // Check if the response is actually JSON (base64 delivery)
-        if (contentType.includes("application/json") || response.data.length < 500) {
-            const potentialJsonText = Buffer.from(response.data).toString('utf-8');
+        const responseString = Buffer.from(response.data).toString('utf-8');
+        if (contentType.includes("application/json") || (responseString.trim().startsWith("{") && responseString.includes("base64"))) {
             try {
-                const jsonData = JSON.parse(potentialJsonText);
-                if (jsonData.success && jsonData.data?.base64) {
+                const jsonData = JSON.parse(responseString);
+                if (jsonData.data?.base64) {
                     console.log("[Media Debug] Decoding Base64 JSON response...");
                     return Buffer.from(jsonData.data.base64, 'base64');
                 }
-            } catch (e) {
-                // Not valid JSON, continue with raw buffer
-            }
+            } catch (e) { }
         }
         
         return Buffer.from(response.data);
