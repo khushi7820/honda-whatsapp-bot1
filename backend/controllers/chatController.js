@@ -21,10 +21,14 @@ export async function handleWebhook(req, res) {
         const body = req.body;
 
         const msgId = body.messageId || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id || body.id;
-        if (msgId && processedMessages.has(msgId)) return res.status(200).send("OK");
+        let textRaw = ""; // Define upfront
+        
+        // Use msgId + text preview for better deduplication
+        const msgKey = `${msgId}_${sender || 'unknown'}`;
+        if (msgId && processedMessages.has(msgKey)) return res.status(200).send("OK");
         if (msgId) {
-            processedMessages.add(msgId);
-            setTimeout(() => processedMessages.delete(msgId), 300000);
+            processedMessages.add(msgKey);
+            setTimeout(() => processedMessages.delete(msgKey), 10000); // Shorter lock
         }
 
         let sender, type = "text", textRaw = "";
@@ -64,15 +68,15 @@ export async function handleWebhook(req, res) {
 
         if (!sender) return res.status(200).send("OK");
 
+        // FORCE RESET: Always start with fresh car detection to break loops
+        let sessionToReset = await Session.findOne({ sender });
+        if (sessionToReset) {
+            sessionToReset.data.carModel = null;
+            await sessionToReset.save();
+        }
+
         if (type !== "text") {
             try {
-                // Clear session car model for audio to force fresh detection from the voice note
-                let sessionToReset = await Session.findOne({ sender });
-                if (sessionToReset) {
-                    sessionToReset.data.carModel = null;
-                    await sessionToReset.save();
-                }
-
                 let buffer = null;
                 let ext = "ogg";
                 
