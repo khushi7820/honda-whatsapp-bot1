@@ -142,6 +142,27 @@ export async function handleWebhook(req, res) {
         }
         */
 
+        // 0. FINAL BOOKING SUMMARY BYPASS
+        if (lowerMsg.startsWith("confirm_booking:")) {
+            const dataParts = textRaw.split(":")[1]?.split("|");
+            const date = dataParts?.[0] || "TBD";
+            const time = dataParts?.[1] || "TBD";
+            const carName = session.data.carModel || "Mahindra SUV";
+            const pincode = session.data.pincode || "---";
+            const location = session.data.area || "---";
+
+            const summaryMsg = `*Booking Confirmed* ✅\n\n・ *Car*: ${carName}\n・ *Pincode*: ${pincode}\n・ *Location*: ${location}\n・ *Date*: ${date}\n・ *Time*: ${time}\n\nOur expert will call you shortly to confirm the appointment. 📞\n\nThank you for choosing Mahindra! ✨`;
+            
+            await sendMessage(sender, summaryMsg);
+            session.state = "IDLE";
+            session.data.carModel = null; // Clear context after success
+            await session.save();
+
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: summaryMsg, content: summaryMsg }).save();
+            return res.status(200).send("OK");
+        }
+
         // 1. PINCODE BYPASS (Auto-detect in Audio/Text)
         const pincodeMatch = textRaw.match(/\b\d{6}\b/);
         if (pincodeMatch) {
