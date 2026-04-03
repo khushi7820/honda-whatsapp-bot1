@@ -51,7 +51,7 @@ export async function handleWebhook(req, res) {
 
         if (type !== "text") {
             try {
-                const buffer = await downloadMedia(`https://v1.11za.com/v1/media/${mId}`);
+                const buffer = await downloadMedia(`/v1/media/${mId}`);
                 if (buffer) textRaw = await transcribeAudio(buffer) || "(Audio Empty)";
             } catch (err) { textRaw = "(Transcription Error)"; }
         }
@@ -208,8 +208,8 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT)
-        if ((isDetailQuery || (detectedCar && lowerMsg.length < 25)) && (detectedCar || session.data.carModel)) {
+        // 5. DETAIL BYPASS (IMAGE + 4-LINE FORMAT) - Disabled for Audio
+        if (type === "text" && (isDetailQuery || (detectedCar && lowerMsg.length < 25)) && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             const carObj = await Car.findOne({ name: carName });
             
