@@ -59,9 +59,11 @@ export async function handleWebhook(req, res) {
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
-        // 0. GREETINGS BYPASS
-        const greetings = ["hi", "hello", "namaste", "hey", "hii", "hy", "naam"];
-        if (greetings.some(g => lowerMsg.includes(g))) {
+        // 0. GREETINGS BYPASS (Word boundaries to avoid "book tHIss" issues)
+        const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|naam)\b/i;
+        const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
+        
+        if (greetingRegex.test(lowerMsg) && !isBookingSearch && lowerMsg.length < 15) {
             const welcomeMsg = /hindi|bhai|kya|batao|ka|se|hai|hu|ans|kaisa|aayega|swagat|apna/i.test(lowerMsg)
                 ? "*Namaste, Mahindra Virtual Showroom mein aapka swagat hai!* 🚗✨"
                 : "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
