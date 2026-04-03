@@ -72,7 +72,7 @@ export async function handleWebhook(req, res) {
                     else if (cType.includes("aac")) ext = "aac";
                     else if (cType.includes("mpeg")) ext = "mp3";
                 } else {
-                    buffer = await downloadMedia(`/v1/media/${mId}`);
+                    buffer = await downloadMedia(`${mId}`);
                     // Fallback default to ogg for standard whatsapp Graph API
                 }
                 
