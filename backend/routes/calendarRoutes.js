@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Premium Web Booking Calendar
 router.get("/calendar", async (req, res) => {
-    const { carId, phone } = req.query;
+    const { carId, phone, botPhone } = req.query;
     const carName = carId ? carId.replace(/-/g, " ").toUpperCase() : "MAHINDRA SUV";
 
     const html = `
