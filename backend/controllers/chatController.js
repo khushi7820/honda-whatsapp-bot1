@@ -98,7 +98,7 @@ export async function handleWebhook(req, res) {
             const pc = session?.data?.pincode || "Not provided";
             const city = session?.data?.area || "Showroom Area";
 
-            const successMsg = `*Booking Confirmed* ✅\n\n• Car: ${carName}\n• Pincode: ${pc}\n• Location: ${city}\n• Date: ${date}\n• Time: ${time}\n\nThank you for choosing Mahindra! ✨`;
+            const successMsg = `*Booking Confirmed* ✅\n\n• Car: ${carName}\n• Pincode: ${pc}\n• Location: ${city}\n• Date: ${date}\n• Time: ${time}\n\nOur expert will call you shortly to confirm the appointment. 📞\n\nThank you for choosing Mahindra! ✨`;
             await sendMessage(sender, successMsg);
 
             // 👑 Notify Admin (+15558689519)
