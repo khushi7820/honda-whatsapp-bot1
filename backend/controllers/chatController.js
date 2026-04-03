@@ -264,7 +264,8 @@ export async function handleWebhook(req, res) {
 
 
         // 5. AI FALLBACK
-        if (textRaw === "(Audio Empty)" || textRaw === "(Audio Download Error)") {
+        const lowerText = (textRaw || "").toLowerCase();
+        if (lowerText.includes("audio empty") || lowerText.includes("audio download error") || lowerText.includes("transcription error")) {
             const errorMsg = "Maaf kijiyega, main aapki aawaz theek se nahi sun paaya. 🎙️\nKripaya apna sawal likh kar bhejein ya dobara voice note bhejein! 🙏";
             await sendMessage(sender, errorMsg);
             return res.status(200).send("OK");
