@@ -21,7 +21,7 @@ export async function handleWebhook(req, res) {
         const body = req.body;
         let sender, type = "text", textRaw = "";
         const msgId = body.messageId || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id || body.id;
-        
+
         // Extract sender early for msgKey
         if (body.from) sender = body.from;
         else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) sender = body.entry[0].changes[0].value.messages[0].from;
@@ -40,7 +40,7 @@ export async function handleWebhook(req, res) {
 
         if (body.from && body.content) {
             type = body.content.contentType?.toLowerCase() || "text";
-            
+
             if (type === "text") {
                 textRaw = body.content.text || "";
             } else if (type === "media") {
@@ -82,28 +82,28 @@ export async function handleWebhook(req, res) {
 
         // STEP 1.5: ROBUST MEDIA EXTRACTION
         let mediaIdToDownload = mId;
-        
+
         if (type !== "text") {
             try {
                 let buffer = null;
                 console.log(`[Media Debug] Attempting download for type: ${type}, URL: ${mediaUrlToDownload}, ID: ${mediaIdToDownload}`);
-                
+
                 // Prioritize direct downloadMedia tool which handles token and format detection
                 if (mediaUrlToDownload) {
                     buffer = await downloadMedia(mediaUrlToDownload);
                 } else if (mediaIdToDownload) {
                     buffer = await downloadMedia(mediaIdToDownload);
                 }
-                
-                if (buffer && buffer.length > 100) { 
+
+                if (buffer && buffer.length > 1) {
                     textRaw = await transcribeAudio(buffer, "ogg");
                     console.log(`[BOT] Transcription Success: "${textRaw}"`);
                 } else {
                     console.error("[BOT] Audio Fail - Buffer too small or empty");
                 }
-            } catch (err) { 
+            } catch (err) {
                 console.error("[BOT] Audio/STT Fatal Fail:", err.message);
-                textRaw = ""; 
+                textRaw = "";
             }
         }
 
