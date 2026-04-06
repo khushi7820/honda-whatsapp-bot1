@@ -126,6 +126,20 @@ export async function handleWebhook(req, res) {
             }
         }
 
+        // 0. GREETINGS BYPASS
+        const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|hyy|heyy|hiii|naam|haa|hal|hoi)\b/i;
+        const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
+
+        if (greetingRegex.test(lowerMsg) && !isBookingSearch && lowerMsg.length < 15) {
+            const welcomeMsg = /hindi|bhai|kya|batao|ka|se|hai|hu|ans|kaisa|aayega|swagat|apna/i.test(lowerMsg)
+                ? "*Namaste, Mahindra Virtual Showroom mein aapka swagat hai!* 🚗✨"
+                : "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
+            await sendMessage(sender, welcomeMsg);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: welcomeMsg, content: welcomeMsg }).save();
+            return res.status(200).send("OK");
+        }
+
         // 1. PINCODE BYPASS (Auto-detect in Audio/Text)
         const pincodeMatch = textRaw.match(/\b\d{6}\b/);
         if (pincodeMatch) {
