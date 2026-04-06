@@ -1,4 +1,4 @@
-// Version 1.1.68 - Vercel Optimized (Corrected Audio)
+// Version 1.1.71 - Vercel Optimized (Ultra-Strict Hinglish & Recognition Fix)
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -32,7 +32,6 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded with Tech"}`
 }
 
 export async function transcribeAudio(buffer, ext = "ogg") {
-  // ⚡ CRITICAL: Use /tmp for Vercel write access 
   const tDir = process.env.VERCEL ? "/tmp" : process.cwd();
   const tempPath = path.join(tDir, `audio_${Date.now()}.${ext}`);
   try {
@@ -41,17 +40,13 @@ export async function transcribeAudio(buffer, ext = "ogg") {
       file: fs.createReadStream(tempPath),
       model: "whisper-large-v3",
       response_format: "verbose_json",
-      language: "hi", // Default to Hindi for Indian users
-      prompt: "Transcribe the audio accurately. The user might speak in Hindi, English, or Hinglish (Hindi mixed with English words like 'mileage', 'price', 'colors', 'specs').",
+      language: "hi", 
+      prompt: "Transcribe accurately (Hindi/English/Hinglish). If user says 'cars', 'colors', 'mileage', use those English words in transcription.",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    
-    const resultText = transcription.text || "(Audio Empty)";
-    console.log(`[AudioTranscription] Decoded (${ext}): "${resultText.trim()}"`);
-    return resultText;
+    return transcription.text || "(Audio Empty)";
   } catch (error) {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    console.error(`[AudioTranscription] Error (${ext}):`, error.message);
     return "(Audio Error)";
   }
 }
@@ -61,24 +56,22 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const systemPrompt = `
-### 📝 RULES:
-1. **Mandatory Intro Line**: EVERY response must start with a single line describing the request. 
-   - Examples: "6-7 seater gaadiyan aapke budget mein ye hain:", "Mahindra XUV700 ki complete detail ye rahi:", "10 Lakh ke andar Mahindra SUVs ye hain:".
-   - Mirror the user's language for this line.
-2. **Header**: After the intro, always use *Mahindra [Car Name]* 🚗 on its own line.
-3. **Accurate Budget Matching**: Suggest ONLY cars that stay within the user's mentioned price. Never suggest a car above their budget.
-4. **The 4-Line Summary (CARS ONLY)**: Use the 4-line emoji format ONLY for physical cars from the inventory.
-   - NEVER use this format for names like "Booking", "Process", or "Help".
-   - NEVER show "N/A" or "0.00 Lakh".
-   - If user asks about booking, give 1-line text instruction only.
-5. **No Duplication**: Do NOT repeat info in multiple lines.
-6. **Mirror Language**: 100% Gujarati if user speaks Gujarati. Hinglish for Hindi/Audio.
-7. **Booking**: If booking is mentioned, respond in the user's language: 
-   - "Booking simple hai! Bus apna 6-digit Pincode yahan share karein. 🚙"
-8. **No Fluff**: Start directly with the intro line. No "I am a Mahindra expert".
-9. **Strict Focus**: Answer ONLY the current question. Zero history leakage.
-10. **Strictly No Follow-ups**: Answer and stop.
-11. **Pivoting**: One-word answer for other brands, then return to Mahindra.
+### 📝 HINGLISH PRIMARY PROTOCOL:
+- **Language**: Your default language is **HINGLISH** (Hindi words mixed with English terms like 'price', 'colors', 'booking', 'specs').
+- **Recognition**: Listen carefully to what the user wants. If they ask for cars, show a list. If they ask for details, show details.
+- **Tone**: Professional yet direct. NO extra greetings or long intros.
+
+### 🚗 RULES:
+1. **General Query (List of Cars)**: If the user says "cars dekhni hai", "kaunsi cars hain", "show cars", or "kaun koun si gadiyan hain", respond in HINGLISH with a numbered list only.
+   - Example (Hinglish): "Humare paas ye Mahindra gaadiyan hain: 1. XUV700, 2. Scorpio-N, 3. Thar, 4. XUV 3XO..."
+2. **Specific Car Query**: For specific cars (e.g., "Thar batao" or "XUV 3XO details"), use the 4-line summary:
+   💰 **Price**: [Price]
+   🎨 **Colors**: [Colors]
+   ⛽ **Fuel**: [Fuel]
+   📊 **Mileage**: [Mileage]
+3. **Booking**: If they ask to book, price, or "confirm", ask ONLY for their 6-digit pincode in HINGLISH.
+   - Example (Hinglish): "Booking process ke liye apna 6-digit pincode share karein."
+4. **No Fluff**: Do NOT repeat the question. Do NOT add "Aapka swagat hai" every time. Just answer and stop.
 
 ### 🏦 INVENTORY:
 ${carInventory}
@@ -86,19 +79,19 @@ ${carInventory}
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `STRICT ORDER: Listen ONLY to the latest question. Ignore previous car models if the new question is about a DIFFERENT car.\n\nHistory:\n${history}\n\nLATEST QUESTION: ${userMessage}` }
+      { role: "user", content: `PAST CONVERSATION HISTORY:\n${history}\n\nLATEST USER QUESTION (Recognize this correctly): ${userMessage}` }
     ];
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.1-8b-instant", // Ultra-stable and fast
-      temperature: 0.1,
+      model: "llama-3.1-8b-instant",
+      temperature: 0,
       max_tokens: 512
     });
 
     return completion.choices[0].message.content;
   } catch (error) {
     console.error("AI Error:", error.message);
-    return `[AI Error Debug]: ${error.message}. Please check GROQ_API_KEY.`;
+    return `[AI Error]: Sorry, something went wrong.`;
   }
 }

@@ -110,90 +110,20 @@ export async function handleWebhook(req, res) {
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
-        // 0. LANGUAGE PERSISTENCE & DETECTION
-        if (!session.data.detectedLanguage) {
+        // 0. LANGUAGE DETECTION (Default to HINGLISH)
+        if (!session.data.detectedLanguage || session.data.detectedLanguage === "ENGLISH") {
             if (/[\u0a80-\u0aff]/.test(textRaw)) session.data.detectedLanguage = "GUJARATI";
-            else if (/hindi|bhai|kya|batao|ka|se|hai|hu|kaisa|apna|bolero|scorpio|xuv/i.test(lowerMsg)) session.data.detectedLanguage = "HINGLISH";
-            else session.data.detectedLanguage = "ENGLISH";
+            else session.data.detectedLanguage = "HINGLISH";
             await session.save();
         } else if (/[\u0a80-\u0aff]/.test(textRaw)) {
-            session.data.detectedLanguage = "GUJARATI"; // Update if changed
+            session.data.detectedLanguage = "GUJARATI";
             await session.save();
-        }
-
-        // 0. ABSOLUTE TOP BYPASS: BUDGET + SEATING COMBO (TO ENSURE ACCURACY)
-        const isBudgetSeatingQuery = /(8|9|10)\s*lakh/i.test(lowerMsg) && /(6|7|seater|people|person)/i.test(lowerMsg);
-        if (isBudgetSeatingQuery) {
-            let intro = "Yeh rahi 10 Lakh ke budget mein 6-7 seater cars:";
-            if (session.data.detectedLanguage === "GUJARATI") intro = "આ રહી 10 લાખના બજેટમાં 6-7 સીટર કાર:";
-
-            const budgetCars = `${intro}
-
-*Mahindra Bolero Neo* 🚗
-💰 *Price*: 9.90 - 12.15 Lakh
-🎨 *Colors*: White, Silver, Black
-⛽ *Fuel*: Diesel
-📊 *Mileage*: 17.29 kmpl
-
-*Mahindra Bolero* 🚗
-💰 *Price*: 9.90 - 10.91 Lakh
-🎨 *Colors*: White, Brown, Silver
-⛽ *Fuel*: Diesel
-📊 *Mileage*: 16.0 kmpl
-
-👉 ${session.data.detectedLanguage === "GUJARATI" ? "ટેસ્ટ ડ્રાઈવ માટે તમારો પિનકોડ શેર કરો!" : "Shared your Pincode to book a test drive!"}`;
-            await sendMessage(sender, budgetCars);
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: budgetCars, content: budgetCars }).save();
-            return res.status(200).send("OK");
-        }
-
-        // 0. GREETINGS BYPASS (ALL VARIANTS)
-        const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|hyy|heyy|hiii|naam|haa|hal|hoi)\b/i;
-        const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
-
-        if (greetingRegex.test(lowerMsg) && !isBookingSearch && lowerMsg.length < 15) {
-            const welcomeMsg = /hindi|bhai|kya|batao|ka|se|hai|hu|ans|kaisa|aayega|swagat|apna/i.test(lowerMsg)
-                ? "*Namaste, Mahindra Virtual Showroom mein aapka swagat hai!* 🚗✨"
-                : "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
-            await sendMessage(sender, welcomeMsg);
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: welcomeMsg, content: welcomeMsg }).save();
-            return res.status(200).send("OK");
-        }
-
-        // 0.5 ACKNOWLEDGEMENT BYPASS
-        const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you|no|nahi|nhi|fine|achha|theek)\b/i;
-        if (ackWords.test(lowerMsg) && lowerMsg.length < 12) {
-            let ackReply = "Great! Do you want to know anything else about our Mahindra SUVs? 🚗✨";
-            if (/hindi|achha|theek|shukriya|nhi|nahi/i.test(lowerMsg)) ackReply = "Shukriya! Kya aap kisi aur Mahindra SUV ke baare mein jaan-na chahte hain? 🚗✨";
-            if (/guj|saras|theek/i.test(lowerMsg)) ackReply = "ધન્યવાદ! શું તમે બીજી કોઈ મહિન્દ્રા SUV વિશે જાણવા માંગો છો? 🚗✨";
-            
-            await sendMessage(sender, ackReply);
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: ackReply, content: ackReply }).save();
-            return res.status(200).send("OK");
-        }
-
-        // 0. FINAL BOOKING SUMMARY BYPASS
-        if (lowerMsg.startsWith("confirm_booking:")) {
-            const dataParts = textRaw.split(":")[1]?.split("|");
-            const date = dataParts?.[0] || "TBD";
-            const time = dataParts?.[1] || "TBD";
-            const carName = session.data.carModel || "Mahindra SUV";
-            const pincode = session.data.pincode || "---";
-            const location = session.data.area || "---";
-
-            const summaryMsg = `*Booking Confirmed* ✅\n\n・ *Car*: ${carName}\n・ *Pincode*: ${pincode}\n・ *Location*: ${location}\n・ *Date*: ${date}\n・ *Time*: ${time}\n\nOur expert will call you shortly to confirm the appointment. 📞\n\nThank you for choosing Mahindra! ✨`;
-            
-            await sendMessage(sender, summaryMsg);
-            session.state = "IDLE";
-            session.data.carModel = null; // Clear context after success
-            await session.save();
-
-            await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: summaryMsg, content: summaryMsg }).save();
-            return res.status(200).send("OK");
+        } else {
+            // Re-detect Hinglish just in case
+            if (/hindi|bhai|kya|batao|ka|se|hai|hu|kaisa|apna|bolero|scorpio|xuv/i.test(lowerMsg)) {
+                session.data.detectedLanguage = "HINGLISH";
+                await session.save();
+            }
         }
 
         // 1. PINCODE BYPASS (Auto-detect in Audio/Text)
@@ -211,10 +141,10 @@ export async function handleWebhook(req, res) {
             
             session.data.pincode = pc;
             session.data.area = city;
-            const carSlug = (session.data.carModel || "suv").toLowerCase().replace(/mahindra\s+/g, "").replace(/\s+/g, "-");
-            const calLink = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carSlug}&phone=${sender}&botPhone=15558689519`;
             
-            const pincodeMsg = `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\nKripaya booking ke liye date aur time select karein:\n\n🔗 *Book Calendar*: ${calLink}`;
+            const pincodeMsg = session.data.detectedLanguage === "GUJARATI" 
+                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\nતે બદલ આભાર! અમારા મહિન્દ્રા એક્સપર્ટ ટૂંક સમયમાં તમારો સંપર્ક કરશે. 🚙`
+                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\nDhanyawad! Hamare Mahindra expert aage ki process ke liye aapko jald hi call karenge. 🚙`;
             
             // Lead Alert to Admin
             const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${session.data.carModel || "Mahindra SUV"}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
@@ -223,7 +153,6 @@ export async function handleWebhook(req, res) {
             session.state = "IDLE"; await session.save();
             await sendMessage(sender, pincodeMsg);
             
-            // Save to chat history
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: pincodeMsg, content: pincodeMsg }).save();
             return res.status(200).send("OK");
@@ -231,9 +160,23 @@ export async function handleWebhook(req, res) {
 
         // 3. CAR DETECTION & SESSION CLEARING
         const isRecommendationQuery = /looking|suggest|recommend|best|for\s\d+/i.test(lowerMsg);
+        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao/i.test(lowerMsg) && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg);
+
         if (isRecommendationQuery) {
             session.data.carModel = null;
             await session.save();
+        }
+
+        if (isGeneralCarListQuery && lowerMsg.split(/\s+/).length < 10) {
+            const cars = await Car.find({}).lean();
+            const carListText = session.data.detectedLanguage === "GUJARATI"
+                ? `અમારી પાસે આ મહિન્દ્રા ગાડીઓ છે:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nતમે કઈ ગાડી વિશે વધુ જાણવા માંગો છો? 🚗`
+                : `Humare paas ye Mahindra cars hain:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nKripaya jis car ke bare mein janna ho, uska naam batayein. 🚗`;
+            
+            await sendMessage(sender, carListText);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: carListText, content: carListText }).save();
+            return res.status(200).send("OK");
         }
 
         const carsList = await Car.find({});
