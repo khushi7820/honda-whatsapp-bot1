@@ -225,7 +225,7 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
-        const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book)\b/i.test(lowerMsg);
+        const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book|book kare|booking|book karna hai)\b/i.test(lowerMsg);
         const isBookingInfo = /\b(how to book|process|book kaise kare)\b/i.test(lowerMsg);
         const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic/i.test(lowerMsg);
 
@@ -235,7 +235,7 @@ export async function handleWebhook(req, res) {
             session.state = "PINCODE";
             await session.save();
 
-            const confirmMsg = `*Mahindra ${carName} is confirmed!* ✅ 🚙\n\nPlease share your 6-digit Pincode to continue with the booking process.`;
+            const confirmMsg = `${carName} book karne ke liye apna 6-digit Pincode share karein. 🚙`;
             await sendMessage(sender, confirmMsg);
 
             await new Chat({ sender, role: "user", content: textRaw }).save();

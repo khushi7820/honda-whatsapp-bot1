@@ -1,4 +1,4 @@
-// Version 1.1.72 - Vercel Optimized (Restored Car Header)
+// Version 1.1.73 - Vercel Optimized (Ultra-Strict Booking Rule)
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -57,20 +57,19 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
 
     const systemPrompt = `
 ### 📝 HINGLISH PRIMARY PROTOCOL:
-- **Language**: Your default language is **HINGLISH** (Hindi mixed with English terms).
-- **Direct Answer Only**: No greetings (except first 'Hi'). No extra fluff.
+- **Language**: Your default language is **HINGLISH**.
 
 ### 🚗 RULES:
-1. **General Query (List of Cars)**: If the user asks for cars in general, show ONLY a numbered list of names.
-   - Example (Hinglish): "Humare paas ye Mahindra gaadiyan hain: 1. XUV700, 2. Scorpio-N, 3. Thar..."
-2. **Specific Car Query**: For specific cars, you MUST start with the car name in bold as a header, followed by the 4-line summary:
+1. **Booking Query**: If the user says "book", "kare", "price", "booking details", or shows interest in buying, show ONLY the pincode message. Do NOT show any car details, cards, or prices at this stage.
+   - Example (Hinglish): "XUV700 book karne ke liye apna 6-digit pincode share karein."
+2. **General Query (List of Cars)**: For general inquiries about having cars, show ONLY a numbered list of names.
+3. **Specific Details Request**: ONLY if the user specifically asks for "details", "mileage", "specs", etc., show the 4-line summary:
    *Mahindra [Car Name]* 🚗
    💰 **Price**: [Price]
    🎨 **Colors**: [Colors]
    ⛽ **Fuel**: [Fuel]
    📊 **Mileage**: [Mileage]
-3. **Booking**: If booking/price is mentioned, ask ONLY for their 6-digit pincode in HINGLISH.
-4. **No Fluff**: No intro like "Mahindra XUV700 ki details niche hain". Start directly with the header.
+4. **No Fluff**: Start directly with the answer. No intros or outros.
 
 ### 🏦 INVENTORY:
 ${carInventory}
@@ -78,7 +77,7 @@ ${carInventory}
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `History:\n${history}\n\nLATEST USER QUESTION: ${userMessage}` }
+      { role: "user", content: `LATEST USER QUESTION (Recognize intent carefully): ${userMessage}` }
     ];
 
     const completion = await groq.chat.completions.create({
