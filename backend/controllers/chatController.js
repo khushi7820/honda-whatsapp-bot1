@@ -49,6 +49,10 @@ export async function handleWebhook(req, res) {
                 if (mediaType === "voice" || mediaType === "audio") {
                     type = "audio";
                 }
+            } else if (type === "audio" || type === "voice") {
+                // Direct audio/voice contentType (not wrapped in "media")
+                type = "audio";
+                mediaUrlToDownload = body.content.media?.url || body.content.url || body.content.audio?.url || body.content.voice?.url || null;
             }
             if (body.content.mediaId) mId = body.content.mediaId;
         } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
@@ -100,10 +104,20 @@ export async function handleWebhook(req, res) {
                     console.log(`[BOT] Transcription Success: "${textRaw}"`);
                 } else {
                     console.error("[BOT] Audio Fail - Buffer too small or empty");
+                    // Tell user audio failed
+                    const audioFailMsg = "Maaf kijiye, aapka audio sun nahi paaya. Kripaya dobara try karein ya text mein likhein. 🎤";
+                    await sendMessage(sender, audioFailMsg);
+                    await new Chat({ sender, role: "user", content: "(Audio - not processed)" }).save();
+                    await new Chat({ sender, role: "assistant", reply: audioFailMsg, content: audioFailMsg }).save();
+                    return res.status(200).send("OK");
                 }
             } catch (err) {
                 console.error("[BOT] Audio/STT Fatal Fail:", err.message);
-                textRaw = "";
+                const audioFailMsg = "Maaf kijiye, aapka audio process nahi ho paaya. Kripaya text mein likhein. 🎤";
+                await sendMessage(sender, audioFailMsg);
+                await new Chat({ sender, role: "user", content: "(Audio Error)" }).save();
+                await new Chat({ sender, role: "assistant", reply: audioFailMsg, content: audioFailMsg }).save();
+                return res.status(200).send("OK");
             }
         }
 
@@ -169,12 +183,13 @@ export async function handleWebhook(req, res) {
             session.data.pincode = pc;
             session.data.area = city;
             
+            const carName = session.data.carModel || "Mahindra SUV";
             const pincodeMsg = session.data.detectedLanguage === "GUJARATI" 
-                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\nતે બદલ આભાર! અમારા મહિન્દ્રા એક્સપર્ટ ટૂંક સમયમાં તમારો સંપર્ક કરશે. 🚙`
-                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\nDhanyawad! Hamare Mahindra expert aage ki process ke liye aapko jald hi call karenge. 🚙`;
+                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\n✅ *બુકિંગ કન્ફર્મ!*\n🚗 *ગાડી*: ${carName}\n\nઅમારા Mahindra Sales Expert 24 કલાકમાં તમને કૉલ કરશે:\n• Test Drive Schedule\n• Finance Options\n• Exchange Offer\n\n📞 જલદી સંપર્ક માટે: Dealership Helpline\nધન્યવાદ! 🙏`
+                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\n✅ *Booking Confirmed!*\n🚗 *Car*: ${carName}\n\nHamare Mahindra Sales Expert 24 ghante mein aapko call karenge:\n• Test Drive Schedule\n• Finance Options\n• Exchange Offer\n\n📞 Jaldi contact ke liye: Dealership Helpline\nDhanyawad! 🙏`;
             
             // Lead Alert to Admin
-            const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${session.data.carModel || "Mahindra SUV"}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
+            const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
             await sendMessage("15558689519", leadAlert);
             
             session.state = "IDLE"; await session.save();
@@ -187,18 +202,148 @@ export async function handleWebhook(req, res) {
 
         // 3. CAR DETECTION & SESSION CLEARING
         const isRecommendationQuery = /looking|suggest|recommend|best|for\s\d+/i.test(lowerMsg);
-        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao/i.test(lowerMsg) && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg);
+        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao/i.test(lowerMsg) && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg);
 
         if (isRecommendationQuery) {
             session.data.carModel = null;
             await session.save();
         }
 
+        // 3A. SEATING CAPACITY FILTER BYPASS (Hardcoded - also checks fuel if mentioned)
+        const seatMatch = lowerMsg.match(/(\d+)\s*seater/i) || lowerMsg.match(/(\d+)\s*seat/i);
+        if (seatMatch) {
+            const requestedSeats = seatMatch[1];
+            // Also check if fuel type is mentioned in same query
+            const fuelInSeatQuery = lowerMsg.match(/\b(petrol|diesel|electric|cng|ev)\b/i);
+            let requestedFuelInSeat = fuelInSeatQuery ? fuelInSeatQuery[1].toLowerCase() : null;
+            if (requestedFuelInSeat === "ev") requestedFuelInSeat = "electric";
+
+            const allCars = await Car.find({}).lean();
+            let matchedCars = allCars.filter(c => {
+                const seating = (c.seatingCapacity || "").toLowerCase();
+                return seating.includes(requestedSeats);
+            });
+
+            // Apply fuel filter too if mentioned
+            if (requestedFuelInSeat) {
+                matchedCars = matchedCars.filter(c => {
+                    const fuel = (c.fuelType || "").toLowerCase();
+                    return fuel.includes(requestedFuelInSeat);
+                });
+            }
+
+            let filterReply;
+            const filterLabel = requestedFuelInSeat 
+                ? `${requestedSeats}-seater ${requestedFuelInSeat.toUpperCase()}` 
+                : `${requestedSeats}-seater`;
+
+            if (matchedCars.length === 0) {
+                filterReply = session.data.detectedLanguage === "GUJARATI"
+                    ? `માફ કરજો, ${filterLabel} કારમાં હાલ કોઈ વિકલ્પ નથી. 🚗\n\nKripaya koi aur option dekhein.`
+                    : `Maaf kijiye, ${filterLabel} mein currently koi Mahindra car available nahi hai. 🚗\n\nKya aap kisi aur category mein dekhna chahenge?`;
+            } else {
+                // Save list to session for number selection
+                session.data.lastShownList = matchedCars.map(c => c.name);
+                await session.save();
+
+                filterReply = session.data.detectedLanguage === "GUJARATI"
+                    ? `${filterLabel} મહિન્દ્રા ગાડીઓ:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.seatingCapacity}, ${c.fuelType})`).join("\n") + `\n\nકઈ ગાડી વિશે જાણવા માંગો છો?`
+                    : `${filterLabel} Mahindra cars:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.seatingCapacity}, ${c.fuelType})`).join("\n") + `\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+            }
+
+            await sendMessage(sender, filterReply);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: filterReply, content: filterReply }).save();
+            return res.status(200).send("OK");
+        }
+
+        // 3B. FUEL TYPE FILTER BYPASS (Hardcoded - no AI dependency)
+        const fuelMatch = lowerMsg.match(/\b(petrol|diesel|electric|cng|ev)\b/i);
+        const isFuelQuery = fuelMatch && /\b(car|cars|gaadi|gadiyan|wali|wala|batao|dikhao|available|mein|me|konsi|kaunsi|list)\b/i.test(lowerMsg);
+        if (isFuelQuery) {
+            let requestedFuel = fuelMatch[1].toLowerCase();
+            if (requestedFuel === "ev") requestedFuel = "electric";
+            
+            const allCars = await Car.find({}).lean();
+            const matchedCars = allCars.filter(c => {
+                const fuel = (c.fuelType || "").toLowerCase();
+                return fuel.includes(requestedFuel);
+            });
+
+            let filterReply;
+            if (matchedCars.length === 0) {
+                filterReply = session.data.detectedLanguage === "GUJARATI"
+                    ? `માફ કરજો, ${requestedFuel} કારમાં હાલ કોઈ વિકલ્પ નથી.`
+                    : `Maaf kijiye, ${requestedFuel} mein currently koi car available nahi hai.`;
+            } else {
+                // Save list to session for number selection
+                session.data.lastShownList = matchedCars.map(c => c.name);
+                await session.save();
+
+                filterReply = session.data.detectedLanguage === "GUJARATI"
+                    ? `${requestedFuel} મહિન્દ્રા ગાડીઓ:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.fuelType})`).join("\n") + `\n\nકઈ ગાડી વિશે જાણવા માંગો છો?`
+                    : `${requestedFuel.charAt(0).toUpperCase() + requestedFuel.slice(1)} Mahindra cars:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.fuelType})`).join("\n") + `\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+            }
+
+            await sendMessage(sender, filterReply);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: filterReply, content: filterReply }).save();
+            return res.status(200).send("OK");
+        }
+
+        // 3C. NUMBER SELECTION BYPASS (When user selects from a previously shown list)
+        const numberWords = { "one": 1, "ek": 1, "pehla": 1, "pahla": 1, "first": 1, "two": 2, "do": 2, "doosra": 2, "dusra": 2, "second": 2, "three": 3, "teen": 3, "teesra": 3, "third": 3, "four": 4, "char": 4, "chautha": 4, "fourth": 4, "five": 5, "paanch": 5, "fifth": 5, "six": 6, "chhe": 6, "sixth": 6, "seven": 7, "saat": 7, "seventh": 7, "eight": 8, "aath": 8, "eighth": 8 };
+        
+        const numericMatch = lowerMsg.match(/^\s*(\d+)\s*/);
+        let selectedNumber = null;
+        
+        if (numericMatch) {
+            selectedNumber = parseInt(numericMatch[1]);
+        }
+        // Also check for word-based numbers
+        for (const [word, num] of Object.entries(numberWords)) {
+            if (lowerMsg.includes(word)) {
+                selectedNumber = selectedNumber || num;
+                break;
+            }
+        }
+
+        if (selectedNumber && selectedNumber >= 1 && selectedNumber <= 8 && lowerMsg.length < 15 && session.data.lastShownList && session.data.lastShownList.length > 0) {
+            const lastList = session.data.lastShownList;
+            if (selectedNumber <= lastList.length) {
+                const selectedCarName = lastList[selectedNumber - 1];
+                const selectedCar = await Car.findOne({ name: selectedCarName }).lean();
+                
+                if (selectedCar) {
+                    session.data.carModel = selectedCar.name;
+                    await session.save();
+
+                    const detailCard = `*${selectedCar.name}* 🚗\n💰 *Price*: ${selectedCar.price}\n🎨 *Colors*: ${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}\n⛽ *Fuel*: ${selectedCar.fuelType}\n📊 *Mileage*: ${selectedCar.mileage}\n💺 *Seating*: ${selectedCar.seatingCapacity || "N/A"}\n\nBook karna chahein toh \"book\" likhein ya aur details ke liye poochein! 🚙`;
+
+                    await sendMessage(sender, detailCard);
+                    await new Chat({ sender, role: "user", content: textRaw }).save();
+                    await new Chat({ sender, role: "assistant", reply: detailCard, content: detailCard }).save();
+                    return res.status(200).send("OK");
+                }
+            } else {
+                const errMsg = `Kripaya 1 se ${lastList.length} ke beech mein number chunein. 🚗`;
+                await sendMessage(sender, errMsg);
+                await new Chat({ sender, role: "user", content: textRaw }).save();
+                await new Chat({ sender, role: "assistant", reply: errMsg, content: errMsg }).save();
+                return res.status(200).send("OK");
+            }
+        }
+
         if (isGeneralCarListQuery && lowerMsg.split(/\s+/).length < 10) {
             const cars = await Car.find({}).lean();
+            
+            // Save list to session for number selection
+            session.data.lastShownList = cars.map(c => c.name);
+            await session.save();
+
             const carListText = session.data.detectedLanguage === "GUJARATI"
                 ? `અમારી પાસે આ મહિન્દ્રા ગાડીઓ છે:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nતમે કઈ ગાડી વિશે વધુ જાણવા માંગો છો? 🚗`
-                : `Humare paas ye Mahindra cars hain:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nKripaya jis car ke bare mein janna ho, uska naam batayein. 🚗`;
+                : `Humare paas ye Mahindra cars hain:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nKripaya jis car ke bare mein janna ho, uska naam ya number batayein. 🚗`;
             
             await sendMessage(sender, carListText);
             await new Chat({ sender, role: "user", content: textRaw }).save();

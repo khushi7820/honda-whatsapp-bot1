@@ -15,7 +15,8 @@ const SessionSchema = new mongoose.Schema({
         language: { type: String, default: "english" } // Added language tracking
     }
 }, { 
-    timestamps: true // This replaces the need for the manually-created pre-save hook
+    timestamps: true, // This replaces the need for the manually-created pre-save hook
+    strict: false // As requested: unstrict so it supports extra dynamic fields without breaking old structure
 });
 
 export default mongoose.model("Session", SessionSchema);

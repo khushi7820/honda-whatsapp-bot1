@@ -1,5 +1,5 @@
 /**
- * Text-based Interactive Menus for Honda Booking (Standard Compatibility)
+ * Text-based Interactive Menus for Mahindra Booking (Standard Compatibility)
  */
 
 export const getBookButton = () => {
