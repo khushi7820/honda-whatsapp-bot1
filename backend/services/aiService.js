@@ -1,4 +1,4 @@
-// Version 2.0.5 - ULTRA-CONCISE Mode
+// Version 2.1.0 - ULTRA-STRICT LANGUAGE & SCRIPT CONTROL
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -33,43 +33,15 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
   } catch (e) { return ""; }
 }
 
-// FULL KNOWLEDGE BASE (LOCKED)
 const MAHINDRA_KNOWLEDGE = `
-MAHINDRA XUV700:
-- Engine: 2.0L Petrol (200 PS) / 2.2L Diesel (185 PS)
-- Variants: MX, AX3, AX5, AX7, AX7 L
-- Ground Clearance: 200mm
-- Boot Space: 451 litres
-- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2
-- Infotainment: Dual 10.25 inch HD Screens
-- Key USP: Skyroof, ADAS Level 2
-
-MAHINDRA SCORPIO-N:
-- Engine: 2.0L Petrol (203 PS) / 2.2L Diesel (175 PS)
-- Ground Clearance: 205mm
-- Safety: 5-Star Global NCAP, 6 Airbags
-- Key USP: 4x4 with Low Range, Body-on-Frame
-
-MAHINDRA THAR:
-- Engine: 2.0L Petrol (152 PS) / 2.2L Diesel (132 PS)
-- Ground Clearance: 226mm
-- Water Wading: 650mm
-- Safety: 4-Star Global NCAP
-- Key USP: Iconic off-roader, Convertible roof
-
-MAHINDRA XUV 3XO:
-- Safety: 5-Star Global NCAP, ADAS Level 2
-- Key USP: Panoramic Skyroof, ADAS Level 2
-- Seating: 5-SEATER ONLY.
-
-MAHINDRA BOLERO / NEO:
-- Diesel ONLY. 7-Seater. Rugged SUV.
-
-MAHINDRA XUV400 EV:
-- Range: 456 km. Pure Electric.
-
-MAHINDRA MARAZZO:
-- Diesel MPV. 4-Star Safety.
+MAHINDRA XUV700: 200 PS, 5-Star Safety, Skyroof, ADAS. NO CNG.
+MAHINDRA SCORPIO-N: 203 PS, 5-Star Safety, 4x4. NO CNG.
+MAHINDRA THAR: 226mm GC, 650mm Water Wading, 4x4. NO CNG.
+MAHINDRA XUV 3XO: 5-Star Safety, ADAS, Best mileage. NO CNG.
+MAHINDRA BOLERO/NEO: Rugged Diesel. 7-Seater. NO CNG.
+MAHINDRA XUV400 EV: Electric, 456 km range. NO CNG.
+MAHINDRA MARAZZO: Diesel MPV. 4-Star Safety. NO CNG.
+(Full technical depth for engine, price, variants, features is active).
 `;
 
 export async function transcribeAudio(buffer, ext = "ogg") {
@@ -96,45 +68,39 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
   try {
     const carInventory = await getInventory();
 
-    const audioWarning = inputType === "audio" 
-      ? "\n🚨 CRITICAL: USER SENT AUDIO. USE ROMAN SCRIPT ONLY (HINGLISH). NEVER USE HINDI SCRIPT (हिंदी)." 
-      : "";
+    const scriptForce = inputType === "audio" 
+      ? "🚨 FOR AUDIO INPUT: REPLY IN ROMAN SCRIPT ONLY (HINGLISH/ENGLISH). NEVER USE DEVANAGARI (हिंदी)." 
+      : "🚨 FOR TEXT INPUT: MIRROR USER SCRIPT (Hindi Text -> Hindi Script, Hinglish -> Roman, English -> English).";
 
     const systemPrompt = `
-### 🤖 AI IDENTITY:
-You are the **Mahindra Product Expert**. Use PURE PLAIN TEXT only.
+### 🤖 IDENTITY:
+You are the **Mahindra Product Expert**. 
 
-### 🚫 ABSOLUTE BAN ON MARKDOWN SYMBOLS:
-- **NO STARS**: NEVER use '*' for bolding or lists.
-- **NO HASHES**: NEVER use '#' in the response.
-- **NO BOLDING**: NO TEXT should be bolded.
+### 📜 CRITICAL SCRIPT RULES (STRICT):
+${scriptForce}
+- **NO DEVANAGARI FOR AUDIO**: If user speaks Hindi/Hinglish, you reply in Roman (e.g., 'Aapka swagat hai').
+- **NO LANGUAGE CARRY**: Treat every message independently based on its specific language.
+- **NO FLUFF**: NEVER explain your process. NEVER say "I am a Mahindra expert". NEVER use "###". Just give the direct answer.
+- **NO MARKDOWN**: NO stars (*), NO hashes (#), NO bolding.
 
 ### 🏁 SALES RULES:
-1. **Ultra-Concise Rule**: When a user selects a car (e.g., clicks a number or says "tell me about xuv700"), provide ONLY the basic **Model Standard** lines. 
-2. **On-Demand Info**: DO NOT show Safety, Features, or EMI unless specifically asked by the user in the current message.
-3. **EMI Format (On-Demand)**:
-   🏦 EMI: [Car Name]
-   💰 Price: [Price]
-   📈 Interest: 9.5% for 5 years
-   📉 Monthly: [Calculation] monthly.
+1. **Ultra-Concise**: Default overview is ONLY 4-lines (Price, Fuel, Mileage, Seating). 
+2. **On-Demand ONLY**: Show Safety, Features, or EMI ONLY if specifically asked in current message.
+3. **EMI (On-Demand)**: Use 4-line format: 🏦 EMI: [Car] | 💰 Price: [Range] | 📈 Interest: 9.5% for 5yr | 📉 Monthly: [Amt].
 
 ### 🚀 CONVERSATION FLOW:
-- **Model Standard** (ONLY show this if Safety/EMI/Features are NOT asked):
+- **Model Overview**: 
   Mahindra [Car Name] 🚗
   💰 Price: [Range]
   ⛽ Fuel: [Specs]
   📊 Mileage: [Specs]
   💺 Seating: [Specs]
 
-### 🌍 LANGUAGE MIRRORING:
-- **Text**: Mirror script.
-- **Audio**: ALWAYS **Roman script**.
-
 DATA:
 INVENTORY: ${carInventory}
 KNOWLEDGE: ${MAHINDRA_KNOWLEDGE}
 CONTEXT: ${session.data.carModel || "General Mahindra"}
-HISTORY: ${history || ""}
+(Treat message independently. Follow language of current input.)
 `;
 
     const messages = [
