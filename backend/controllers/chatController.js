@@ -165,6 +165,28 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
+        // 0.8 FINAL WEB CONFIRMATION BYPASS
+        if (lowerMsg.startsWith("confirm_booking:")) {
+            const parts = textRaw.split(":");
+            const details = parts[1]?.split("|") || [];
+            const bookingDate = details[0]?.trim() || "Selected Date";
+            const bookingTime = details[1]?.trim() || "Selected Time";
+            const carName = session.data.carModel || "Mahindra SUV";
+
+            const finalConfirmMsg = session.data.detectedLanguage === "GUJARATI"
+                ? `✅ *ટેસ્ટ ડ્રાઈવ કન્ફર્મ!*\n\n🚗 *ગાડી*: ${carName}\n📅 *તારીખ*: ${bookingDate}\n🕓 *સમય*: ${bookingTime}\n\nઅમારા એક્ઝિક્યુટિવ ટૂંક સમયમાં તમારો સંપર્ક કરશે. ધન્યવાદ! 🙏`
+                : `✅ *Test Drive Confirmed!*\n\n🚗 *Car*: ${carName}\n📅 *Date*: ${bookingDate}\n🕓 *Time*: ${bookingTime}\n\nOur executive will call you shortly to finalize details. Thank you! 🙏`;
+
+            // Admin Final Lead Alert
+            await sendMessage("15558689519", `🎉 SUCCESSFUL BOOKING!\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}`);
+
+            session.state = "IDLE"; await session.save();
+            await sendMessage(sender, finalConfirmMsg);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: finalConfirmMsg, content: finalConfirmMsg }).save();
+            return res.status(200).send("OK");
+        }
+
         // 1. PINCODE BYPASS (Auto-detect in Audio/Text)
         const pincodeMatch = textRaw.match(/\b\d{6}\b/);
         if (pincodeMatch) {
