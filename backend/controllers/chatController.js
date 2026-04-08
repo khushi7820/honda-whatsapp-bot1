@@ -423,11 +423,27 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
-        const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book|book kare|booking|book karna hai)\b/i.test(lowerMsg);
+        const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book|book kare|booking|book karna hai|book car|booking karwani hai)\b/i.test(lowerMsg);
         const isBookingInfo = /\b(how to book|process|book kaise kare)\b/i.test(lowerMsg);
         const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic/i.test(lowerMsg);
 
-        // 4. BOOKING BYPASS (CONFIRMATION ONLY - ACTION DRIVEN)
+        // 4. BOOKING BYPASS (REFINED - FORCE CAR SELECTION FIRST)
+        if (isBookingAction && !detectedCar && !session.data.carModel) {
+            const cars = await Car.find({}).lean();
+            session.data.lastShownList = cars.map(c => c.name);
+            session.markModified('data');
+            await session.save();
+
+            const noCarMsg = session.data.detectedLanguage === "GUJARATI"
+                ? `બુકિંગ માટે પહેલા ગાડી પસંદ કરો. અમારી ગાડીઓની લિસ્ટ:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nકઈ ગાડી બુક કરવી છે? 🚗`
+                : `Booking ke liye pehle car select karein. Humari Mahindra list:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nKripaya list se car select karein ya number batayein. 🚗`;
+            
+            await sendMessage(sender, noCarMsg);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: noCarMsg, content: noCarMsg }).save();
+            return res.status(200).send("OK");
+        }
+
         if (isBookingAction && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             session.state = "PINCODE";
