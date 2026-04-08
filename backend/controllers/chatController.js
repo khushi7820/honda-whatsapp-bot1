@@ -215,20 +215,22 @@ export async function handleWebhook(req, res) {
         }
 
         // 3A. SEATING CAPACITY FILTER BYPASS (Hardcoded - also checks fuel if mentioned)
-        const seatMatch = lowerMsg.match(/(\d+)\s*seater/i) || lowerMsg.match(/(\d+)\s*seat/i) || lowerMsg.match(/(\d+)\s*person/i) || lowerMsg.match(/(\d+)\s*people/i);
-        if (seatMatch) {
-            const requestedSeats = seatMatch[1];
-            // Also check if fuel type is mentioned in same query
+        const allNumbers = lowerMsg.match(/\d+/g);
+        const seatKeywords = /seater|seat|people|person/i.test(lowerMsg);
+        
+        if (allNumbers && seatKeywords) {
+            const requestedSeats = allNumbers; // Array of numbers e.g. ["5", "6"]
             const fuelInSeatQuery = lowerMsg.match(/\b(petrol|diesel|electric|cng|ev)\b/i);
             let requestedFuelInSeat = fuelInSeatQuery ? fuelInSeatQuery[1].toLowerCase() : null;
             if (requestedFuelInSeat === "ev") requestedFuelInSeat = "electric";
-
+        
             const allCars = await Car.find({}).lean();
             let matchedCars = allCars.filter(c => {
                 const seating = (c.seatingCapacity || "").toLowerCase();
-                return seating.includes(requestedSeats);
+                // Check if any of the requested numbers are in the car's seating capacity string
+                return requestedSeats.some(num => seating.includes(num));
             });
-
+        
             // Apply fuel filter too if mentioned
             if (requestedFuelInSeat) {
                 matchedCars = matchedCars.filter(c => {
@@ -236,11 +238,9 @@ export async function handleWebhook(req, res) {
                     return fuel.includes(requestedFuelInSeat);
                 });
             }
-
+        
             let filterReply;
-            const filterLabel = requestedFuelInSeat 
-                ? `${requestedSeats}-seater ${requestedFuelInSeat.toUpperCase()}` 
-                : `${requestedSeats}-seater`;
+            const filterLabel = requestedSeats.join("-") + "-seater";
 
             if (matchedCars.length === 0) {
                 filterReply = session.data.detectedLanguage === "GUJARATI"
