@@ -185,8 +185,8 @@ export async function handleWebhook(req, res) {
             
             const carName = session.data.carModel || "Mahindra SUV";
             const pincodeMsg = session.data.detectedLanguage === "GUJARATI" 
-                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\n✅ *બુકિંગ કન્ફર્મ!*\n🚗 *ગાડી*: ${carName}\n\nઅમારા Mahindra Sales Expert 24 કલાકમાં તમને કૉલ કરશે:\n• Test Drive Schedule\n• Finance Options\n• Exchange Offer\n\n📞 જલદી સંપર્ક માટે: Dealership Helpline\nધન્યવાદ! 🙏`
-                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\n✅ *Booking Confirmed!*\n🚗 *Car*: ${carName}\n\nHamare Mahindra Sales Expert 24 ghante mein aapko call karenge:\n• Test Drive Schedule\n• Finance Options\n• Exchange Offer\n\n📞 Jaldi contact ke liye: Dealership Helpline\nDhanyawad! 🙏`;
+                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\n✅ *ટેસ્ટ ડ્રાઈવ કન્ફર્મ!*\n🚗 *ગાડી*: ${carName}\n\nતમારા ટેસ્ટ ડ્રાઈવ સ્લોટ બુક કરવા માટે અહીં ક્લિક કરો:\n📅 https://calendly.com/mahindra-test-drive\n\nધન્યવાદ! 🙏`
+                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\n✅ *Test Drive Confirmed!*\n🚗 *Car*: ${carName}\n\nPlease schedule your Test Drive slot here:\n📅 https://calendly.com/mahindra-test-drive\n\nThank you! 🙏`;
             
             // Lead Alert to Admin
             const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;

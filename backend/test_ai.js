@@ -8,7 +8,7 @@ async function testAI() {
   await connectDB();
   console.log("Testing AI response for 'hello'...");
   try {
-    const response = await getAIResponse("hello", "");
+    const response = await getAIResponse("Tell me about Thar", "");
     console.log("AI Response:", response);
   } catch (err) {
     console.error("AI Error:", err);
