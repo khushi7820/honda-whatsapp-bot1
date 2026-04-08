@@ -1,4 +1,4 @@
-// Version 1.9.0 - Full Data Restoration + Script Parity Logic + Robust Audio Transliteration
+// Version 1.9.1 - Absolute Audio/Text Parity + Full Data
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -33,7 +33,7 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
   } catch (e) { return ""; }
 }
 
-// Complete Mahindra Car Knowledge Base (RESTORED TO FULL DEPTH)
+// Complete Mahindra Car Knowledge Base
 const MAHINDRA_KNOWLEDGE = `
 ### MAHINDRA XUV700:
 - Engine: 2.0L mStallion Turbo Petrol (200 PS) / 2.2L mHawk Diesel (185 PS)
@@ -41,59 +41,74 @@ const MAHINDRA_KNOWLEDGE = `
 - Drivetrain: FWD / AWD (Diesel AT only)
 - Ground Clearance: 200mm
 - Boot Space: 451 litres (5-seater) / 239 litres (7-seater)
-- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, Hill Hold
+- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, Hill Hold, 360 Camera
 - Infotainment: Dual 10.25 inch HD Screens, Sony 3D Sound, Alexa
-- Key USP: Skyroof, Smart Door Handles, ADAS Level 2
+- Warranty: 3 years / unlimited km
+- Key USP: ADAS Level 2, Skyroof, Smart Door Handles
+- Fuel: Petrol & Diesel ONLY. NO CNG.
 
 ### MAHINDRA SCORPIO-N:
-- Engine: 2.0L mStallion Petrol (203 PS) / 2.2L mHawk Diesel (175 PS)
+- Engine: 2.0L mStallion Turbo Petrol (203 PS) / 2.2L mHawk Diesel (175 PS)
 - Transmission: 6-speed MT / 6-speed AT
-- Drivetrain: RWD / 4WD (Diesel)
+- Drivetrain: RWD / 4WD (Diesel MT/AT)
 - Ground Clearance: 205mm
-- Safety: 5-Star Global NCAP, 6 Airbags, ESP
-- Key USP: Body-on-Frame, 4x4 with Low Range, Premium Interiors
+- Boot Space: 460 litres
+- Safety: 5-Star Global NCAP, 6 Airbags, ESP, Hill Descent
+- Infotainment: 8 inch Touchscreen, Sony 3D Sound, Wireless Android Auto/Apple CarPlay
+- Key USP: 4x4 Low Range, Body-on-Frame, Maximum Towing
+- Fuel: Petrol & Diesel ONLY. NO CNG.
 
 ### MAHINDRA THAR:
 - Engine: 2.0L Turbo Petrol (152 PS) / 2.2L Diesel (132 PS)
-- Transmission: 6-speed MT / 6-speed AT
-- Drivetrain: 4WD standard with Low Range
 - Ground Clearance: 226mm
 - Water Wading: 650mm
 - Safety: 4-Star Global NCAP, Roll Cage, ABS, EBD
-- Key USP: Off-road capabilities, Convertible roofs
+- Key USP: Iconic off-roader, Convertible roof, Washable interior
+- Fuel: Petrol & Diesel ONLY. NO CNG.
 
 ### MAHINDRA XUV 3XO:
-- Engine: 1.2L Turbo Petrol / 1.5L Diesel
+- Engine: 1.2L mStallion Turbo Petrol / 1.5L Diesel
 - Ground Clearance: 195mm
 - Boot Space: 364 litres
-- Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags
-- Key USP: Panoramic Skyroof, ADAS, Most powerful in segment
+- Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags, ESP
+- Key USP: ADAS Level 2, Panoramic Skyroof, Dual Screen
+- Seating: 5-SEATER ONLY.
+- Fuel: Petrol & Diesel ONLY. NO CNG.
 
 ### MAHINDRA BOLERO:
-- Engine: 1.5L mHawk75 Diesel
+- Engine: 1.5L mHawk D70 Diesel
 - Ground Clearance: 180mm
+- Safety: ABS, EBD, Dual Airbags
+- Key USP: Rugged, Best resale, Low maintenance
 - Seating: 7-Seater
-- Key USP: Reliable, Low maintenance, Rugged steel body
+- Fuel: DIESEL ONLY. NO CNG.
 
 ### MAHINDRA BOLERO NEO:
 - Engine: 1.5L mHawk100 Diesel
 - Ground Clearance: 192mm
+- Safety: ABS, EBD, Dual Airbags, CSC
+- Key USP: Modern Bolero, SUV styling
 - Seating: 7-Seater
-- Safety: ABS, EBD, Corner Stability Control
+- Fuel: DIESEL ONLY. NO CNG.
 
 ### MAHINDRA XUV400 EV:
-- Battery: 34.5 / 39.4 kWh
+- Battery: 34.5 kWh / 39.4 kWh
 - Range: 456 km (ARAI)
 - 0-100 kmph: 8.3 seconds
-- Key USP: Pure Electric SUV, Fast charging
+- Safety: 5-Star BNCAP, 6 Airbags, ESP
+- Key USP: Pure Electric, Zero emissions, Fast charging
+- Seating: 5-SEATER ONLY.
+- Fuel: ELECTRIC ONLY. NO CNG.
 
 ### MAHINDRA MARAZZO:
-- Engine: 1.5L Diesel Engine
-- Seating: 7/8 Seater
+- Engine: 1.5L D15 Diesel
+- Ground Clearance: 193mm
 - Safety: 4-Star Global NCAP
+- Seating: 7/8-Seater
+- Fuel: DIESEL ONLY. NO CNG.
 
-### IMPORTANT:
-- CNG: ZERO Mahindra cars have CNG. Our portfolio is Petrol, Diesel, and Electric only.
+### IMPORTANT FACTS:
+- CNG: ZERO Mahindra cars come in CNG. None. Na.
 `;
 
 export async function transcribeAudio(buffer, ext = "ogg") {
@@ -121,42 +136,37 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const audioWarning = inputType === "audio" 
-      ? "\n🚨 CRITICAL: USER SENT AUDIO. REPLY IN ROMAN SCRIPT ONLY (HINGLISH). NEVER USE HINDI SCRIPT (हिंदी). ANSWERS MUST BE IDENTICAL TO TEXT LOGIC." 
+      ? "\n🚨 CRITICAL: USER SENT AUDIO. YOUR LOGICAL ANSWER MUST BE 100% IDENTICAL TO A TEXT REPLY. THE ONLY DIFFERENCE IS SCRIPT. USE ROMAN SCRIPT ONLY (Transliterated Hinglish). NEVER USE HINDI SCRIPT (हिंदी)." 
       : "";
 
     const systemPrompt = `
 ### 🤖 AI IDENTITY:
-You are the **Mahindra Product Expert**. Provide deep technical details while remaining concise.${audioWarning}
+You are the **Mahindra Product Expert**. Your primary mission is to provide 100% consistent data regardless of whether the user types or sends audio.${audioWarning}
 
 ### 🏁 SALES RULES:
-1. **Pincode Flow**: Ask for **Pincode** when they are ready to book.
-2. **Booking Link Policy**: The system handles the link; you just confirm selection and ask for pincode.
-3. **No Mismatch**: Your knowledge about cars MUST stay the same for audio and text.
+1. **Consistency**: Use the EXACT same logic, price, and specs for audio and text.
+2. **Pincode Flow**: Ask for **Pincode** when ready to book.
+3. **Format**: Vertical points only. No markdown stars (*) for bolding.
 
 ### 🚀 CONVERSATION FLOW:
-- **Vertical Point-wise ONLY**. Zero paragraphs.
-- **Selective Expert**: answer technical questions ONLY about the topic asked.
-  🛡️ Safety: [Rating/Airbags]
-  🚀 Features: [Tech Highlights]
-  🏦 EMI: [Monthly amount, ₹2100/Lakh rule]
-  💰 Price: [Inventory range]
-- **Standard Detail Format**: When a specific model is asked for, show:
+- **Selective Expert**: provide data ONLY for the topic asked:
+  🛡️ Safety: [Specs]
+  🚀 Features: [Specs]
+  🏦 EMI: [Amount only, ₹2100/Lakh rule]
+  💰 Price: [Specs]
+- **Model Standard**: If a specific model is asked for, show ONLY this vertical format:
   Mahindra [Car Name] 🚗
   💰 Price: [Specs]
   🎨 Colors: [Specs]
   ⛽ Fuel: [Specs]
   📊 Mileage: [Specs]
   💺 Seating: [Specs]
-  (Zero extra text.)
 
 ### 🌍 LANGUAGE MIRRORING:
-- **Text**: Mirror EXACT language and script (Gujarati/Hindi/English).
-- **Audio**: ALWAYS **Roman script** (Transliterated Hinglish/Marathi/etc).
+- **Text**: Mirror EXACT language/script.
+- **Audio**: ALWAYS **Roman script** (Hinglish/Transliterated).
 
-### 🎯 PRECISION FOCUS:
-- Same answer for same question. Use the data below exactly.
-
-### DATA:
+### DATA BASE:
 INVENTORY: ${carInventory}
 KNOWLEDGE: ${MAHINDRA_KNOWLEDGE}
 CONTEXT: ${session.data.carModel || "General Mahindra"}
