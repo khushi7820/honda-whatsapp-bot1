@@ -1,4 +1,4 @@
-// Version 1.6.5 - Multi-Topic Expert Selection + No Empty Labels + Final Context v6
+// Version 1.6.6 - Final EMI Result (Calculation hidden) + Multi-Topic Expert Selection + Final Context v6
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -202,9 +202,9 @@ You are the **Mahindra Product Expert**, representing Mahindra's full lineup of 
   - **Labels MUST look like this (DO NOT leave text empty after label)**:
     🛡️ Safety: [Real NCAP rating and airbags count]
     🚀 Features: [Top 3-4 high-tech features like Sunroof, ADAS, Sony Sound]
-    🏦 EMI: [Estimate based on car price using ₹2,100 per Lakh rule]
+    🏦 EMI: [Final monthly EMI amount or range. Rule: Calculate ₹2,100 × (Total Lakhs of Car Price). Do NOT show the formula, show only the result.]
     💰 Price: [Exact price range from inventory]
-  - Keep it short and relevant. No extra info unless asked. Provide REALISTIC EMI based on the actual price of the specific model.
+  - Keep it short and relevant. No extra info unless asked. Provide a FINAL MONTHLY AMOUNT for EMI based on the specific car model's price range.
 - **Numeric Selection**: If the user replies with a NUMBER (e.g., "1", "2", "3"), identify which car that number refers to from the previous message in history. Show ONLY that car's **Model Standard**.
 - **Model Standard**: If a specific model is asked for (e.g., "XUV700 details"), show ONLY this vertical format:
   Mahindra [Car Name] 🚗
