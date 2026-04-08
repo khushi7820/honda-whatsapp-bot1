@@ -1,4 +1,4 @@
-// Version 1.9.2 - Final Clean State + Audio/Text Logic Parity
+// Version 1.9.8 - FINAL FULL RESTORATION + Multi-Intent Parity + Clean List Logic
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -33,12 +33,13 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
   } catch (e) { return ""; }
 }
 
-// Complete Mahindra Car Knowledge Base
+// FULL KNOWLEDGE BASE (MAXIMUM DEPTH RESTORED)
 const MAHINDRA_KNOWLEDGE = `
 ### MAHINDRA XUV700:
 - Engine: 2.0L mStallion Turbo Petrol (200 PS) / 2.2L mHawk Diesel (185 PS)
 - Transmission: 6-speed MT / 6-speed AT
 - Drivetrain: FWD / AWD (Diesel AT only)
+- Variants: MX, AX3, AX5, AX7, AX7 L
 - Ground Clearance: 200mm
 - Boot Space: 451 litres (5-seater) / 239 litres (7-seater)
 - Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, Hill Hold, 360 Camera
@@ -51,32 +52,39 @@ const MAHINDRA_KNOWLEDGE = `
 - Engine: 2.0L mStallion Turbo Petrol (203 PS) / 2.2L mHawk Diesel (175 PS)
 - Transmission: 6-speed MT / 6-speed AT
 - Drivetrain: RWD / 4WD (Diesel MT/AT)
+- Variants: Z2, Z4, Z6, Z8, Z8 L
 - Ground Clearance: 205mm
 - Boot Space: 460 litres
 - Safety: 5-Star Global NCAP, 6 Airbags, ESP, Hill Descent
 - Infotainment: 8 inch Touchscreen, Sony 3D Sound, Wireless Android Auto/Apple CarPlay
-- Key USP: 4x4 Low Range, Body-on-Frame, Maximum Towing
+- Warranty: 3 years / unlimited km
+- Key USP: 4x4 with Low Range, Body-on-Frame, Maximum Towing
 - Fuel: Petrol & Diesel ONLY. NO CNG.
 
 ### MAHINDRA THAR:
-- Engine: 2.0L Turbo Petrol (152 PS) / 2.2L Diesel (132 PS)
+- Engine: 2.0L mStallion Turbo Petrol (152 PS) / 2.2L mHawk Diesel (132 PS)
+- Transmission: 6-speed MT / 6-speed AT
+- Drivetrain: 4WD with Low Range Transfer Case
 - Ground Clearance: 226mm
-- Water Wading: 650mm
-- Safety: 4-Star Global NCAP, Roll Cage, ABS, EBD
+- Approach Angle: 41.8 / Departure Angle: 36.1 / Water Wading: 650mm
+- Safety: 4-Star Global NCAP, 2 Airbags, ABS, EBD, Roll Cage
+- Infotainment: 7 inch Touchscreen, Android Auto/Apple CarPlay
+- Warranty: 3 years / unlimited km
 - Key USP: Iconic off-roader, Convertible roof, Washable interior
 - Fuel: Petrol & Diesel ONLY. NO CNG.
 
 ### MAHINDRA XUV 3XO:
-- Engine: 1.2L mStallion Turbo Petrol / 1.5L Diesel
+- Engine: 1.2L mStallion Turbo Petrol (130 PS) / 1.5L mHawk Diesel (117 PS)
 - Ground Clearance: 195mm
 - Boot Space: 364 litres
 - Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags, ESP
-- Key USP: ADAS Level 2, Panoramic Skyroof, Dual Screen
+- Infotainment: 10.25 inch HD Touchscreen, Adrenox Connected
+- Key USP: Panoramic Skyroof, ADAS Level 2, Most mileage in segment
 - Seating: 5-SEATER ONLY.
 - Fuel: Petrol & Diesel ONLY. NO CNG.
 
 ### MAHINDRA BOLERO:
-- Engine: 1.5L mHawk D70 Diesel
+- Engine: 1.5L mHawk D70 Diesel (76 PS)
 - Ground Clearance: 180mm
 - Safety: ABS, EBD, Dual Airbags
 - Key USP: Rugged, Best resale, Low maintenance
@@ -84,15 +92,17 @@ const MAHINDRA_KNOWLEDGE = `
 - Fuel: DIESEL ONLY. NO CNG.
 
 ### MAHINDRA BOLERO NEO:
-- Engine: 1.5L mHawk100 Diesel
+- Engine: 1.5L mHawk100 Diesel (100 PS)
 - Ground Clearance: 192mm
+- Boot Space: 370 litres
 - Safety: ABS, EBD, Dual Airbags, CSC
-- Key USP: Modern Bolero, SUV styling
+- Infotainment: 7 inch Touchscreen, Android Auto/Apple CarPlay
+- Key USP: Modern Bolero, SUV styling with MUV space
 - Seating: 7-Seater
 - Fuel: DIESEL ONLY. NO CNG.
 
 ### MAHINDRA XUV400 EV:
-- Battery: 34.5 kWh / 39.4 kWh
+- Battery: 34.5 / 39.4 kWh
 - Range: 456 km (ARAI)
 - 0-100 kmph: 8.3 seconds
 - Safety: 5-Star BNCAP, 6 Airbags, ESP
@@ -101,14 +111,16 @@ const MAHINDRA_KNOWLEDGE = `
 - Fuel: ELECTRIC ONLY. NO CNG.
 
 ### MAHINDRA MARAZZO:
-- Engine: 1.5L D15 Diesel
+- Engine: 1.5L D15 Diesel (123 PS)
 - Ground Clearance: 193mm
-- Safety: 4-Star Global NCAP
+- Safety: 4-Star Global NCAP, Dual Airbags
+- Key USP: Shark inspired design, MPV space
 - Seating: 7/8-Seater
 - Fuel: DIESEL ONLY. NO CNG.
 
 ### IMPORTANT FACTS:
-- CNG: ZERO Mahindra cars come in CNG. None. Na.
+- CNG: NO Mahindra car comes in CNG. None.
+- All cars have 3 year warranty.
 `;
 
 export async function transcribeAudio(buffer, ext = "ogg") {
@@ -121,7 +133,7 @@ export async function transcribeAudio(buffer, ext = "ogg") {
       model: "whisper-large-v3",
       response_format: "verbose_json",
       language: "hi", 
-      prompt: "Transcribe accurately (Hindi/English/Hinglish).",
+      prompt: "Transcribe accurately.",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     return transcription.text || "(Audio Empty)";
@@ -136,39 +148,37 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const audioWarning = inputType === "audio" 
-      ? "\n🚨 CRITICAL: USER SENT AUDIO. YOUR LOGICAL ANSWER MUST BE 100% IDENTICAL TO A TEXT REPLY. THE ONLY DIFFERENCE IS SCRIPT. USE ROMAN SCRIPT ONLY (Transliterated Hinglish). NEVER USE HINDI SCRIPT (हिंदी)." 
+      ? "\n🚨 CRITICAL: USER SENT AUDIO. USE ROMAN SCRIPT ONLY (HINGLISH). NEVER USE HINDI SCRIPT (हिंदी). ANSWERS MUST BE IDENTICAL TO TEXT LOGIC." 
       : "";
 
     const systemPrompt = `
 ### 🤖 AI IDENTITY:
-You are the **Mahindra Product Expert**. Your primary mission is to provide 100% consistent data regardless of whether the user types or sends audio.${audioWarning}
+You are the **Mahindra Product Expert**. Use the FULL knowledge base below to answer ANY question.${audioWarning}
 
 ### 🏁 SALES RULES:
-1. **Consistency**: Use the EXACT same logic, price, and specs for audio and text.
-2. **Pincode Flow**: Ask for **Pincode** when ready to book.
+1. **Multi-Intent Rule**: If multiple questions are asked (e.g., "highest mileage AND best car"), you MUST answer ALL of them clearly. Label them: "🏆 Best Car: [Name]" and "📊 Highest Mileage: [Name]".
+2. **Clean List Rule**: For a "list of all cars", provide ONLY a vertical numbered list of names. NO full specs for each car.
 3. **Format**: Vertical points only. No markdown stars (*) for bolding.
-4. **Topic Lock**: You ONLY discuss Mahindra cars. If asked about other brands or off-topic things, say: "Maaf kijiye, main Mahindra Product Expert hoon aur sirf Mahindra cars ke baare mein help kar sakta hoon. 🚗"
 
 ### 🚀 CONVERSATION FLOW:
-- **Selective Expert**: provide data ONLY for the topic asked:
-  🛡️ Safety: [Specs]
-  🚀 Features: [Specs]
-  🏦 EMI: [Amount only, ₹2100/Lakh rule]
-  💰 Price: [Specs]
-- **Model Standard**: If a specific model is asked for, show ONLY this vertical format:
+- **Selective Expert**: Answer ONLY about the topics asked from the full knowledge base.
+  🛡️ Safety: [Rating/Details]
+  🚀 Features: [High-tech Highlights]
+  🏦 EMI: [Monthly amount. Rule: 2100/Lakh]
+  💰 Price: [Range from Inventory]
+- **Model Standard**: If 1 specific model is asked for, show ONLY:
   Mahindra [Car Name] 🚗
   💰 Price: [Specs]
   🎨 Colors: [Specs]
   ⛽ Fuel: [Specs]
   📊 Mileage: [Specs]
   💺 Seating: [Specs]
-  (Zero extra text.)
 
 ### 🌍 LANGUAGE MIRRORING:
 - **Text**: Mirror EXACT language/script.
-- **Audio**: ALWAYS **Roman script** (Hinglish/Transliterated).
+- **Audio**: ALWAYS **Roman script**.
 
-### DATA BASE:
+### DATA:
 INVENTORY: ${carInventory}
 KNOWLEDGE: ${MAHINDRA_KNOWLEDGE}
 CONTEXT: ${session.data.carModel || "General Mahindra"}

@@ -158,7 +158,7 @@ export async function handleWebhook(req, res) {
             let ackReply = "Great! Do you want to know anything else about our Mahindra SUVs? 🚗✨";
             if (/hindi|achha|theek|shukriya|nhi|nahi/i.test(lowerMsg)) ackReply = "Shukriya! Kya aap kisi aur Mahindra SUV ke baare mein jaan-na chahte hain? 🚗✨";
             if (/guj|saras|theek/i.test(lowerMsg)) ackReply = "ધન્યવાદ! શું તમે બીજી કોઈ મહિન્દ્રા SUV વિશે જાણવા માંગો છો? 🚗✨";
-            
+
             await sendMessage(sender, ackReply);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: ackReply, content: ackReply }).save();
@@ -201,29 +201,29 @@ export async function handleWebhook(req, res) {
                     city = `${po.District}, ${po.State}`;
                 }
             } catch (e) { }
-            
+
             session.data.pincode = pc;
             session.data.area = city;
-            
+
             const carName = session.data.carModel || "Mahindra SUV";
             const carId = carName.replace(/Mahindra\s+/i, "").toLowerCase().replace(/\s+/g, "-");
             const userPhone = sender.replace(/\D/g, "");
-            const botPhone = "15558689519"; 
-            
+            const botPhone = "15558689519";
+
             const calendarUrl = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carId}&phone=${userPhone}&botPhone=${botPhone}`;
-            
-            const pincodeMsg = session.data.detectedLanguage === "GUJARATI" 
+
+            const pincodeMsg = session.data.detectedLanguage === "GUJARATI"
                 ? `📍 પિનકોડ વેરિફાઈડ: ${pc}\n🏢 સ્થળ: ${city}\n\n✅ ટેસ્ટ ડ્રાઈવ સ્લોટ બુકિંગ!\n🚗 ગાડી: ${carName}\n\nકૃપા કરીને નીચેની લિંક પર ક્લિક કરીને તમારો સ્લોટ બુક કરો:\n📅 ${calendarUrl}\n\nધન્યવાદ! 🙏`
                 : `📍 Pincode Verified: ${pc}\n🏢 Location: ${city}\n\n✅ Schedule Your Test Drive!\n🚗 Car: ${carName}\n\nPlease click the link below to select your date and time slot:\n📅 ${calendarUrl}\n\nThank you! 🙏`;
-            
+
             // Lead Alert to Admin
             const leadAlert = `New Booking Intent! 🚀\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
             await sendMessage("15558689519", leadAlert);
-            
+
             session.markModified('data');
             session.state = "IDLE"; await session.save();
             await sendMessage(sender, pincodeMsg);
-            
+
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: pincodeMsg, content: pincodeMsg }).save();
             return res.status(200).send("OK");
@@ -243,20 +243,20 @@ export async function handleWebhook(req, res) {
         // 3A. SEATING CAPACITY FILTER BYPASS (Hardcoded - also checks fuel if mentioned)
         const allNumbers = lowerMsg.match(/\d+/g);
         const seatKeywords = /seater|seat|people|person/i.test(lowerMsg);
-        
+
         if (allNumbers && seatKeywords) {
             const requestedSeats = allNumbers; // Array of numbers e.g. ["5", "6"]
             const fuelInSeatQuery = lowerMsg.match(/\b(petrol|diesel|electric|cng|ev)\b/i);
             let requestedFuelInSeat = fuelInSeatQuery ? fuelInSeatQuery[1].toLowerCase() : null;
             if (requestedFuelInSeat === "ev") requestedFuelInSeat = "electric";
-        
+
             const allCars = await Car.find({}).lean();
             let matchedCars = allCars.filter(c => {
                 const seating = (c.seatingCapacity || "").toLowerCase();
                 // Check if any of the requested numbers are in the car's seating capacity string
                 return requestedSeats.some(num => seating.includes(num));
             });
-        
+
             // Apply fuel filter too if mentioned
             if (requestedFuelInSeat) {
                 matchedCars = matchedCars.filter(c => {
@@ -264,7 +264,7 @@ export async function handleWebhook(req, res) {
                     return fuel.includes(requestedFuelInSeat);
                 });
             }
-        
+
             let filterReply;
             const filterLabel = requestedSeats.join("-") + "-seater";
 
@@ -305,7 +305,7 @@ export async function handleWebhook(req, res) {
         if (isFuelQuery) {
             let requestedFuel = fuelMatch[1].toLowerCase();
             if (requestedFuel === "ev") requestedFuel = "electric";
-            
+
             const allCars = await Car.find({}).lean();
             const matchedCars = allCars.filter(c => {
                 const fuel = (c.fuelType || "").toLowerCase();
@@ -327,7 +327,7 @@ export async function handleWebhook(req, res) {
                 await session.save();
 
                 const listContent = matchedCars.map((c, i) => `${i + 1}. ${c.name} (${c.fuelType})`).join("\n");
-                
+
                 if (type === "audio") {
                     filterReply = `${requestedFuel.toUpperCase()} Mahindra cars:\n\n${listContent}\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
                 } else {
@@ -345,7 +345,7 @@ export async function handleWebhook(req, res) {
 
         // 3C. NUMBER SELECTION BYPASS (When user selects from a previously shown list)
         const numberWords = { "one": 1, "ek": 1, "pehla": 1, "pahla": 1, "first": 1, "two": 2, "do": 2, "doosra": 2, "dusra": 2, "second": 2, "three": 3, "teen": 3, "teesra": 3, "third": 3, "four": 4, "char": 4, "chautha": 4, "fourth": 4, "five": 5, "paanch": 5, "fifth": 5, "six": 6, "chhe": 6, "sixth": 6, "seven": 7, "saat": 7, "seventh": 7, "eight": 8, "aath": 8, "eighth": 8 };
-        
+
         let selectedNumber = null;
         if (numericMatch) {
             selectedNumber = parseInt(numericMatch[1]);
@@ -363,7 +363,7 @@ export async function handleWebhook(req, res) {
             if (selectedNumber <= lastList.length) {
                 const selectedCarName = lastList[selectedNumber - 1];
                 const selectedCar = await Car.findOne({ name: selectedCarName }).lean();
-                
+
                 if (selectedCar) {
                     session.data.carModel = selectedCar.name;
                     session.markModified('data');
@@ -387,7 +387,7 @@ export async function handleWebhook(req, res) {
 
         if (isGeneralCarListQuery && lowerMsg.split(/\s+/).length < 10) {
             const cars = await Car.find({}).lean();
-            
+
             // Save list to session for number selection
             session.data.lastShownList = cars.map(c => c.name);
             session.markModified('data');
@@ -396,7 +396,7 @@ export async function handleWebhook(req, res) {
             const carListText = session.data.detectedLanguage === "GUJARATI"
                 ? `અમારી પાસે આ મહિન્દ્રા ગાડીઓ છે:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nતમે કઈ ગાડી વિશે વધુ જાણવા માંગો છો? 🚗`
                 : `Humare paas ye Mahindra cars hain:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nKripaya jis car ke bare mein janna ho, uska naam ya number batayein. 🚗`;
-            
+
             await sendMessage(sender, carListText);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: carListText, content: carListText }).save();
@@ -432,8 +432,8 @@ export async function handleWebhook(req, res) {
         if (isImageRequest) {
             const noImgMsg = session.data.detectedLanguage === "GUJARATI"
                 ? `માફ કરજો, મારી પાસે હાલ ફોટા કે ઈમેજ ઉપલબ્ધ નથી. પણ હું તમને ગાડીના ફીચર્સ, પ્રાઈસ અને સ્પેક્સ વિશે જણાવી શકું છું. 🚗`
-                : `Maaf kijiye, mere paas abhi photos ya images available nahi hain. Lekin main aapko Mahindra cars ke features, price aur specs ke baare mein detailed jankari de sakta hoon. 🚗`;
-            
+                : `Maaf kijiye, mere paas abhi photos ya images available nahi hain. Lekin main aapko Mahindra cars ke features, price aur specifications ke baare mein detailed jankari de sakta hoon. 🚗`;
+
             await sendMessage(sender, noImgMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: noImgMsg, content: noImgMsg }).save();
@@ -450,7 +450,7 @@ export async function handleWebhook(req, res) {
             const noCarMsg = session.data.detectedLanguage === "GUJARATI"
                 ? `બુકિંગ માટે પહેલા ગાડી પસંદ કરો. અમારી ગાડીઓની લિસ્ટ:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nકઈ ગાડી બુક કરવી છે? 🚗`
                 : `Booking ke liye pehle car select karein. Humari Mahindra list:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nKripaya list se car select karein ya number batayein. 🚗`;
-            
+
             await sendMessage(sender, noCarMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: noCarMsg, content: noCarMsg }).save();
