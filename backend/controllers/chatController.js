@@ -268,18 +268,28 @@ export async function handleWebhook(req, res) {
             const filterLabel = requestedSeats.join("-") + "-seater";
 
             if (matchedCars.length === 0) {
-                filterReply = session.data.detectedLanguage === "GUJARATI"
-                    ? `માફ કરજો, ${filterLabel} કારમાં હાલ કોઈ વિકલ્પ નથી. 🚗\n\nKripaya koi aur option dekhein.`
-                    : `Maaf kijiye, ${filterLabel} mein currently koi Mahindra car available nahi hai. 🚗\n\nKya aap kisi aur category mein dekhna chahenge?`;
+                if (type === "audio") {
+                    filterReply = `Maaf kijiye, ${filterLabel} mein currently koi Mahindra car available nahi hai. 🚗`;
+                } else {
+                    filterReply = session.data.detectedLanguage === "GUJARATI"
+                        ? `Maaf karjo, ${filterLabel} car ma hal koi option nathi. 🚗`
+                        : `Maaf kijiye, ${filterLabel} mein currently koi Mahindra car available nahi hai. 🚗`;
+                }
             } else {
                 // Save list to session for number selection
                 session.data.lastShownList = matchedCars.map(c => c.name);
                 session.markModified('data');
                 await session.save();
 
-                filterReply = session.data.detectedLanguage === "GUJARATI"
-                    ? `${filterLabel} મહિન્દ્રા ગાડીઓ:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.seatingCapacity}, ${c.fuelType})`).join("\n") + `\n\nકઈ ગાડી વિશે જાણવા માંગો છો?`
-                    : `${filterLabel} Mahindra cars:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.seatingCapacity}, ${c.fuelType})`).join("\n") + `\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+                const listContent = matchedCars.map((c, i) => `${i + 1}. ${c.name} (${c.seatingCapacity}, ${c.fuelType})`).join("\n");
+
+                if (type === "audio") {
+                    filterReply = `${filterLabel} Mahindra cars:\n\n${listContent}\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+                } else {
+                    filterReply = session.data.detectedLanguage === "GUJARATI"
+                        ? `${filterLabel} Mahindra Caroni list:\n\n${listContent}\n\nKayi gaadi vishe janva mango cho?`
+                        : `${filterLabel} Mahindra cars:\n\n${listContent}\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+                }
             }
 
             await sendMessage(sender, filterReply);
@@ -290,7 +300,7 @@ export async function handleWebhook(req, res) {
 
         // 3B. FUEL TYPE FILTER BYPASS (Hardcoded - no AI dependency)
         const fuelMatch = lowerMsg.match(/\b(petrol|diesel|electric|cng|ev)\b/i);
-        const isFuelQuery = fuelMatch && /\b(car|cars|gaadi|gadiyan|wali|wala|batao|dikhao|available|mein|me|konsi|kaunsi|list)\b/i.test(lowerMsg);
+        const isFuelQuery = fuelMatch && /\b(car|cars|gaadi|gadiyan|wali|wala|batao|dikhao|available|mein|me|konsi|kaunsi|list|search|dekhni|puchni|looking|see|view)\b/i.test(lowerMsg);
         if (isFuelQuery) {
             let requestedFuel = fuelMatch[1].toLowerCase();
             if (requestedFuel === "ev") requestedFuel = "electric";
@@ -303,17 +313,27 @@ export async function handleWebhook(req, res) {
 
             let filterReply;
             if (matchedCars.length === 0) {
-                filterReply = session.data.detectedLanguage === "GUJARATI"
-                    ? `માફ કરજો, ${requestedFuel} કારમાં હાલ કોઈ વિકલ્પ નથી.`
-                    : `Maaf kijiye, ${requestedFuel} mein currently koi car available nahi hai.`;
+                if (type === "audio") {
+                    filterReply = `Maaf kijiye, ${requestedFuel} mein currently koi car available nahi hai. 🚗`;
+                } else {
+                    filterReply = session.data.detectedLanguage === "GUJARATI"
+                        ? `Maaf karjo, ${requestedFuel} ma hal koi car available nathi.`
+                        : `Maaf kijiye, ${requestedFuel} mein currently koi car available nahi hai. 🚗`;
+                }
             } else {
                 // Save list to session for number selection
                 session.data.lastShownList = matchedCars.map(c => c.name);
                 await session.save();
 
-                filterReply = session.data.detectedLanguage === "GUJARATI"
-                    ? `${requestedFuel} મહિન્દ્રા ગાડીઓ:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.fuelType})`).join("\n") + `\n\nકઈ ગાડી વિશે જાણવા માંગો છો?`
-                    : `${requestedFuel.charAt(0).toUpperCase() + requestedFuel.slice(1)} Mahindra cars:\n\n` + matchedCars.map((c, i) => `${i + 1}. *${c.name}* (${c.fuelType})`).join("\n") + `\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+                const listContent = matchedCars.map((c, i) => `${i + 1}. ${c.name} (${c.fuelType})`).join("\n");
+                
+                if (type === "audio") {
+                    filterReply = `${requestedFuel.toUpperCase()} Mahindra cars:\n\n${listContent}\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+                } else {
+                    filterReply = session.data.detectedLanguage === "GUJARATI"
+                        ? `${requestedFuel.toUpperCase()} Mahindra Caroni list:\n\n${listContent}\n\nKayi gaadi vishe janva mango cho?`
+                        : `${requestedFuel.toUpperCase()} Mahindra cars:\n\n${listContent}\n\nKisi car ke baare mein detail chahiye toh number ya naam batayein. 🚗`;
+                }
             }
 
             await sendMessage(sender, filterReply);
