@@ -215,7 +215,7 @@ export async function handleWebhook(req, res) {
         }
 
         // 3A. SEATING CAPACITY FILTER BYPASS (Hardcoded - also checks fuel if mentioned)
-        const seatMatch = lowerMsg.match(/(\d+)\s*seater/i) || lowerMsg.match(/(\d+)\s*seat/i);
+        const seatMatch = lowerMsg.match(/(\d+)\s*seater/i) || lowerMsg.match(/(\d+)\s*seat/i) || lowerMsg.match(/(\d+)\s*person/i) || lowerMsg.match(/(\d+)\s*people/i);
         if (seatMatch) {
             const requestedSeats = seatMatch[1];
             // Also check if fuel type is mentioned in same query
