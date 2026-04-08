@@ -360,13 +360,15 @@ export async function handleWebhook(req, res) {
 
         const carsList = await Car.find({});
         let detectedCar = null;
-        for (const car of carsList) {
-            const shortName = car.name.replace(/Mahindra\s+/i, "").toLowerCase().trim();
-            const noSpaceName = shortName.replace(/\s+/g, "");
-            const carRegex = new RegExp(`\\b${shortName}\\b`, 'i');
-            const noSpaceMsg = lowerMsg.replace(/\s+/g, "");
+        const normalizedMsg = lowerMsg.replace(/[-\s]+/g, " ");
 
-            if (carRegex.test(lowerMsg) || shortName.includes(lowerMsg) || noSpaceName === noSpaceMsg || noSpaceMsg.includes(noSpaceName)) {
+        for (const car of carsList) {
+            const fullName = car.name.toLowerCase();
+            const shortName = fullName.replace(/mahindra\s+/i, "").trim();
+            const normalizedShortName = shortName.replace(/[-\s]+/g, " ");
+            const noSpaceName = normalizedShortName.replace(/\s+/g, "");
+
+            if (normalizedMsg.includes(normalizedShortName) || normalizedMsg.replace(/\s+/g, "").includes(noSpaceName)) {
                 detectedCar = car.name;
                 break;
             }
