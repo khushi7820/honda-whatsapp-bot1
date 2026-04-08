@@ -321,7 +321,7 @@ export async function handleWebhook(req, res) {
                     session.data.carModel = selectedCar.name;
                     await session.save();
 
-                    const detailCard = `*${selectedCar.name}* 🚗\n💰 *Price Range:* ${selectedCar.price}\n🎨 *Colors:* ${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}\n⛽ *Fuel Type:* ${selectedCar.fuelType}\n📊 *Mileage:* ${selectedCar.mileage}\n\nBook karna chahein toh \"book\" likhein! 🚙`;
+                    const detailCard = `*${selectedCar.name}* 🚗\n💰 *Price Range:* ${selectedCar.price}\n🎨 *Colors:* ${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}\n⛽ *Fuel Type:* ${selectedCar.fuelType}\n📊 *Mileage:* ${selectedCar.mileage}\n💺 *Seating Capacity:* ${selectedCar.seatingCapacity}\n\nBook karna chahein toh \"book\" likhein! 🚙`;
 
                     await sendMessage(sender, detailCard);
                     await new Chat({ sender, role: "user", content: textRaw }).save();

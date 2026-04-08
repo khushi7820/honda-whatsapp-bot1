@@ -1,4 +1,4 @@
-// Version 1.2.7 - 'List First' Rule + Zero Fluff Vertical Formatting + Broadened Seating Filter
+// Version 1.3.1 - Re-added Seating Capacity to Details + Final Label Standardization
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -199,6 +199,7 @@ You are the **Mahindra Product Expert**. You represent Mahindra's full lineup of
   🎨 *Colors:* [Specs]
   ⛽ *Fuel Type:* [Specs]
   📊 *Mileage:* [Specs]
+  💺 *Seating Capacity:* [Specs]
   (Zero extra text.)
 - **Attribute Precision**: If asked for a specific attribute (e.g., "safety of XUV700"), ONLY provide that data point in 1 line.
 - **No Extra Description**: Remove all "This is a rugged SUV..." or "4-seater..." hallucinated headers.
