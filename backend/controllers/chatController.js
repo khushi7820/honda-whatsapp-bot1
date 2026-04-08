@@ -383,7 +383,7 @@ export async function handleWebhook(req, res) {
                     session.markModified('data');
                     await session.save();
 
-                    const detailCard = `${selectedCar.name} 🚗\n💰 Price: ${selectedCar.price}\n🎨 Colors: ${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}\n⛽ Fuel: ${selectedCar.fuelType}\n📊 Mileage: ${selectedCar.mileage}\n💺 Seating: ${selectedCar.seatingCapacity}\n\nBook karna chahein toh "book" likhein! 🚙`;
+                    const detailCard = `*Mahindra ${selectedCar.name}* 🚗\n\n💰 *${selectedCar.price}*\n🎨 *${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}*\n⛽ *${selectedCar.fuelType}*\n📊 *${selectedCar.mileage}*`;
 
                     await sendMessage(sender, detailCard);
                     await new Chat({ sender, role: "user", content: textRaw }).save();
@@ -473,20 +473,7 @@ export async function handleWebhook(req, res) {
 
         if (isBookingAction && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
-            const car = await Car.findOne({ name: carName }).lean();
-
-            // Simple 4-line summary for hardcoded booking bypass
-            let emiLine = "Calculation on request";
-            if (car && car.price) {
-                const match = car.price.match(/(\d+(\.\d+)?)/);
-                if (match) {
-                    const l = parseFloat(match[1]);
-                    emiLine = `₹${Math.round(l * 2100).toLocaleString()} - ₹${Math.round(l * 3800).toLocaleString()} monthly.`;
-                }
-            }
-
-            const carPrice = car ? car.price : "Price on request";
-            const bookingSummary = `🏦 EMI: ${carName}\n💰 Price: ${carPrice}\n📈 Interest: 9.5% for 5 years\n📉 Monthly: ${emiLine}\n\n${carName} book karne ke liye apna 6-digit Pincode share karein. 🚙`;
+            const bookingSummary = `Your selection of *Mahindra ${carName}* is confirmed! 🚙 Please share your 6-digit Pincode to continue.`;
 
             session.state = "PINCODE";
             await session.save();
