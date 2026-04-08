@@ -1,4 +1,4 @@
-// Version 2.1.0 - ULTRA-STRICT LANGUAGE & SCRIPT CONTROL
+// Version 2.1.1 - NUCLEAR MARKDOWN BAN + Language Parity
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -34,14 +34,13 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
 }
 
 const MAHINDRA_KNOWLEDGE = `
-MAHINDRA XUV700: 200 PS, 5-Star Safety, Skyroof, ADAS. NO CNG.
-MAHINDRA SCORPIO-N: 203 PS, 5-Star Safety, 4x4. NO CNG.
-MAHINDRA THAR: 226mm GC, 650mm Water Wading, 4x4. NO CNG.
-MAHINDRA XUV 3XO: 5-Star Safety, ADAS, Best mileage. NO CNG.
-MAHINDRA BOLERO/NEO: Rugged Diesel. 7-Seater. NO CNG.
-MAHINDRA XUV400 EV: Electric, 456 km range. NO CNG.
-MAHINDRA MARAZZO: Diesel MPV. 4-Star Safety. NO CNG.
-(Full technical depth for engine, price, variants, features is active).
+XUV700: 200PS, 5-Star, Skyroof, ADAS. NO CNG.
+SCORPIO-N: 203PS, 5-Star, 4x4. NO CNG.
+THAR: 226mm GC, 650mm Water Wading, 4x4. NO CNG.
+XUV 3XO: 5-Star, ADAS. NO CNG.
+BOLERO/NEO: Rugged Diesel. NO CNG.
+XUV400 EV: Electric, 456km range. NO CNG.
+MARAZZO: Diesel. NO CNG.
 `;
 
 export async function transcribeAudio(buffer, ext = "ogg") {
@@ -69,38 +68,44 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
     const carInventory = await getInventory();
 
     const scriptForce = inputType === "audio" 
-      ? "🚨 FOR AUDIO INPUT: REPLY IN ROMAN SCRIPT ONLY (HINGLISH/ENGLISH). NEVER USE DEVANAGARI (हिंदी)." 
-      : "🚨 FOR TEXT INPUT: MIRROR USER SCRIPT (Hindi Text -> Hindi Script, Hinglish -> Roman, English -> English).";
+      ? "🚨 AUDIO MODE: REPLY IN ROMAN SCRIPT ONLY. NEVER USE हिंदी SCRIPT. NEVER USE DEVANAGARI." 
+      : "🚨 TEXT MODE: MIRROR USER SCRIPT EXACTLY (Hindi -> Hindi Script, Hinglish -> Roman, English -> English).";
 
     const systemPrompt = `
 ### 🤖 IDENTITY:
-You are the **Mahindra Product Expert**. 
+Mahindra Product Expert. PURE TEXT ONLY.
 
-### 📜 CRITICAL SCRIPT RULES (STRICT):
+### 🚫 NUCLEAR BAN ON SYMBOLS (CRITICAL):
+- **NO STARS**: Zero '*' characters allowed in response.
+- **NO HASHES**: Zero '#' characters allowed in response.
+- **NO BOLDING**: Do not use bold tags.
+- **NO BULLET POINTS WITH SIGNS**: Use only EMOJIS (💰, 🛡️, 🚀, 📊, 💺) for bullets.
+- **NO NUMBERING**: Do not use 1, 2, 3 numbering for car details.
+- **NO FLUFF**: No "Namaste", no "Mahindra expert" talk, no introductory headers. JUST THE DATA.
+
+### 🏁 SCRIPT RULES:
 ${scriptForce}
-- **NO DEVANAGARI FOR AUDIO**: If user speaks Hindi/Hinglish, you reply in Roman (e.g., 'Aapka swagat hai').
-- **NO LANGUAGE CARRY**: Treat every message independently based on its specific language.
-- **NO FLUFF**: NEVER explain your process. NEVER say "I am a Mahindra expert". NEVER use "###". Just give the direct answer.
-- **NO MARKDOWN**: NO stars (*), NO hashes (#), NO bolding.
+- Treat each query as independent. No language carry-over.
 
-### 🏁 SALES RULES:
-1. **Ultra-Concise**: Default overview is ONLY 4-lines (Price, Fuel, Mileage, Seating). 
-2. **On-Demand ONLY**: Show Safety, Features, or EMI ONLY if specifically asked in current message.
-3. **EMI (On-Demand)**: Use 4-line format: 🏦 EMI: [Car] | 💰 Price: [Range] | 📈 Interest: 9.5% for 5yr | 📉 Monthly: [Amt].
+### 🚀 OUTPUT FORMAT:
+Mahindra [Car Name] 🚗
+💰 Price: [Range]
+⛽ Fuel: [Specs]
+📊 Mileage: [Specs]
+💺 Seating: [Specs]
 
-### 🚀 CONVERSATION FLOW:
-- **Model Overview**: 
-  Mahindra [Car Name] 🚗
-  💰 Price: [Range]
-  ⛽ Fuel: [Specs]
-  📊 Mileage: [Specs]
-  💺 Seating: [Specs]
+(Safety/Features/EMI only if specifically asked.)
+
+### EMI FORMAT:
+🏦 EMI: [Car]
+💰 Price: [Price]
+📈 Interest: 9.5% for 5yr
+📉 Monthly: [Amt] monthly.
 
 DATA:
 INVENTORY: ${carInventory}
 KNOWLEDGE: ${MAHINDRA_KNOWLEDGE}
 CONTEXT: ${session.data.carModel || "General Mahindra"}
-(Treat message independently. Follow language of current input.)
 `;
 
     const messages = [
