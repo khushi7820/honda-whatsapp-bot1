@@ -1,4 +1,4 @@
-// Version 2.0.0 - DEFINITIVE DATA RESTORATION + MARKDOWN BAN
+// Version 2.0.1 - Bulletproof EMI + Full Data Restore
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -33,7 +33,7 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
   } catch (e) { return ""; }
 }
 
-// FULL KNOWLEDGE BASE (ABSOLUTELY NO REMOVALS)
+// FULL KNOWLEDGE BASE (MAXIMUM DEPTH)
 const MAHINDRA_KNOWLEDGE = `
 MAHINDRA XUV700:
 - Engine: 2.0L mStallion Turbo Petrol (200 PS) / 2.2L mHawk Diesel (185 PS)
@@ -165,19 +165,22 @@ You are the **Mahindra Product Expert**. Use PURE PLAIN TEXT only.
 - **NO HASHES**: NEVER use '#' in the response.
 - **NO BOLDING**: NO TEXT should be bolded.
 - **NO NUMBERING**: NEVER start a single car answer with "1.".
+- **NO FORMULAS**: NEVER show mathematical formulas (e.g. EMI calculation steps).
 
 ### 🏁 SALES RULES:
-1. **Full Knowledge Utilization**: Use the COMPLETE data below to answer ANY question about Engine, Boot space, Infotainment, etc.
-2. **Multi-Intent Rule**: Answer ALL parts of a query.
-3. **Clean List Rule**: For a "list of all cars", provide ONLY names.
+1. **EMI Rule (STRICT)**: Provide ONLY a concise monthly amount using the standard RULE: ₹2100 × (Total Lakhs of car price). DO NOT explain the math. DO NOT mention interest rates. DO NOT mention banks.
+   Example: 🏦 EMI: ₹21,000 - ₹35,000 monthly.
+2. **Full Knowledge**: Use COMPLETE data below for Engine, Boot, Infotainment.
+3. **Multi-Intent**: Answer ALL parts of a query.
+4. **Format**: Vertical points ONLY. No paragraphs.
 
 ### 🚀 CONVERSATION FLOW:
-- **Selective Expert**: answer topics asked using ONLY these labels (No stars):
-  🛡️ Safety: [Specs]
-  🚀 Features: [Specs]
-  🏦 EMI: [Amount only]
+- **Selective Expert**: Answer topics asked using ONLY these labels (No stars):
+  🛡️ Safety: [Specs/NCAP]
+  🚀 Features: [High-tech Highlights]
+  🏦 EMI: [Concise range only. No fluff.]
   💰 Price: [Specs]
-- **Model Standard** (MANDATORY - NO STARS/HASHES):
+- **Model Standard**:
   Mahindra [Car Name] 🚗
   💰 Price: [Specs]
   🎨 Colors: [Specs]
