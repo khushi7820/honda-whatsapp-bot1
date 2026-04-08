@@ -1,4 +1,4 @@
-// Version 1.9.9 - ABSOLUTE MARKDOWN BAN + Pure Text Output + Full Knowledge
+// Version 2.0.0 - DEFINITIVE DATA RESTORATION + MARKDOWN BAN
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -33,46 +33,99 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
   } catch (e) { return ""; }
 }
 
-// FULL KNOWLEDGE BASE (MAXIMUM DEPTH)
+// FULL KNOWLEDGE BASE (ABSOLUTELY NO REMOVALS)
 const MAHINDRA_KNOWLEDGE = `
-### MAHINDRA XUV700:
+MAHINDRA XUV700:
 - Engine: 2.0L mStallion Turbo Petrol (200 PS) / 2.2L mHawk Diesel (185 PS)
 - Transmission: 6-speed MT / 6-speed AT
+- Drivetrain: FWD / AWD (Diesel AT only)
+- Variants: MX, AX3, AX5, AX7, AX7 L
 - Ground Clearance: 200mm
-- Boot Space: 451 litres
-- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, 360 Camera
-- Infotainment: Dual 10.25 inch HD Screens, Sony 3D Sound
-- Key USP: Skyroof, Smart Door Handles, ADAS Level 2
+- Boot Space: 451 litres (5-seater) / 239 litres (7-seater)
+- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, Hill Hold, 360 Camera
+- Infotainment: Dual 10.25 inch HD Screens, Sony 3D Sound, Alexa
+- Warranty: 3 years / unlimited km
+- Key USP: ADAS Level 2, Skyroof, Smart Door Handles
 - Fuel: Petrol & Diesel ONLY. NO CNG.
 
-### MAHINDRA SCORPIO-N:
-- Engine: 2.0L Turbo Petrol (203 PS) / 2.2L Diesel (175 PS)
+MAHINDRA SCORPIO-N:
+- Engine: 2.0L mStallion Turbo Petrol (203 PS) / 2.2L mHawk Diesel (175 PS)
+- Transmission: 6-speed MT / 6-speed AT
+- Drivetrain: RWD / 4WD (Diesel MT/AT)
+- Variants: Z2, Z4, Z6, Z8, Z8 L
 - Ground Clearance: 205mm
-- Safety: 5-Star Global NCAP, 6 Airbags, ESP
-- Key USP: 4x4 with Low Range, Body-on-Frame
+- Boot Space: 460 litres
+- Safety: 5-Star Global NCAP, 6 Airbags, ESP, Hill Descent
+- Infotainment: 8 inch Touchscreen, Sony 3D Sound, Wireless Android Auto/Apple CarPlay
+- Warranty: 3 years / unlimited km
+- Key USP: 4x4 with Low Range, Body-on-Frame, Maximum Towing
+- Fuel: Petrol & Diesel ONLY. NO CNG.
 
-### MAHINDRA THAR:
-- Engine: 2.0L Petrol (152 PS) / 2.2L Diesel (132 PS)
+MAHINDRA THAR:
+- Engine: 2.0L mStallion Turbo Petrol (152 PS) / 2.2L mHawk Diesel (132 PS)
+- Transmission: 6-speed MT / 6-speed AT
+- Drivetrain: 4WD with Low Range Transfer Case
 - Ground Clearance: 226mm
-- Water Wading: 650mm
-- Safety: 4-Star Global NCAP
-- Key USP: Iconic off-roader, Convertible roof
+- Approach Angle: 41.8 / Departure Angle: 36.1 / Water Wading: 650mm
+- Safety: 4-Star Global NCAP, 2 Airbags, ABS, EBD, Roll Cage
+- Infotainment: 7 inch Touchscreen, Android Auto/Apple CarPlay
+- Warranty: 3 years / unlimited km
+- Key USP: Iconic off-roader, Convertible roof, Washable interior
+- Fuel: Petrol & Diesel ONLY. NO CNG.
 
-### MAHINDRA XUV 3XO:
-- Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags
-- Key USP: Panoramic Skyroof, ADAS Level 2, Most mileage
+MAHINDRA XUV 3XO:
+- Engine: 1.2L mStallion Turbo Petrol (130 PS) / 1.5L mHawk Diesel (117 PS)
+- Transmission: 6-speed MT / 6-speed AMT / 6-speed AT
+- Ground Clearance: 195mm
+- Boot Space: 364 litres
+- Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags, ESP
+- Infotainment: 10.25 inch HD Touchscreen, Adrenox Connected
+- Key USP: Panoramic Skyroof, ADAS Level 2, Most mileage in segment
+- Seating: 5-SEATER ONLY.
+- Fuel: Petrol & Diesel ONLY. NO CNG.
 
-### MAHINDRA BOLERO / NEO:
-- Diesel ONLY. 7-Seater. Rugged SUV.
+MAHINDRA BOLERO:
+- Engine: 1.5L mHawk D70 Diesel (76 PS)
+- Transmission: 5-speed MT ONLY
+- Ground Clearance: 180mm
+- Safety: ABS, EBD, Dual Airbags, Strong steel body
+- Key USP: Rugged, Best resale, Low maintenance
+- Seating: 7-Seater
+- Fuel: DIESEL ONLY. NO Petrol. NO CNG.
 
-### MAHINDRA XUV400 EV:
-- Range: 456 km. Pure Electric.
+MAHINDRA BOLERO NEO:
+- Engine: 1.5L mHawk100 Diesel (100 PS)
+- Transmission: 5-speed MT ONLY
+- Ground Clearance: 192mm
+- Boot Space: 370 litres
+- Safety: ABS, EBD, Dual Airbags, CSC
+- Infotainment: 7 inch Touchscreen, Android Auto/Apple CarPlay
+- Key USP: Modern Bolero, SUV styling with MUV space
+- Seating: 7-Seater
+- Fuel: DIESEL ONLY. NO Petrol. NO CNG.
 
-### MAHINDRA MARAZZO:
-- Diesel MPV. 7/8 Seater. 4-Star Safety.
+MAHINDRA XUV400 EV:
+- Battery: 34.5 / 39.4 kWh
+- Range: 456 km (ARAI)
+- 0-100 kmph: 8.3 seconds
+- Safety: 5-Star BNCAP, 6 Airbags, ESP
+- Key USP: Pure Electric, Zero emissions, Fast charging
+- Seating: 5-SEATER ONLY.
+- Fuel: ELECTRIC ONLY. NO Petrol. NO Diesel. NO CNG.
 
-### IMPORTANT:
-- NO Mahindra car has CNG.
+MAHINDRA MARAZZO:
+- Engine: 1.5L D15 Diesel (123 PS)
+- Transmission: 6-speed MT ONLY
+- Ground Clearance: 193mm
+- Safety: 4-Star Global NCAP, Dual Airbags
+- Infotainment: 7 inch Touchscreen, Android Auto/Apple CarPlay
+- Key USP: Shark inspired design, MPV space
+- Seating: 7/8-Seater
+- Fuel: DIESEL ONLY. NO Petrol. NO CNG.
+
+IMPORTANT FACTS:
+- CNG: ZERO Mahindra cars come in CNG.
+- All cars have 3 year / unlimited km warranty.
 `;
 
 export async function transcribeAudio(buffer, ext = "ogg") {
@@ -107,26 +160,24 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
 ### 🤖 AI IDENTITY:
 You are the **Mahindra Product Expert**. Use PURE PLAIN TEXT only.
 
-### 🚫 ABSOLUTE BAN ON MARKDOWN:
+### 🚫 ABSOLUTE BAN ON MARKDOWN SYMBOLS:
 - **NO STARS**: NEVER use '*' for bolding or lists.
-- **NO HASHES**: NEVER use '#' for headers (e.g., no ###).
-- **NO UNDERCORES**: NEVER use '_'.
+- **NO HASHES**: NEVER use '#' in the response.
 - **NO BOLDING**: NO TEXT should be bolded.
-- **NO INTRO HEADERS**: NEVER start with "### MAHINDRA XUV...".
 - **NO NUMBERING**: NEVER start a single car answer with "1.".
 
 ### 🏁 SALES RULES:
-1. **Multi-Intent Rule**: Answer ALL parts of a query. Label clearly: "Best Car: [Name]" (No stars).
-2. **Clean List Rule**: For a "list of all cars", provide ONLY a vertical list of names. No specs.
-3. **Format**: Vertical points ONLY.
+1. **Full Knowledge Utilization**: Use the COMPLETE data below to answer ANY question about Engine, Boot space, Infotainment, etc.
+2. **Multi-Intent Rule**: Answer ALL parts of a query.
+3. **Clean List Rule**: For a "list of all cars", provide ONLY names.
 
 ### 🚀 CONVERSATION FLOW:
-- **Selective Expert**: Answer asked topics using labels below.
+- **Selective Expert**: answer topics asked using ONLY these labels (No stars):
   🛡️ Safety: [Specs]
   🚀 Features: [Specs]
   🏦 EMI: [Amount only]
   💰 Price: [Specs]
-- **Model Standard** (MANDATORY FORMAT - NO MARKDOWN):
+- **Model Standard** (MANDATORY - NO STARS/HASHES):
   Mahindra [Car Name] 🚗
   💰 Price: [Specs]
   🎨 Colors: [Specs]
@@ -135,7 +186,7 @@ You are the **Mahindra Product Expert**. Use PURE PLAIN TEXT only.
   💺 Seating: [Specs]
 
 ### 🌍 LANGUAGE MIRRORING:
-- **Text**: Mirror EXACT language/script.
+- **Text**: Mirror script.
 - **Audio**: ALWAYS **Roman script**.
 
 DATA:
