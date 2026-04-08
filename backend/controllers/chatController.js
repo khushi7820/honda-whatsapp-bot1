@@ -235,7 +235,7 @@ export async function handleWebhook(req, res) {
         const numericMatch = lowerMsg.match(/^\s*(\d+)\s*/);
         const isRecommendationQuery = /looking|suggest|recommend|best|for\s\d+/i.test(lowerMsg);
         const isImageRequest = /image|photo|pic|img/i.test(lowerMsg);
-        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao|list|price list/i.test(lowerMsg) && !isImageRequest && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg);
+        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao|list|price list/i.test(lowerMsg) && !isImageRequest && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg) && !session.data.carModel;
 
         if (isRecommendationQuery) {
             session.data.carModel = null;
@@ -383,7 +383,7 @@ export async function handleWebhook(req, res) {
                     session.markModified('data');
                     await session.save();
 
-                    const detailCard = `*Mahindra ${selectedCar.name}* 🚗\n\n💰 *${selectedCar.price}*\n🎨 *${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}*\n⛽ *${selectedCar.fuelType}*\n📊 *${selectedCar.mileage}*`;
+                    const detailCard = `Mahindra ${selectedCar.name} 🚗\n\n💰 Price: ${selectedCar.price}\n🎨 Colors: ${selectedCar.colors ? selectedCar.colors.slice(0, 3).join(", ") : "Premium Colors"}\n⛽ Fuel Type: ${selectedCar.fuelType}\n📊 Mileage: ${selectedCar.mileage}`;
 
                     await sendMessage(sender, detailCard);
                     await new Chat({ sender, role: "user", content: textRaw }).save();
@@ -407,9 +407,7 @@ export async function handleWebhook(req, res) {
             session.markModified('data');
             await session.save();
 
-            const carListText = session.data.detectedLanguage === "GUJARATI"
-                ? `અમારી પાસે આ મહિન્દ્રા ગાડીઓ છે:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nતમે કઈ ગાડી વિશે વધુ જાણવા માંગો છો? 🚗`
-                : `Humare paas ye Mahindra cars hain:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nKripaya jis car ke bare mein janna ho, uska naam ya number batayein. 🚗`;
+            const carListText = cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n");
 
             await sendMessage(sender, carListText);
             await new Chat({ sender, role: "user", content: textRaw }).save();
@@ -473,7 +471,7 @@ export async function handleWebhook(req, res) {
 
         if (isBookingAction && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
-            const bookingSummary = `Your selection of *Mahindra ${carName}* is confirmed! 🚙 Please share your 6-digit Pincode to continue.`;
+            const bookingSummary = `Your selection of Mahindra ${carName} is confirmed! 🚙 Please share your 6-digit Pincode to continue.`;
 
             session.state = "PINCODE";
             await session.save();
