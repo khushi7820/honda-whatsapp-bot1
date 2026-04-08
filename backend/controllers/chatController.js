@@ -242,6 +242,18 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
+        const isCNGRequest = /\bcng\b/i.test(lowerMsg);
+        if (isCNGRequest) {
+            const cngMsg = session.data.detectedLanguage === "GUJARATI"
+                ? `માફ કરજો, મહિન્દ્રા પાસે હાલ CNG ગાડીઓ ઉપલબ્ધ નથી. મહિન્દ્રા ફક્ત પેટ્રોલ, ડીઝલ અને ઇલેક્ટ્રિક SUV પ્રદાન કરે છે. 🚗`
+                : `Maaf kijiye, Mahindra ke paas abhi CNG cars available nahi hain. Mahindra sirf Petrol, Diesel aur Electric SUVs provide karta hai. 🚗\n\nKya aap inmein se kisi ke baare mein jaan-na chahenge?`;
+            
+            await sendMessage(sender, cngMsg);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: cngMsg, content: cngMsg }).save();
+            return res.status(200).send("OK");
+        }
+
         // 3A. SEATING CAPACITY FILTER BYPASS (Hardcoded - also checks fuel if mentioned)
         const allNumbers = lowerMsg.match(/\d+/g);
         const seatKeywords = /seater|seat|people|person/i.test(lowerMsg);
@@ -461,14 +473,27 @@ export async function handleWebhook(req, res) {
 
         if (isBookingAction && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
+            const car = await Car.findOne({ name: carName }).lean();
+            
+            // Simple 4-line summary for hardcoded booking bypass
+            let emiLine = "Calculation on request";
+            if (car && car.price) {
+                const match = car.price.match(/(\d+(\.\d+)?)/);
+                if (match) {
+                    const l = parseFloat(match[1]);
+                    emiLine = `₹${Math.round(l * 2100).toLocaleString()} - ₹${Math.round(l * 3800).toLocaleString()} monthly.`;
+                }
+            }
+            
+            const carPrice = car ? car.price : "Price on request";
+            const bookingSummary = `🏦 EMI: ${carName}\n💰 Price: ${carPrice}\n📈 Interest: 9.5% for 5 years\n📉 Monthly: ${emiLine}\n\n${carName} book karne ke liye apna 6-digit Pincode share karein. 🚙`;
+
             session.state = "PINCODE";
             await session.save();
 
-            const confirmMsg = `${carName} book karne ke liye apna 6-digit Pincode share karein. 🚙`;
-            await sendMessage(sender, confirmMsg);
-
+            await sendMessage(sender, bookingSummary);
             await new Chat({ sender, role: "user", content: textRaw }).save();
-            await new Chat({ sender, role: "assistant", reply: confirmMsg, content: confirmMsg }).save();
+            await new Chat({ sender, role: "assistant", reply: bookingSummary, content: bookingSummary }).save();
             return res.status(200).send("OK");
         }
 
