@@ -1,4 +1,4 @@
-// Version 1.9.1 - Absolute Audio/Text Parity + Full Data
+// Version 1.9.2 - Final Clean State + Audio/Text Logic Parity
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -161,6 +161,7 @@ You are the **Mahindra Product Expert**. Your primary mission is to provide 100%
   ⛽ Fuel: [Specs]
   📊 Mileage: [Specs]
   💺 Seating: [Specs]
+  (Zero extra text.)
 
 ### 🌍 LANGUAGE MIRRORING:
 - **Text**: Mirror EXACT language/script.
