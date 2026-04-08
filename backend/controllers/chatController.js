@@ -172,13 +172,15 @@ export async function handleWebhook(req, res) {
             const bookingDate = details[0]?.trim() || "Selected Date";
             const bookingTime = details[1]?.trim() || "Selected Time";
             const carName = session.data.carModel || "Mahindra SUV";
+            const pincode = session.data.pincode || "Not Provided";
+            const location = session.data.area || "Verified Area";
 
             const finalConfirmMsg = session.data.detectedLanguage === "GUJARATI"
-                ? `✅ ટેસ્ટ ડ્રાઈવ કન્ફર્મ!\n\n🚗 ગાડી: ${carName}\n📅 તારીખ: ${bookingDate}\n🕓 સમય: ${bookingTime}\n\nઅમારા એક્ઝિક્યુટિવ ટૂંક સમયમાં તમારો સંપર્ક કરશે. ધન્યવાદ! 🙏`
-                : `✅ Test Drive Confirmed!\n\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}\n\nOur executive will call you shortly to finalize details. Thank you! 🙏`;
+                ? `✅ ટેસ્ટ ડ્રાઈવ કન્ફર્મ!\n\n🚗 ગાડી: ${carName}\n📅 તારીખ: ${bookingDate}\n🕓 સમય: ${bookingTime}\n📍 પિનકોડ: ${pincode}\n🏢 સ્થળ: ${location}\n\nઅમારા એક્ઝિક્યુટિવ ટૂંક સમયમાં તમારો સંપર્ક કરશે. ધન્યવાદ! 🙏`
+                : `✅ Test Drive Confirmed!\n\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}\n📍 Pincode: ${pincode}\n🏢 Location: ${location}\n\nOur executive will call you shortly to finalize details. Thank you! 🙏`;
 
             // Admin Final Lead Alert
-            await sendMessage("15558689519", `🎉 SUCCESSFUL BOOKING!\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}`);
+            await sendMessage("15558689519", `🎉 SUCCESSFUL BOOKING!\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}\n📍 Pincode: ${pincode}\n🏢 Location: ${location}`);
 
             session.state = "IDLE"; await session.save();
             await sendMessage(sender, finalConfirmMsg);

@@ -1,4 +1,4 @@
-// Version 1.6.6 - Final EMI Result (Calculation hidden) + Multi-Topic Expert Selection + Final Context v6
+// Version 1.7.0 - Final Confirmation with Pincode + Location + Real EMI v2
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
