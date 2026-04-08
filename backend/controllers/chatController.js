@@ -408,8 +408,8 @@ export async function handleWebhook(req, res) {
             await session.save();
 
             const carListText = session.data.detectedLanguage === "GUJARATI"
-                ? `અમારી પાસે આ મહિન્દ્રા ગાડીઓ છે:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nતમે કઈ ગાડી વિશે વધુ જાણવા માંગો છો? 🚗`
-                : `Humare paas ye Mahindra cars hain:\n\n` + cars.map((c, i) => `${i + 1}. *${c.name}*`).join("\n") + `\n\nKripaya jis car ke bare mein janna ho, uska naam ya number batayein. 🚗`;
+                ? `અમારી પાસે આ મહિન્દ્રા ગાડીઓ છે:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nતમે કઈ ગાડી વિશે વધુ જાણવા માંગો છો? 🚗`
+                : `Humare paas ye Mahindra cars hain:\n\n` + cars.map((c, i) => `${i + 1}. ${c.name}`).join("\n") + `\n\nKripaya jis car ke bare mein janna ho, uska naam ya number batayein. 🚗`;
 
             await sendMessage(sender, carListText);
             await new Chat({ sender, role: "user", content: textRaw }).save();

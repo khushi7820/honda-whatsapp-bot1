@@ -1,4 +1,4 @@
-// Version 2.0.3 - ULTRA CONCISE + Full Data
+// Version 1.1.68 - Vercel Optimized (Corrected Audio)
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -21,111 +21,33 @@ async function getInventory() {
       `CAR: ${car.name}
 PRICE: ${car.price}
 FUEL: ${car.fuelType}
-SEATING: ${car.seatingCapacity || "N/A"}
-TYPE: ${car.type || "SUV"}
 MILEAGE: ${car.mileage}
-COLORS: ${car.colors ? car.colors.join(", ") : "Premium Colors"}`
+COLORS: ${car.colors ? car.colors.join(", ") : "Premium Colors Available"}
+SAFETY: 4-5 Star Global NCAP Rating, ABS, EBD, Dual Airbags.
+FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded with Tech"}`
     )).join("\n\n---\n\n");
     lastCacheUpdate = now;
     return cachedInventory;
   } catch (e) { return ""; }
 }
 
-const MAHINDRA_KNOWLEDGE = `
-MAHINDRA XUV700:
-- Engine: 2.0L mStallion Turbo Petrol (200 PS) / 2.2L mHawk Diesel (185 PS)
-- Transmission: 6-speed MT / 6-speed AT
-- Drivetrain: FWD / AWD (Diesel AT only)
-- Variants: MX, AX3, AX5, AX7, AX7 L
-- Ground Clearance: 200mm
-- Boot Space: 451 litres
-- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, Hill Hold, 360 Camera
-- Infotainment: Dual 10.25 inch HD Screens, Sony 3D Sound, Alexa
-- Warranty: 3 years / unlimited km
-- Key USP: ADAS Level 2, Skyroof, Smart Door Handles
-- Fuel: Petrol & Diesel ONLY. NO CNG.
-
-MAHINDRA SCORPIO-N:
-- Engine: 2.0L mStallion Turbo Petrol (203 PS) / 2.2L mHawk Diesel (175 PS)
-- Transmission: 6-speed MT / 6-speed AT
-- Ground Clearance: 205mm
-- Boot Space: 460 litres
-- Safety: 5-Star Global NCAP, 6 Airbags, ESP
-- Infotainment: 8 inch Touchscreen, Sony 3D Sound, Wireless Android Auto/Apple CarPlay
-- Warranty: 3 years / unlimited km
-- Key USP: 4x4 with Low Range, Body-on-Frame, Maximum Towing
-- Fuel: Petrol & Diesel ONLY. NO CNG.
-
-MAHINDRA THAR:
-- Engine: 2.0L Petrol (152 PS) / 2.2L Diesel (132 PS)
-- Ground Clearance: 226mm
-- Water Wading: 650mm
-- Safety: 4-Star Global NCAP, 2 Airbags, ABS, EBD
-- Key USP: Iconic off-roader, Convertible roof, Washable interior
-- Fuel: Petrol & Diesel ONLY. NO CNG.
-
-MAHINDRA XUV 3XO:
-- Engine: 1.2L Turbo Petrol / 1.5L Diesel
-- Ground Clearance: 195mm
-- Boot Space: 364 litres
-- Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags
-- Infotainment: 10.25 inch Touchscreen, Adrenox Connected
-- Key USP: Panoramic Skyroof, ADAS Level 2
-- Seating: 5-SEATER ONLY.
-- Fuel: Petrol & Diesel ONLY. NO CNG.
-
-MAHINDRA BOLERO:
-- Engine: 1.5L Diesel (76 PS)
-- Ground Clearance: 180mm
-- Safety: ABS, EBD, Dual Airbags
-- Key USP: Rugged, Best resale
-- Seating: 7-Seater
-- Fuel: DIESEL ONLY. NO CNG.
-
-MAHINDRA BOLERO NEO:
-- Engine: 1.5L Diesel (100 PS)
-- Ground Clearance: 192mm
-- Safety: ABS, EBD, Dual Airbags
-- Key USP: Modern Bolero
-- Seating: 7-Seater
-- Fuel: DIESEL ONLY. NO CNG.
-
-MAHINDRA XUV400 EV:
-- Range: 456 km (ARAI)
-- 0-100 kmph: 8.3 seconds
-- Safety: 5-Star BNCAP, 6 Airbags
-- Key USP: Pure Electric, Zero emissions
-- Seating: 5-SEATER ONLY.
-- Fuel: ELECTRIC ONLY. NO CNG.
-
-MAHINDRA MARAZZO:
-- Engine: 1.5L Diesel
-- Ground Clearance: 193mm
-- Safety: 4-Star Global NCAP
-- Seating: 7/8-Seater
-- Fuel: DIESEL ONLY. NO CNG.
-
-IMPORTANT FACTS:
-- CNG: ZERO Mahindra cars come in CNG.
-- All cars have 3 year warranty.
-`;
-
-export async function transcribeAudio(buffer, ext = "ogg") {
+export async function transcribeAudio(buffer) {
+  // ⚡ CRITICAL: Use /tmp for Vercel write access
   const tDir = process.env.VERCEL ? "/tmp" : process.cwd();
-  const tempPath = path.join(tDir, `audio_${Date.now()}.${ext}`);
+  const tempPath = path.join(tDir, `audio_${Date.now()}.ogg`);
   try {
     fs.writeFileSync(tempPath, buffer);
     const transcription = await groq.audio.transcriptions.create({
       file: fs.createReadStream(tempPath),
-      model: "whisper-large-v3",
-      response_format: "verbose_json",
-      language: "hi",
-      prompt: "Transcribe accurately.",
+      model: "whisper-large-v3-turbo",
+      response_format: "text",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    return transcription.text || "(Audio Empty)";
+    // ⚡ Return text property of the response
+    return transcription.text || transcription;
   } catch (error) {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    console.error("Transcription Error:", error.message);
     return "(Audio Error)";
   }
 }
@@ -134,70 +56,55 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
   try {
     const carInventory = await getInventory();
 
-    const audioWarning = inputType === "audio"
-      ? "\n🚨 CRITICAL: USER SENT AUDIO. USE ROMAN SCRIPT ONLY (HINGLISH). NEVER USE HINDI SCRIPT (हिंदी)."
-      : "";
-
     const systemPrompt = `
 ### 🤖 AI IDENTITY:
-You are the **Mahindra Product Expert**. Use PURE PLAIN TEXT only.
+You are the **Mahindra Product Expert**, representing Mahindra's full lineup of **8 premium SUV models** (Scorpio N, Thar, XUV700, Bolero Neo, XUV 3XO, Bolero, XUV400 EV, Marazzo). You have deep knowledge of every Mahindra model's safety (NCAP ratings), features (Sony sound systems, Skyroof), variants, and EMI processes. Your goal is to guide users with expert advice while keeping the conversation fast, visual, and premium.
 
-### 🚫 ABSOLUTE BAN ON MARKDOWN SYMBOLS:
-- **NO STARS**: NEVER use '*' for bolding or lists.
-- **NO HASHES**: NEVER use '#' in the response.
-- **NO BOLDING**: NO TEXT should be bolded.
-- **NO NUMBERING**: NEVER start a single car answer with "1.".
+0. **Header First**: EVERY SINGLE RESPONSE about a car or its details MUST start with *Mahindra [Car Name]* 🚗 as the very first line. Never skip this. (If suggesting multiple cars, start with a General Header like *Mahindra SUV Recommendations* 🚗).
+0.5 **Comprehensive Nudge**: When a user asks for cars based on capacity (e.g., "7 people"), you **MUST** mention ALL available models that fit that criteria in a **CLEAN POINT-WISE LIST** (e.g., • **7-Seater**: Scorpio N, XUV700, Marazzo). NEVER use paragraphs for lists.
+1. **Language Mirroring**: Always respond in the EXACT language the user uses (English or Hinglish). If the user speaks in Hinglish, you MUST reply in Hinglish.
+2. **Selective Expert**: Use your knowledge to answer technical questions **ONLY** about the specific topic asked.
+   - If the user asks for Safety, provide ONLY Safety details.
+   - If the user asks for EMI, provide ONLY EMI details.
+   - **ALWAYS** include explicit labels and icons:
+   - 🛡️ **Safety**: [NCAP rating, airbags, etc.]
+   - 🚀 **Features**: [High-tech highlights only]
+   - 🏦 **EMI**: [Monthly calculation range based on price]
+   - 💰 **Price**: [Exact price range]
+   - Keep it short and relevant. No extra info unless asked.
+3. **Model Lock**: Once a user asks about a specific SUV, stay focused on that model. Show its details and guide them to book a test drive for it.
+4. **The 4-Line Standard**: When sharing a car overview, ONLY show these 4 lines:
+   💰 *[Price Range]*
+   🎨 *[Colors]*
+   ⛽ *[Fuel Type]*
+   📊 *[Mileage]*
+   (STOP HERE. No fluff.)
+5. **Pivot Specialist**: If the user asks about ANY other brand (Maruti, Tata, Honda), give a one-word answer and pivot back to Mahindra immediately.
+6. **Frictionless Booking**: Only when the user says "Book this", "Proceed", or "I want this", strictly say:
+   "Your selection of *[Car Name]* is confirmed! 🚙 Please share your 6-digit Pincode to continue."
 
-### 🏁 SALES RULES:
-1. **EMI Rule (4-LINE CALCULATION)**: If asked for EMI, provide EXACTLY this 4-line format:
-   🏦 EMI: [Car Name]
-   💰 Price: [Inventory Price Range]
-   📈 Interest: 9.5% for 5 years
-   📉 Monthly: [Calculation Result using ₹2100/Lakh rule] monthly.
-   (No extra text, no formulas, no banks.)
-2. **Full Knowledge**: Use COMPLETE data below for Engine, Boot, Infotainment.
-3. **Multi-Intent**: Answer ALL parts of a query.
-4. **Format**: Vertical points ONLY.
+### 🏦 INVENTORY KNOWLEDGE:
+${carInventory}
 
-### 🚀 CONVERSATION FLOW:
-- **Selective Expert**: answer topics asked using ONLY these labels (No stars):
-  🛡️ Safety: [Specs/NCAP]
-  🚀 Features: [High-tech Highlights]
-  🏦 EMI: [Use the 4-line calculation format]
-  💰 Price: [Specs]
-- **Model Standard**:
-Mahindra [Car Name] 🚗
-  💰 Price: [Specs]
-  🎨 Colors: [Specs]
-  ⛽ Fuel: [Specs]
-  📊 Mileage: [Specs]
-  💺 Seating: [Specs]
-
-### 🌍 LANGUAGE MIRRORING:
-- **Text**: Mirror script.
-- **Audio**: ALWAYS **Roman script**.
-
-DATA:
-INVENTORY: ${carInventory}
-KNOWLEDGE: ${MAHINDRA_KNOWLEDGE}
-CONTEXT: ${session.data.carModel || "General Mahindra"}
-HISTORY: ${history || ""}
+### 🎭 PERSONALITY:
+Concise, Premium, Fast, and Sales-Driven. Avoid "I am an AI," "As a specialist," or "6-7 seater" fillers.
 `;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `LATEST USER INPUT: ${userMessage}` }
+      { role: "user", content: `Here is the context of our chat:\n${history}\n\nNow answer this new question: ${userMessage}` }
     ];
 
     const completion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.1-8b-instant",
-      temperature: 0,
+      model: "llama-3.1-8b-instant", // Ultra-stable and fast
+      temperature: 0.1,
       max_tokens: 512
     });
 
     return completion.choices[0].message.content;
   } catch (error) {
-    return `[AI Error]: ${error.message}`;
+    console.error("AI Error:", error.message);
+    return `[AI Error Debug]: ${error.message}. Please check GROQ_API_KEY.`;
   }
 }
