@@ -1,4 +1,4 @@
-// Version 2.1.1 - NUCLEAR MARKDOWN BAN + Language Parity
+// Version 2.0.3 - ULTRA CONCISE + Full Data
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -24,9 +24,7 @@ FUEL: ${car.fuelType}
 SEATING: ${car.seatingCapacity || "N/A"}
 TYPE: ${car.type || "SUV"}
 MILEAGE: ${car.mileage}
-COLORS: ${car.colors ? car.colors.join(", ") : "Premium Colors Available"}
-SAFETY: 4-5 Star Global NCAP Rating, ABS, EBD, Dual Airbags.
-FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
+COLORS: ${car.colors ? car.colors.join(", ") : "Premium Colors"}`
     )).join("\n\n---\n\n");
     lastCacheUpdate = now;
     return cachedInventory;
@@ -34,13 +32,82 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
 }
 
 const MAHINDRA_KNOWLEDGE = `
-XUV700: 200PS, 5-Star, Skyroof, ADAS. NO CNG.
-SCORPIO-N: 203PS, 5-Star, 4x4. NO CNG.
-THAR: 226mm GC, 650mm Water Wading, 4x4. NO CNG.
-XUV 3XO: 5-Star, ADAS. NO CNG.
-BOLERO/NEO: Rugged Diesel. NO CNG.
-XUV400 EV: Electric, 456km range. NO CNG.
-MARAZZO: Diesel. NO CNG.
+MAHINDRA XUV700:
+- Engine: 2.0L mStallion Turbo Petrol (200 PS) / 2.2L mHawk Diesel (185 PS)
+- Transmission: 6-speed MT / 6-speed AT
+- Drivetrain: FWD / AWD (Diesel AT only)
+- Variants: MX, AX3, AX5, AX7, AX7 L
+- Ground Clearance: 200mm
+- Boot Space: 451 litres
+- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, Hill Hold, 360 Camera
+- Infotainment: Dual 10.25 inch HD Screens, Sony 3D Sound, Alexa
+- Warranty: 3 years / unlimited km
+- Key USP: ADAS Level 2, Skyroof, Smart Door Handles
+- Fuel: Petrol & Diesel ONLY. NO CNG.
+
+MAHINDRA SCORPIO-N:
+- Engine: 2.0L mStallion Turbo Petrol (203 PS) / 2.2L mHawk Diesel (175 PS)
+- Transmission: 6-speed MT / 6-speed AT
+- Ground Clearance: 205mm
+- Boot Space: 460 litres
+- Safety: 5-Star Global NCAP, 6 Airbags, ESP
+- Infotainment: 8 inch Touchscreen, Sony 3D Sound, Wireless Android Auto/Apple CarPlay
+- Warranty: 3 years / unlimited km
+- Key USP: 4x4 with Low Range, Body-on-Frame, Maximum Towing
+- Fuel: Petrol & Diesel ONLY. NO CNG.
+
+MAHINDRA THAR:
+- Engine: 2.0L Petrol (152 PS) / 2.2L Diesel (132 PS)
+- Ground Clearance: 226mm
+- Water Wading: 650mm
+- Safety: 4-Star Global NCAP, 2 Airbags, ABS, EBD
+- Key USP: Iconic off-roader, Convertible roof, Washable interior
+- Fuel: Petrol & Diesel ONLY. NO CNG.
+
+MAHINDRA XUV 3XO:
+- Engine: 1.2L Turbo Petrol / 1.5L Diesel
+- Ground Clearance: 195mm
+- Boot Space: 364 litres
+- Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags
+- Infotainment: 10.25 inch Touchscreen, Adrenox Connected
+- Key USP: Panoramic Skyroof, ADAS Level 2
+- Seating: 5-SEATER ONLY.
+- Fuel: Petrol & Diesel ONLY. NO CNG.
+
+MAHINDRA BOLERO:
+- Engine: 1.5L Diesel (76 PS)
+- Ground Clearance: 180mm
+- Safety: ABS, EBD, Dual Airbags
+- Key USP: Rugged, Best resale
+- Seating: 7-Seater
+- Fuel: DIESEL ONLY. NO CNG.
+
+MAHINDRA BOLERO NEO:
+- Engine: 1.5L Diesel (100 PS)
+- Ground Clearance: 192mm
+- Safety: ABS, EBD, Dual Airbags
+- Key USP: Modern Bolero
+- Seating: 7-Seater
+- Fuel: DIESEL ONLY. NO CNG.
+
+MAHINDRA XUV400 EV:
+- Range: 456 km (ARAI)
+- 0-100 kmph: 8.3 seconds
+- Safety: 5-Star BNCAP, 6 Airbags
+- Key USP: Pure Electric, Zero emissions
+- Seating: 5-SEATER ONLY.
+- Fuel: ELECTRIC ONLY. NO CNG.
+
+MAHINDRA MARAZZO:
+- Engine: 1.5L Diesel
+- Ground Clearance: 193mm
+- Safety: 4-Star Global NCAP
+- Seating: 7/8-Seater
+- Fuel: DIESEL ONLY. NO CNG.
+
+IMPORTANT FACTS:
+- CNG: ZERO Mahindra cars come in CNG.
+- All cars have 3 year warranty.
 `;
 
 export async function transcribeAudio(buffer, ext = "ogg") {
@@ -52,7 +119,7 @@ export async function transcribeAudio(buffer, ext = "ogg") {
       file: fs.createReadStream(tempPath),
       model: "whisper-large-v3",
       response_format: "verbose_json",
-      language: "hi", 
+      language: "hi",
       prompt: "Transcribe accurately.",
     });
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
@@ -67,45 +134,54 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
   try {
     const carInventory = await getInventory();
 
-    const scriptForce = inputType === "audio" 
-      ? "🚨 AUDIO MODE: REPLY IN ROMAN SCRIPT ONLY. NEVER USE हिंदी SCRIPT. NEVER USE DEVANAGARI." 
-      : "🚨 TEXT MODE: MIRROR USER SCRIPT EXACTLY (Hindi -> Hindi Script, Hinglish -> Roman, English -> English).";
+    const audioWarning = inputType === "audio"
+      ? "\n🚨 CRITICAL: USER SENT AUDIO. USE ROMAN SCRIPT ONLY (HINGLISH). NEVER USE HINDI SCRIPT (हिंदी)."
+      : "";
 
     const systemPrompt = `
-### 🤖 IDENTITY:
-Mahindra Product Expert. PURE TEXT ONLY.
+### 🤖 AI IDENTITY:
+You are the **Mahindra Product Expert**. Use PURE PLAIN TEXT only.
 
-### 🚫 NUCLEAR BAN ON SYMBOLS (CRITICAL):
-- **NO STARS**: Zero '*' characters allowed in response.
-- **NO HASHES**: Zero '#' characters allowed in response.
-- **NO BOLDING**: Do not use bold tags.
-- **NO BULLET POINTS WITH SIGNS**: Use only EMOJIS (💰, 🛡️, 🚀, 📊, 💺) for bullets.
-- **NO NUMBERING**: Do not use 1, 2, 3 numbering for car details.
-- **NO FLUFF**: No "Namaste", no "Mahindra expert" talk, no introductory headers. JUST THE DATA.
+### 🚫 ABSOLUTE BAN ON MARKDOWN SYMBOLS:
+- **NO STARS**: NEVER use '*' for bolding or lists.
+- **NO HASHES**: NEVER use '#' in the response.
+- **NO BOLDING**: NO TEXT should be bolded.
+- **NO NUMBERING**: NEVER start a single car answer with "1.".
 
-### 🏁 SCRIPT RULES:
-${scriptForce}
-- Treat each query as independent. No language carry-over.
+### 🏁 SALES RULES:
+1. **EMI Rule (4-LINE CALCULATION)**: If asked for EMI, provide EXACTLY this 4-line format:
+   🏦 EMI: [Car Name]
+   💰 Price: [Inventory Price Range]
+   📈 Interest: 9.5% for 5 years
+   📉 Monthly: [Calculation Result using ₹2100/Lakh rule] monthly.
+   (No extra text, no formulas, no banks.)
+2. **Full Knowledge**: Use COMPLETE data below for Engine, Boot, Infotainment.
+3. **Multi-Intent**: Answer ALL parts of a query.
+4. **Format**: Vertical points ONLY.
 
-### 🚀 OUTPUT FORMAT:
+### 🚀 CONVERSATION FLOW:
+- **Selective Expert**: answer topics asked using ONLY these labels (No stars):
+  🛡️ Safety: [Specs/NCAP]
+  🚀 Features: [High-tech Highlights]
+  🏦 EMI: [Use the 4-line calculation format]
+  💰 Price: [Specs]
+- **Model Standard**:
 Mahindra [Car Name] 🚗
-💰 Price: [Range]
-⛽ Fuel: [Specs]
-📊 Mileage: [Specs]
-💺 Seating: [Specs]
+  💰 Price: [Specs]
+  🎨 Colors: [Specs]
+  ⛽ Fuel: [Specs]
+  📊 Mileage: [Specs]
+  💺 Seating: [Specs]
 
-(Safety/Features/EMI only if specifically asked.)
-
-### EMI FORMAT:
-🏦 EMI: [Car]
-💰 Price: [Price]
-📈 Interest: 9.5% for 5yr
-📉 Monthly: [Amt] monthly.
+### 🌍 LANGUAGE MIRRORING:
+- **Text**: Mirror script.
+- **Audio**: ALWAYS **Roman script**.
 
 DATA:
 INVENTORY: ${carInventory}
 KNOWLEDGE: ${MAHINDRA_KNOWLEDGE}
 CONTEXT: ${session.data.carModel || "General Mahindra"}
+HISTORY: ${history || ""}
 `;
 
     const messages = [

@@ -143,9 +143,9 @@ export async function handleWebhook(req, res) {
         const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
 
         if (greetingRegex.test(lowerMsg) && !isBookingSearch && lowerMsg.length < 15) {
-            let welcomeMsg = "Namaste! Mahindra Virtual Showroom mein aapka swagat hai. Main aapki kaise madad kar sakta hoon? 🚗✨";
+            let welcomeMsg = "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
             if (session.data.detectedLanguage === "GUJARATI") {
-                welcomeMsg = "Namaste! Mahindra Virtual Showroom ma tamaru swagat che. Hu tamari shu madad kari shaku chu? 🚗✨";
+                welcomeMsg = "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
             }
             await sendMessage(sender, welcomeMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
@@ -235,7 +235,7 @@ export async function handleWebhook(req, res) {
         const numericMatch = lowerMsg.match(/^\s*(\d+)\s*/);
         const isRecommendationQuery = /looking|suggest|recommend|best|for\s\d+/i.test(lowerMsg);
         const isImageRequest = /image|photo|pic|img/i.test(lowerMsg);
-        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao/i.test(lowerMsg) && !isImageRequest && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg);
+        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao|list|price list/i.test(lowerMsg) && !isImageRequest && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg);
 
         if (isRecommendationQuery) {
             session.data.carModel = null;
@@ -247,7 +247,7 @@ export async function handleWebhook(req, res) {
             const cngMsg = session.data.detectedLanguage === "GUJARATI"
                 ? `માફ કરજો, મહિન્દ્રા પાસે હાલ CNG ગાડીઓ ઉપલબ્ધ નથી. મહિન્દ્રા ફક્ત પેટ્રોલ, ડીઝલ અને ઇલેક્ટ્રિક SUV પ્રદાન કરે છે. 🚗`
                 : `Maaf kijiye, Mahindra ke paas abhi CNG cars available nahi hain. Mahindra sirf Petrol, Diesel aur Electric SUVs provide karta hai. 🚗\n\nKya aap inmein se kisi ke baare mein jaan-na chahenge?`;
-            
+
             await sendMessage(sender, cngMsg);
             await new Chat({ sender, role: "user", content: textRaw }).save();
             await new Chat({ sender, role: "assistant", reply: cngMsg, content: cngMsg }).save();
@@ -438,7 +438,7 @@ export async function handleWebhook(req, res) {
             await session.save();
         }
 
-        const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book|book kare|booking|book karna hai|book car|booking karwani hai)\b/i.test(lowerMsg);
+        const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book|book kare|booking|book karna hai|book car|booking karwani hai|book karo|book karna|book krna|book krr do)\b/i.test(lowerMsg);
         const isBookingInfo = /\b(how to book|process|book kaise kare)\b/i.test(lowerMsg);
         const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic/i.test(lowerMsg);
 
@@ -474,7 +474,7 @@ export async function handleWebhook(req, res) {
         if (isBookingAction && (detectedCar || session.data.carModel)) {
             const carName = detectedCar || session.data.carModel;
             const car = await Car.findOne({ name: carName }).lean();
-            
+
             // Simple 4-line summary for hardcoded booking bypass
             let emiLine = "Calculation on request";
             if (car && car.price) {
@@ -484,7 +484,7 @@ export async function handleWebhook(req, res) {
                     emiLine = `₹${Math.round(l * 2100).toLocaleString()} - ₹${Math.round(l * 3800).toLocaleString()} monthly.`;
                 }
             }
-            
+
             const carPrice = car ? car.price : "Price on request";
             const bookingSummary = `🏦 EMI: ${carName}\n💰 Price: ${carPrice}\n📈 Interest: 9.5% for 5 years\n📉 Monthly: ${emiLine}\n\n${carName} book karne ke liye apna 6-digit Pincode share karein. 🚙`;
 
