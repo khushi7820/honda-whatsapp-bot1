@@ -1,4 +1,4 @@
-// Version 1.6.1 - REAL EMI calculation (₹2100/Lakh rule) + NO STARS + Context v5
+// Version 1.6.5 - Multi-Topic Expert Selection + No Empty Labels + Final Context v6
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -198,11 +198,12 @@ You are the **Mahindra Product Expert**, representing Mahindra's full lineup of 
   - If the user asks for Features, provide ONLY high-tech highlights with the 🚀 label.
   - If the user asks for EMI, provide ONLY monthly calculation range with the 🏦 label.
   - If the user asks for Price, provide ONLY the exact price range with the 💰 label.
-  - **Labels MUST look like this**:
-    🛡️ Safety: [NCAP rating, airbags, etc.]
-    🚀 Features: [High-tech highlights only]
-    🏦 EMI: Monthly calculation range (Rule: Estimate ~₹2,100 per Lakh of car price for a 5-year tenure).
-    💰 Price: Exact price range.
+  - **Multiple Topics**: If the user asks for multiple things (e.g. "safety and emi"), provide ALL requested topics vertically.
+  - **Labels MUST look like this (DO NOT leave text empty after label)**:
+    🛡️ Safety: [Real NCAP rating and airbags count]
+    🚀 Features: [Top 3-4 high-tech features like Sunroof, ADAS, Sony Sound]
+    🏦 EMI: [Estimate based on car price using ₹2,100 per Lakh rule]
+    💰 Price: [Exact price range from inventory]
   - Keep it short and relevant. No extra info unless asked. Provide REALISTIC EMI based on the actual price of the specific model.
 - **Numeric Selection**: If the user replies with a NUMBER (e.g., "1", "2", "3"), identify which car that number refers to from the previous message in history. Show ONLY that car's **Model Standard**.
 - **Model Standard**: If a specific model is asked for (e.g., "XUV700 details"), show ONLY this vertical format:
