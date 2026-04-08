@@ -232,7 +232,8 @@ export async function handleWebhook(req, res) {
         // 1B. CAR DETECTION & SELECTION HANDLING
         const numericMatch = lowerMsg.match(/^\s*(\d+)\s*/);
         const isRecommendationQuery = /looking|suggest|recommend|best|for\s\d+/i.test(lowerMsg);
-        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao/i.test(lowerMsg) && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg);
+        const isImageRequest = /image|photo|pic|img/i.test(lowerMsg);
+        const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao/i.test(lowerMsg) && !isImageRequest && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg);
 
         if (isRecommendationQuery) {
             session.data.carModel = null;
@@ -426,6 +427,18 @@ export async function handleWebhook(req, res) {
         const isBookingAction = /\b(book this|book it|book now|confirmed book|proceed to book|book kare|booking|book karna hai|book car|booking karwani hai)\b/i.test(lowerMsg);
         const isBookingInfo = /\b(how to book|process|book kaise kare)\b/i.test(lowerMsg);
         const isDetailQuery = /detail|show|info|specs|price|mileage|image|photo|pic/i.test(lowerMsg);
+
+        // 3C. NO IMAGES BYPASS (Hardcoded)
+        if (isImageRequest) {
+            const noImgMsg = session.data.detectedLanguage === "GUJARATI"
+                ? `માફ કરજો, મારી પાસે હાલ ફોટા કે ઈમેજ ઉપલબ્ધ નથી. પણ હું તમને ગાડીના ફીચર્સ, પ્રાઈસ અને સ્પેક્સ વિશે જણાવી શકું છું. 🚗`
+                : `Maaf kijiye, mere paas abhi photos ya images available nahi hain. Lekin main aapko Mahindra cars ke features, price aur specs ke baare mein detailed jankari de sakta hoon. 🚗`;
+            
+            await sendMessage(sender, noImgMsg);
+            await new Chat({ sender, role: "user", content: textRaw }).save();
+            await new Chat({ sender, role: "assistant", reply: noImgMsg, content: noImgMsg }).save();
+            return res.status(200).send("OK");
+        }
 
         // 4. BOOKING BYPASS (REFINED - FORCE CAR SELECTION FIRST)
         if (isBookingAction && !detectedCar && !session.data.carModel) {
