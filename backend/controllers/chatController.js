@@ -122,18 +122,23 @@ export async function handleWebhook(req, res) {
         const lowerMsg = textRaw ? textRaw.toLowerCase().trim() : "";
         console.log(`[BOT] User Input: "${textRaw}" from ${sender}`);
 
-        // 0. LANGUAGE DETECTION (Default to HINGLISH)
-        if (!session.data.detectedLanguage || session.data.detectedLanguage === "ENGLISH") {
-            if (/[\u0a80-\u0aff]/.test(textRaw)) session.data.detectedLanguage = "GUJARATI";
-            else session.data.detectedLanguage = "HINGLISH";
-            await session.save();
-        } else if (/[\u0a80-\u0aff]/.test(textRaw)) {
-            session.data.detectedLanguage = "GUJARATI";
+        // 0. LANGUAGE DETECTION
+        if (!session.data.detectedLanguage) {
+            if (/[\u0a80-\u0aff]/.test(textRaw)) {
+                session.data.detectedLanguage = "GUJARATI";
+            } else if (/[\u0900-\u097F]/.test(textRaw)) {
+                session.data.detectedLanguage = "HINDI";
+            } else {
+                session.data.detectedLanguage = "HINGLISH";
+            }
             await session.save();
         } else {
-            // Re-detect Hinglish just in case
-            if (/hindi|bhai|kya|batao|ka|se|hai|hu|kaisa|apna|bolero|scorpio|xuv/i.test(lowerMsg)) {
-                session.data.detectedLanguage = "HINGLISH";
+            // Only flip language if explicitly typing native characters
+            if (/[\u0a80-\u0aff]/.test(textRaw)) {
+                session.data.detectedLanguage = "GUJARATI";
+                await session.save();
+            } else if (/[\u0900-\u097F]/.test(textRaw)) {
+                session.data.detectedLanguage = "HINDI";
                 await session.save();
             }
         }
