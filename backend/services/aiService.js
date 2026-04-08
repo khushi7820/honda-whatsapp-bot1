@@ -1,4 +1,4 @@
-// Version 1.2.4 - Independent Test Drive Flow + Streamlined Model Probing + Strict 4-Line Standard
+// Version 1.2.5 - Direct Web Booking Link + Simplified Pincode Flow + 4-Line Standard
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -178,7 +178,7 @@ export async function getAIResponse(userMessage, history, baseUrl, session, inpu
 
 ### 🏁 SALES INDEPENDENCE RULES:
 1. **Zero Call-Back Rule**: Never say "Humare executive aapko call karenge" or "Wait for a call". This is a fully digital showroom. Everything happens via the direct booking link.
-2. **Test Drive Calendar**: The final goal is to get the user to a Test Drive. The direct link is: https://calendly.com/mahindra-test-drive
+2. **Digital Booking Flow**: When the user is ready to book or test drive, ask for their **Pincode**. Once shared, provide the **Direct Test Drive Booking Link** where they can select a date and time independently. Do NOT ask for color, fuel, or other details in chat.
 3. **The 4-Line Standard**: When sharing a car overview, ONLY show these 4 lines:
    💰 *[Price Range]*
    🎨 *[Colors]*

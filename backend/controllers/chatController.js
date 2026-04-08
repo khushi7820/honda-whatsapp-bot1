@@ -5,6 +5,7 @@ import Car from "../models/Car.js";
 import { getAIResponse, transcribeAudio } from "../services/aiService.js";
 import { sendMessage, sendImage, downloadMedia, sendAudio } from "../services/whatsappService.js";
 import { generateTTS } from "../services/ttsService.js";
+import { getBookButton, getDateListText, getSlotListText, getColorListText, getFuelListText } from "../utils/bookingTemplates.js";
 import axios from "axios";
 import { connectDB } from "../config/db.js";
 
@@ -74,12 +75,9 @@ export async function handleWebhook(req, res) {
 
         if (!sender) return res.status(200).send("OK");
 
-        // STEP 1: FORCE RESET CAR CONTEXT ON EVERY REQUEST TO BREAK LOOPS
+        // STEP 1: GET OR CREATE SESSION
         let session = await Session.findOne({ sender });
-        if (session) {
-            session.data.carModel = null;
-            await session.save();
-        } else {
+        if (!session) {
             session = new Session({ sender, state: "IDLE", data: { history: [], carModel: null } });
             await session.save();
         }
@@ -184,12 +182,18 @@ export async function handleWebhook(req, res) {
             session.data.area = city;
             
             const carName = session.data.carModel || "Mahindra SUV";
+            const carId = carName.replace(/Mahindra\s+/i, "").toLowerCase().replace(/\s+/g, "-");
+            const userPhone = sender.replace(/\D/g, "");
+            const botPhone = "15558689519"; 
+            
+            const calendarUrl = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carId}&phone=${userPhone}&botPhone=${botPhone}`;
+            
             const pincodeMsg = session.data.detectedLanguage === "GUJARATI" 
-                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\n✅ *ટેસ્ટ ડ્રાઈવ કન્ફર્મ!*\n🚗 *ગાડી*: ${carName}\n\nતમારા ટેસ્ટ ડ્રાઈવ સ્લોટ બુક કરવા માટે અહીં ક્લિક કરો:\n📅 https://calendly.com/mahindra-test-drive\n\nધન્યવાદ! 🙏`
-                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\n✅ *Test Drive Confirmed!*\n🚗 *Car*: ${carName}\n\nPlease schedule your Test Drive slot here:\n📅 https://calendly.com/mahindra-test-drive\n\nThank you! 🙏`;
+                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\n✅ *ટેસ્ટ ડ્રાઈવ સ્લોટ બુકિંગ!*\n🚗 *ગાડી*: ${carName}\n\nકૃપા કરીને નીચેની લિંક પર ક્લિક કરીને તમારો સ્લોટ બુક કરો:\n📅 ${calendarUrl}\n\nધન્યવાદ! 🙏`
+                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\n✅ *Schedule Your Test Drive!*\n🚗 *Car*: ${carName}\n\nPlease click the link below to select your date and time slot:\n📅 ${calendarUrl}\n\nThank you! 🙏`;
             
             // Lead Alert to Admin
-            const leadAlert = `New Test Drive Lead! 🚀\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
+            const leadAlert = `New Booking Intent! 🚀\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
             await sendMessage("15558689519", leadAlert);
             
             session.state = "IDLE"; await session.save();
@@ -200,7 +204,8 @@ export async function handleWebhook(req, res) {
             return res.status(200).send("OK");
         }
 
-        // 3. CAR DETECTION & SESSION CLEARING
+        // 1B. CAR DETECTION & SELECTION HANDLING
+        const numericMatch = lowerMsg.match(/^\s*(\d+)\s*/);
         const isRecommendationQuery = /looking|suggest|recommend|best|for\s\d+/i.test(lowerMsg);
         const isGeneralCarListQuery = /cars|gaadi|gadiyan|gaadiyan|models|inventory|available|kaunsi|kousi|dekhni|dikhao/i.test(lowerMsg) && !/(xuv|scorpio|thar|bolero|marazzo|3xo|ev|400)/i.test(lowerMsg) && !/\b(seater|seat|petrol|diesel|electric|cng|ev)\b/i.test(lowerMsg);
 
@@ -294,9 +299,7 @@ export async function handleWebhook(req, res) {
         // 3C. NUMBER SELECTION BYPASS (When user selects from a previously shown list)
         const numberWords = { "one": 1, "ek": 1, "pehla": 1, "pahla": 1, "first": 1, "two": 2, "do": 2, "doosra": 2, "dusra": 2, "second": 2, "three": 3, "teen": 3, "teesra": 3, "third": 3, "four": 4, "char": 4, "chautha": 4, "fourth": 4, "five": 5, "paanch": 5, "fifth": 5, "six": 6, "chhe": 6, "sixth": 6, "seven": 7, "saat": 7, "seventh": 7, "eight": 8, "aath": 8, "eighth": 8 };
         
-        const numericMatch = lowerMsg.match(/^\s*(\d+)\s*/);
         let selectedNumber = null;
-        
         if (numericMatch) {
             selectedNumber = parseInt(numericMatch[1]);
         }
