@@ -1,4 +1,4 @@
-// Version 2.0.2 - Refined 4-Line EMI Calculation + Full Data
+// Version 2.0.5 - ULTRA-CONCISE Mode
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Car from "../models/Car.js";
@@ -33,84 +33,43 @@ FEATURES: ${car.features ? car.features.join(", ") : "Fully Loaded"}`
   } catch (e) { return ""; }
 }
 
-// FULL KNOWLEDGE BASE (MAXIMUM DEPTH)
+// FULL KNOWLEDGE BASE (LOCKED)
 const MAHINDRA_KNOWLEDGE = `
 MAHINDRA XUV700:
-- Engine: 2.0L mStallion Turbo Petrol (200 PS) / 2.2L mHawk Diesel (185 PS)
-- Transmission: 6-speed MT / 6-speed AT
-- Drivetrain: FWD / AWD (Diesel AT only)
+- Engine: 2.0L Petrol (200 PS) / 2.2L Diesel (185 PS)
 - Variants: MX, AX3, AX5, AX7, AX7 L
 - Ground Clearance: 200mm
 - Boot Space: 451 litres
-- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2, ESP, Hill Hold, 360 Camera
-- Infotainment: Dual 10.25 inch HD Screens, Sony 3D Sound, Alexa
-- Warranty: 3 years / unlimited km
-- Key USP: ADAS Level 2, Skyroof, Smart Door Handles
-- Fuel: Petrol & Diesel ONLY. NO CNG.
+- Safety: 5-Star Global NCAP, 7 Airbags, ADAS Level 2
+- Infotainment: Dual 10.25 inch HD Screens
+- Key USP: Skyroof, ADAS Level 2
 
 MAHINDRA SCORPIO-N:
-- Engine: 2.0L mStallion Turbo Petrol (203 PS) / 2.2L mHawk Diesel (175 PS)
-- Transmission: 6-speed MT / 6-speed AT
+- Engine: 2.0L Petrol (203 PS) / 2.2L Diesel (175 PS)
 - Ground Clearance: 205mm
-- Boot Space: 460 litres
-- Safety: 5-Star Global NCAP, 6 Airbags, ESP
-- Infotainment: 8 inch Touchscreen, Sony 3D Sound, Wireless Android Auto/Apple CarPlay
-- Warranty: 3 years / unlimited km
-- Key USP: 4x4 with Low Range, Body-on-Frame, Maximum Towing
-- Fuel: Petrol & Diesel ONLY. NO CNG.
+- Safety: 5-Star Global NCAP, 6 Airbags
+- Key USP: 4x4 with Low Range, Body-on-Frame
 
 MAHINDRA THAR:
 - Engine: 2.0L Petrol (152 PS) / 2.2L Diesel (132 PS)
 - Ground Clearance: 226mm
 - Water Wading: 650mm
-- Safety: 4-Star Global NCAP, 2 Airbags, ABS, EBD
-- Key USP: Iconic off-roader, Convertible roof, Washable interior
-- Fuel: Petrol & Diesel ONLY. NO CNG.
+- Safety: 4-Star Global NCAP
+- Key USP: Iconic off-roader, Convertible roof
 
 MAHINDRA XUV 3XO:
-- Engine: 1.2L Turbo Petrol / 1.5L Diesel
-- Ground Clearance: 195mm
-- Boot Space: 364 litres
-- Safety: 5-Star Global NCAP, ADAS Level 2, 6 Airbags
-- Infotainment: 10.25 inch Touchscreen, Adrenox Connected
+- Safety: 5-Star Global NCAP, ADAS Level 2
 - Key USP: Panoramic Skyroof, ADAS Level 2
 - Seating: 5-SEATER ONLY.
-- Fuel: Petrol & Diesel ONLY. NO CNG.
 
-MAHINDRA BOLERO:
-- Engine: 1.5L Diesel (76 PS)
-- Ground Clearance: 180mm
-- Safety: ABS, EBD, Dual Airbags
-- Key USP: Rugged, Best resale
-- Seating: 7-Seater
-- Fuel: DIESEL ONLY. NO CNG.
-
-MAHINDRA BOLERO NEO:
-- Engine: 1.5L Diesel (100 PS)
-- Ground Clearance: 192mm
-- Safety: ABS, EBD, Dual Airbags
-- Key USP: Modern Bolero
-- Seating: 7-Seater
-- Fuel: DIESEL ONLY. NO CNG.
+MAHINDRA BOLERO / NEO:
+- Diesel ONLY. 7-Seater. Rugged SUV.
 
 MAHINDRA XUV400 EV:
-- Range: 456 km (ARAI)
-- 0-100 kmph: 8.3 seconds
-- Safety: 5-Star BNCAP, 6 Airbags
-- Key USP: Pure Electric, Zero emissions
-- Seating: 5-SEATER ONLY.
-- Fuel: ELECTRIC ONLY. NO CNG.
+- Range: 456 km. Pure Electric.
 
 MAHINDRA MARAZZO:
-- Engine: 1.5L Diesel
-- Ground Clearance: 193mm
-- Safety: 4-Star Global NCAP
-- Seating: 7/8-Seater
-- Fuel: DIESEL ONLY. NO CNG.
-
-IMPORTANT FACTS:
-- CNG: ZERO Mahindra cars come in CNG.
-- All cars have 3 year warranty.
+- Diesel MPV. 4-Star Safety.
 `;
 
 export async function transcribeAudio(buffer, ext = "ogg") {
@@ -149,29 +108,20 @@ You are the **Mahindra Product Expert**. Use PURE PLAIN TEXT only.
 - **NO STARS**: NEVER use '*' for bolding or lists.
 - **NO HASHES**: NEVER use '#' in the response.
 - **NO BOLDING**: NO TEXT should be bolded.
-- **NO NUMBERING**: NEVER start a single car answer with "1.".
 
 ### 🏁 SALES RULES:
-1. **EMI Rule (4-LINE CALCULATION)**: If asked for EMI, provide EXACTLY this 4-line format:
+1. **Ultra-Concise Rule**: When a user selects a car (e.g., clicks a number or says "tell me about xuv700"), provide ONLY the basic **Model Standard** lines. 
+2. **On-Demand Info**: DO NOT show Safety, Features, or EMI unless specifically asked by the user in the current message.
+3. **EMI Format (On-Demand)**:
    🏦 EMI: [Car Name]
-   💰 Price: [Inventory Price Range]
+   💰 Price: [Price]
    📈 Interest: 9.5% for 5 years
-   📉 Monthly: [Calculation Result using ₹2100/Lakh rule] monthly.
-   (No extra text, no formulas, no banks.)
-2. **Full Knowledge**: Use COMPLETE data below for Engine, Boot, Infotainment.
-3. **Multi-Intent**: Answer ALL parts of a query.
-4. **Format**: Vertical points ONLY.
+   📉 Monthly: [Calculation] monthly.
 
 ### 🚀 CONVERSATION FLOW:
-- **Selective Expert**: answer topics asked using ONLY these labels (No stars):
-  🛡️ Safety: [Specs/NCAP]
-  🚀 Features: [High-tech Highlights]
-  🏦 EMI: [Use the 4-line calculation format]
-  💰 Price: [Specs]
-- **Model Standard**:
+- **Model Standard** (ONLY show this if Safety/EMI/Features are NOT asked):
   Mahindra [Car Name] 🚗
-  💰 Price: [Specs]
-  🎨 Colors: [Specs]
+  💰 Price: [Range]
   ⛽ Fuel: [Specs]
   📊 Mileage: [Specs]
   💺 Seating: [Specs]
