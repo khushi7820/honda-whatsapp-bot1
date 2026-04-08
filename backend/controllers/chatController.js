@@ -143,13 +143,17 @@ export async function handleWebhook(req, res) {
             }
         }
 
+        const lastBotChat = await Chat.findOne({ sender, role: "assistant" }).sort({ _id: -1 });
+        const wasLastMsgGujarati = lastBotChat && /[\u0a80-\u0aff]/.test(lastBotChat.content);
+        const isGujaratiSession = session.data.detectedLanguage === "GUJARATI" || wasLastMsgGujarati;
+
         // 0. GREETINGS BYPASS
         const greetingRegex = /\b(hi|hello|namaste|hey|hii|hy|hyy|heyy|hiii|naam|haa|hal|hoi)\b/i;
         const isBookingSearch = /(book|buy|interested|appointment|booking)/i.test(lowerMsg);
 
         if (greetingRegex.test(lowerMsg) && !isBookingSearch && lowerMsg.length < 15) {
             let welcomeMsg = "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
-            if (session.data.detectedLanguage === "GUJARATI") {
+            if (isGujaratiSession) {
                 welcomeMsg = "Hi, how can I help you with our Mahindra SUVs today? 🚗✨";
             }
             await sendMessage(sender, welcomeMsg);
@@ -162,7 +166,7 @@ export async function handleWebhook(req, res) {
         const ackWords = /\b(ok|okay|kk|k|done|sweet|nice|thnx|thanks|thank you|shukriya|great|no thanks|no thank you|no|nahi|nhi|fine|achha|theek)\b/i;
         if (ackWords.test(lowerMsg) && lowerMsg.length < 12) {
             let ackReply = "Theek hai! Kya aap kisi aur Mahindra SUV ke baare mein jaan-na chahte hain? 🚗✨";
-            if (session.data.detectedLanguage === "GUJARATI") {
+            if (isGujaratiSession) {
                 ackReply = "Dhanyavad! Shu tame biji koi Mahindra SUV vishe janva mangon cho? 🚗✨";
             }
 
@@ -182,7 +186,7 @@ export async function handleWebhook(req, res) {
             const pincode = session.data.pincode || "Not Provided";
             const location = session.data.area || "Verified Area";
 
-            const finalConfirmMsg = session.data.detectedLanguage === "GUJARATI"
+            const finalConfirmMsg = isGujaratiSession
                 ? `✅ ટેસ્ટ ડ્રાઈવ કન્ફર્મ!\n\n🚗 ગાડી: ${carName}\n📅 તારીખ: ${bookingDate}\n🕓 સમય: ${bookingTime}\n📍 પિનકોડ: ${pincode}\n🏢 સ્થળ: ${location}\n\nઅમારા એક્ઝિક્યુટિવ ટૂંક સમયમાં તમારો સંપર્ક કરશે. ધન્યવાદ! 🙏`
                 : `✅ Test Drive Confirmed!\n\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}\n📍 Pincode: ${pincode}\n🏢 Location: ${location}\n\nOur executive will call you shortly to finalize details. Thank you! 🙏`;
 
@@ -220,7 +224,12 @@ export async function handleWebhook(req, res) {
 
             const calendarUrl = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carId}&phone=${userPhone}&botPhone=${botPhone}`;
 
-            const pincodeMsg = session.data.detectedLanguage === "GUJARATI"
+            // Check if last bot transmission was Gujarati to handle context carryover
+            const lastBotChat = await Chat.findOne({ sender, role: "assistant" }).sort({ _id: -1 });
+            const wasLastMsgGujarati = lastBotChat && /[\u0a80-\u0aff]/.test(lastBotChat.content);
+            const isGujaratiSession = session.data.detectedLanguage === "GUJARATI" || wasLastMsgGujarati;
+
+            const pincodeMsg = isGujaratiSession
                 ? `📍 પિનકોડ વેરિફાઈડ: ${pc}\n🏢 સ્થળ: ${city}\n\n✅ ટેસ્ટ ડ્રાઈવ સ્લોટ બુકિંગ!\n🚗 ગાડી: ${carName}\n\nકૃપા કરીને નીચેની લિંક પર ક્લિક કરીને તમારો સ્લોટ બુક કરો:\n📅 ${calendarUrl}\n\nધન્યવાદ! 🙏`
                 : `📍 Pincode Verified: ${pc}\n🏢 Location: ${city}\n\n✅ Schedule Your Test Drive!\n🚗 Car: ${carName}\n\nPlease click the link below to select your date and time slot:\n📅 ${calendarUrl}\n\nThank you! 🙏`;
 
