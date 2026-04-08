@@ -174,8 +174,8 @@ export async function handleWebhook(req, res) {
             const carName = session.data.carModel || "Mahindra SUV";
 
             const finalConfirmMsg = session.data.detectedLanguage === "GUJARATI"
-                ? `✅ *ટેસ્ટ ડ્રાઈવ કન્ફર્મ!*\n\n🚗 *ગાડી*: ${carName}\n📅 *તારીખ*: ${bookingDate}\n🕓 *સમય*: ${bookingTime}\n\nઅમારા એક્ઝિક્યુટિવ ટૂંક સમયમાં તમારો સંપર્ક કરશે. ધન્યવાદ! 🙏`
-                : `✅ *Test Drive Confirmed!*\n\n🚗 *Car*: ${carName}\n📅 *Date*: ${bookingDate}\n🕓 *Time*: ${bookingTime}\n\nOur executive will call you shortly to finalize details. Thank you! 🙏`;
+                ? `✅ ટેસ્ટ ડ્રાઈવ કન્ફર્મ!\n\n🚗 ગાડી: ${carName}\n📅 તારીખ: ${bookingDate}\n🕓 સમય: ${bookingTime}\n\nઅમારા એક્ઝિક્યુટિવ ટૂંક સમયમાં તમારો સંપર્ક કરશે. ધન્યવાદ! 🙏`
+                : `✅ Test Drive Confirmed!\n\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}\n\nOur executive will call you shortly to finalize details. Thank you! 🙏`;
 
             // Admin Final Lead Alert
             await sendMessage("15558689519", `🎉 SUCCESSFUL BOOKING!\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📅 Date: ${bookingDate}\n🕓 Time: ${bookingTime}`);
@@ -211,8 +211,8 @@ export async function handleWebhook(req, res) {
             const calendarUrl = `https://honda-whatsapp-bot1-paje.vercel.app/booking/calendar?carId=${carId}&phone=${userPhone}&botPhone=${botPhone}`;
             
             const pincodeMsg = session.data.detectedLanguage === "GUJARATI" 
-                ? `📍 *પિનકોડ વેરિફાઈડ: ${pc}*\n🏢 *સ્થળ*: ${city}\n\n✅ *ટેસ્ટ ડ્રાઈવ સ્લોટ બુકિંગ!*\n🚗 *ગાડી*: ${carName}\n\nકૃપા કરીને નીચેની લિંક પર ક્લિક કરીને તમારો સ્લોટ બુક કરો:\n📅 ${calendarUrl}\n\nધન્યવાદ! 🙏`
-                : `📍 *Pincode Verified: ${pc}*\n🏢 *Location*: ${city}\n\n✅ *Schedule Your Test Drive!*\n🚗 *Car*: ${carName}\n\nPlease click the link below to select your date and time slot:\n📅 ${calendarUrl}\n\nThank you! 🙏`;
+                ? `📍 પિનકોડ વેરિફાઈડ: ${pc}\n🏢 સ્થળ: ${city}\n\n✅ ટેસ્ટ ડ્રાઈવ સ્લોટ બુકિંગ!\n🚗 ગાડી: ${carName}\n\nકૃપા કરીને નીચેની લિંક પર ક્લિક કરીને તમારો સ્લોટ બુક કરો:\n📅 ${calendarUrl}\n\nધન્યવાદ! 🙏`
+                : `📍 Pincode Verified: ${pc}\n🏢 Location: ${city}\n\n✅ Schedule Your Test Drive!\n🚗 Car: ${carName}\n\nPlease click the link below to select your date and time slot:\n📅 ${calendarUrl}\n\nThank you! 🙏`;
             
             // Lead Alert to Admin
             const leadAlert = `New Booking Intent! 🚀\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
@@ -346,7 +346,7 @@ export async function handleWebhook(req, res) {
                     session.markModified('data');
                     await session.save();
 
-                    const detailCard = `*${selectedCar.name}* 🚗\n💰 **Price**: ${selectedCar.price}\n🎨 **Colors**: ${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}\n⛽ **Fuel**: ${selectedCar.fuelType}\n📊 **Mileage**: ${selectedCar.mileage}\n💺 **Seating**: ${selectedCar.seatingCapacity}\n\nBook karna chahein toh \"book\" likhein! 🚙`;
+                    const detailCard = `${selectedCar.name} 🚗\n💰 Price: ${selectedCar.price}\n🎨 Colors: ${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}\n⛽ Fuel: ${selectedCar.fuelType}\n📊 Mileage: ${selectedCar.mileage}\n💺 Seating: ${selectedCar.seatingCapacity}\n\nBook karna chahein toh "book" likhein! 🚙`;
 
                     await sendMessage(sender, detailCard);
                     await new Chat({ sender, role: "user", content: textRaw }).save();
