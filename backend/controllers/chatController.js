@@ -196,6 +196,7 @@ export async function handleWebhook(req, res) {
             const leadAlert = `New Booking Intent! 🚀\n👤 Client: ${sender}\n🚗 Car: ${carName}\n📍 Area: ${city}\n📌 Pincode: ${pc}`;
             await sendMessage("15558689519", leadAlert);
             
+            session.markModified('data');
             session.state = "IDLE"; await session.save();
             await sendMessage(sender, pincodeMsg);
             
@@ -249,6 +250,7 @@ export async function handleWebhook(req, res) {
             } else {
                 // Save list to session for number selection
                 session.data.lastShownList = matchedCars.map(c => c.name);
+                session.markModified('data');
                 await session.save();
 
                 filterReply = session.data.detectedLanguage === "GUJARATI"
@@ -319,6 +321,7 @@ export async function handleWebhook(req, res) {
                 
                 if (selectedCar) {
                     session.data.carModel = selectedCar.name;
+                    session.markModified('data');
                     await session.save();
 
                     const detailCard = `*${selectedCar.name}* 🚗\n💰 *Price Range:* ${selectedCar.price}\n🎨 *Colors:* ${selectedCar.colors ? selectedCar.colors.join(", ") : "Premium Colors"}\n⛽ *Fuel Type:* ${selectedCar.fuelType}\n📊 *Mileage:* ${selectedCar.mileage}\n💺 *Seating Capacity:* ${selectedCar.seatingCapacity}\n\nBook karna chahein toh \"book\" likhein! 🚙`;
@@ -342,6 +345,7 @@ export async function handleWebhook(req, res) {
             
             // Save list to session for number selection
             session.data.lastShownList = cars.map(c => c.name);
+            session.markModified('data');
             await session.save();
 
             const carListText = session.data.detectedLanguage === "GUJARATI"
