@@ -192,7 +192,8 @@ export async function handleWebhook(req, res) {
         }
 
         // 1. PINCODE BYPASS (Auto-detect in Audio/Text)
-        const pincodeMatch = textRaw.match(/\b\d{6}\b/);
+        const cleanForPin = textRaw.replace(/[-.\s]+/g, "");
+        const pincodeMatch = cleanForPin.match(/\d{6}/);
         if (pincodeMatch) {
             const pc = pincodeMatch[0];
             let city = "Verified Area";
