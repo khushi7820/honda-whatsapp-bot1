@@ -485,8 +485,12 @@ export async function handleWebhook(req, res) {
         }
 
         if (isBookingAction && (detectedCar || session.data.carModel)) {
-            const carName = detectedCar || session.data.carModel;
-            const bookingSummary = `Your selection of Mahindra ${carName} is confirmed! 🚙 Please share your 6-digit Pincode to continue.`;
+            const rawName = detectedCar || session.data.carModel;
+            const carName = rawName.replace(/Mahindra\s+/i, "").trim();
+            
+            const bookingSummary = isGujaratiSession
+                ? `તમારી પસંદગી Mahindra ${carName} કન્ફર્મ છે! 🚙 કૃપા કરીને તમારો 6-આંકડાનો પિનકોડ શેર કરો.`
+                : `Your selection of Mahindra ${carName} is confirmed! 🚙 Please share your 6-digit Pincode to continue.`;
 
             session.state = "PINCODE";
             await session.save();
@@ -510,6 +514,15 @@ export async function handleWebhook(req, res) {
             .map(c => `${c.role === 'user' ? 'User' : 'Advisor'}: ${c.reply || c.content}`).join("\n");
 
         const aiFinal = await getAIResponse(textRaw || "Hi", historyContext, `${req.protocol}://${req.get('host')}`, session, type);
+        
+        // AUTO-SAVE CAR CONTEXT FROM AI RESPONSE
+        const headerMatch = aiFinal.match(/^Mahindra\s+([^\r\n🚗]+)🚗/im);
+        if (headerMatch) {
+            session.data.carModel = headerMatch[1].trim();
+            session.markModified('data');
+            await session.save();
+        }
+
         await sendMessage(sender, aiFinal);
 
         await new Chat({ sender, role: "user", content: textRaw }).save();
@@ -517,7 +530,7 @@ export async function handleWebhook(req, res) {
 
         return res.status(200).send("OK");
     } catch (error) {
-        console.error("❌ Fatal Webhook Error:", error.message);
+        console.error("❌ Fatal Webhook Error:", error.stack);
         return res.status(200).send("OK");
     }
 }
